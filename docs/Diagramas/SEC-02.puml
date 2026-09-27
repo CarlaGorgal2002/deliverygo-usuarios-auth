@@ -1,0 +1,35 @@
+@startuml SEC-02
+skinparam dpi 170
+title SEC-02 Iniciar sesion (CU-02)
+autonumber
+actor "Cliente via Portal" as Cliente
+participant "AuthController" as Ctrl
+participant "AuthService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+participant "JwtProvider" as Jwt
+Cliente -> Ctrl : POST /api/v1/auth/login (API-02)\nLoginRequest (DTO-03)
+Ctrl -> Ctrl : validar obligatorios [RN-01]
+alt datos faltantes
+  Ctrl --> Cliente : 400 ErrorResponse (DTO-08)
+else datos completos
+  Ctrl -> Srv : iniciarSesion(DTO-03) (SRV-02)
+  Srv -> RepU : findByEmail(email) (REP-01)
+  RepU -> BD : SELECT usuario WHERE email
+  BD --> RepU : Optional<Usuario>
+  RepU --> Srv : Optional<Usuario>
+  Srv -> Srv : comparar contrasena con el hash [RN-03]
+  alt usuario inexistente o contrasena incorrecta
+    Srv --> Ctrl : CredencialesInvalidasException
+    Ctrl --> Cliente : 401 ErrorResponse (DTO-08)\nmensaje generico [RN-08]
+  else contrasena correcta pero usuario INACTIVO [RN-04]
+    Srv --> Ctrl : UsuarioInactivoException
+    Ctrl --> Cliente : 422 ErrorResponse (DTO-08)
+  else credenciales validas
+    Srv -> Jwt : generarToken(usuarioId, rol) [RN-09, DM-03]
+    Jwt --> Srv : token firmado con vencimiento
+    Srv --> Ctrl : LoginResponse
+    Ctrl --> Cliente : 200 LoginResponse (DTO-04)
+  end
+end
+@enduml

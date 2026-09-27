@@ -1,0 +1,36 @@
+@startuml SEC-03
+skinparam dpi 170
+title SEC-03 Consultar perfil (CU-03)
+autonumber
+actor "Cliente via Portal\no modulo consumidor" as Cliente
+participant "JwtAuthFilter" as Sec
+participant "UsuarioController" as Ctrl
+participant "UsuarioService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+Cliente -> Sec : GET /api/v1/users/{id} (API-03)\nAuthorization: Bearer
+Sec -> Sec : validar sesion [RN-09]\ne identidad [RN-05] (DM-08)
+alt sesion ausente, invalida o vencida
+  Sec --> Cliente : 401 ErrorResponse (DTO-08)
+else no es el titular ni un modulo autorizado
+  Sec --> Cliente : 403 ErrorResponse (DTO-08)
+else solicitud autorizada
+  Sec -> Ctrl : solicitud autenticada
+  Ctrl -> Srv : consultarPerfil(id) (SRV-03)
+  Srv -> RepU : findById(id) (REP-02)
+  RepU -> BD : SELECT usuario WHERE id
+  BD --> RepU : Optional<Usuario>
+  RepU --> Srv : Optional<Usuario>
+  alt usuario inexistente
+    Srv --> Ctrl : RecursoNoEncontradoException
+    Ctrl --> Cliente : 404 ErrorResponse (DTO-08)
+  else titular INACTIVO [RN-04]
+    Srv --> Ctrl : UsuarioInactivoException
+    Ctrl --> Cliente : 422 ErrorResponse (DTO-08)
+  else usuario encontrado
+    Srv --> Ctrl : Usuario
+    Ctrl -> Ctrl : UsuarioMapper: Usuario a UsuarioResponse\n(sin passwordHash)
+    Ctrl --> Cliente : 200 UsuarioResponse (DTO-02)\nincluye rol y estado
+  end
+end
+@enduml

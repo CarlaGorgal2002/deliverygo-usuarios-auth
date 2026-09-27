@@ -1,0 +1,24 @@
+@startuml contexto
+skinparam dpi 170
+skinparam defaultFontSize 12
+skinparam rectangle {
+  BackgroundColor<<propio>> #DBEAFE
+  BorderColor<<propio>> #1E3A8A
+}
+actor "Cliente" as Cliente
+rectangle "Portal Web\n(Equipo 8)" as Portal
+rectangle "Modulo Usuarios y Autenticacion\nidentidad, perfil, rol, direcciones y sesion (JWT)\nBD propia" <<propio>> as Usr
+rectangle "Pedidos (Equipo 3)" as Ped
+rectangle "Logistica (Equipo 5)" as Log
+rectangle "Catalogo (Equipo 2)" as Cat
+rectangle "Pagos (Equipo 4)\nOpiniones y Analitica (Equipo 7)" as Otros
+rectangle "Notificaciones (Equipo 6)" as Not
+Cliente --> Portal : usa
+Portal --> Usr : registro, login, perfil,\ndirecciones (INT-02)
+Ped --> Usr : perfil y direcciones\n(INT-03)
+Log --> Usr : perfil y direcciones\n(INT-03)
+Cat --> Usr : valida responsable\n(INT-04)
+Otros --> Usr : datos del usuario\n(INT-05)
+Not --> Usr : datos del destinatario\n(INT-05)
+Usr --> Not : solicita bienvenida\n(INT-01)
+@enduml

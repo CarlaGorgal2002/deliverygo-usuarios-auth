@@ -1,0 +1,41 @@
+@startuml clases
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+hide circle
+class Usuario <<ENT-01>> {
+  - id : Long
+  - nombre : String
+  - apellido : String
+  - email : String {unique}
+  - passwordHash : String
+  - telefono : String
+  - estado : EstadoUsuario
+  - fechaAlta : LocalDateTime
+}
+enum EstadoUsuario <<DM-05>> {
+  ACTIVO
+  INACTIVO
+}
+class Rol <<ENT-02>> {
+  - id : Long
+  - nombre : String {unique}
+  - descripcion : String
+}
+class Direccion <<ENT-03>> {
+  - id : Long
+  - calle : String
+  - numero : String
+  - piso : String
+  - departamento : String
+  - ciudad : String
+  - provincia : String
+  - codigoPostal : String
+  - referencia : String
+  - predeterminada : boolean
+  - activa : boolean
+}
+Direccion "0..*" --> "1" Usuario : REL-01 pertenece a
+Usuario "0..*" --> "1" Rol : REL-02 tiene
+Usuario ..> EstadoUsuario
+@enduml

@@ -1,0 +1,52 @@
+@startuml SEC-04
+skinparam dpi 170
+title SEC-04 Modificar perfil (CU-04)
+autonumber
+actor "Cliente via Portal" as Cliente
+participant "JwtAuthFilter" as Sec
+participant "UsuarioController" as Ctrl
+participant "UsuarioService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+Cliente -> Sec : PUT /api/v1/users/{id} (API-04)\nModificarPerfilRequest (DTO-05) + Bearer
+Sec -> Sec : validar sesion [RN-09]\ne identidad [RN-05] (DM-08)
+alt sesion invalida
+  Sec --> Cliente : 401 ErrorResponse (DTO-08)
+else no es el titular
+  Sec --> Cliente : 403 ErrorResponse (DTO-08)
+else titular autenticado
+  Sec -> Ctrl : solicitud autenticada
+  Ctrl -> Ctrl : validar formato [RN-01]\ny que no haya campos no permitidos [RN-10] (DM-09)
+  alt datos invalidos o campos no permitidos
+    Ctrl --> Cliente : 400 ErrorResponse (DTO-08)
+  else datos validos
+    Ctrl -> Srv : modificarPerfil(id, DTO-05) (SRV-04)
+    Srv -> RepU : findById(id) (REP-02)
+    RepU -> BD : SELECT usuario WHERE id
+    RepU --> Srv : Optional<Usuario>
+    alt usuario inexistente
+      Srv --> Ctrl : RecursoNoEncontradoException
+      Ctrl --> Cliente : 404 ErrorResponse (DTO-08)
+    else usuario INACTIVO [RN-04]
+      Srv --> Ctrl : UsuarioInactivoException
+      Ctrl --> Cliente : 422 ErrorResponse (DTO-08)
+    else usuario ACTIVO
+      opt el email cambia
+        Srv -> RepU : findByEmail(nuevoEmail) (REP-01)
+        RepU --> Srv : Optional<Usuario>
+        alt email de otro usuario [RN-02]
+          Srv --> Ctrl : EmailDuplicadoException
+          Ctrl --> Cliente : 409 ErrorResponse (DTO-08)
+        end
+      end
+      Srv -> Srv : aplicar solo nombre, apellido,\ntelefono y email [RN-10]
+      Srv -> RepU : save(usuario) (REP-03)
+      note right : transaccional [DM-10]
+      RepU -> BD : UPDATE usuario
+      RepU --> Srv : Usuario
+      Srv --> Ctrl : Usuario
+      Ctrl --> Cliente : 200 UsuarioResponse (DTO-02)
+    end
+  end
+end
+@enduml

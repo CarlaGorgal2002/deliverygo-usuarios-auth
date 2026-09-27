@@ -1,0 +1,41 @@
+@startuml SEC-01
+skinparam dpi 170
+title SEC-01 Registrar usuario (CU-01)
+autonumber
+actor "Cliente via Portal" as Cliente
+participant "AuthController" as Ctrl
+participant "UsuarioService" as Srv
+participant "UsuarioRepository" as RepU
+participant "RolRepository" as RepR
+database "BD Usuarios" as BD
+participant "NotificacionesClient" as Notif
+
+Cliente -> Ctrl : POST /api/v1/auth/register (API-01)\nRegistrarUsuarioRequest (DTO-01)
+Ctrl -> Ctrl : validar obligatorios y formato [RN-01]
+alt datos invalidos
+  Ctrl --> Cliente : 400 ErrorResponse (DTO-08)
+else datos validos
+Ctrl -> Srv : registrarUsuario(DTO-01) (SRV-01)
+Srv -> RepU : findByEmail(email) (REP-01)
+RepU -> BD : SELECT usuario WHERE email
+BD --> RepU : Optional<Usuario>
+RepU --> Srv : Optional<Usuario>
+alt email ya registrado [RN-02]
+  Srv --> Ctrl : EmailDuplicadoException
+  Ctrl --> Cliente : 409 ErrorResponse (DTO-08)
+else email disponible
+  Srv -> Srv : generar hash de contrasena [RN-03]
+  Srv -> RepR : findByNombre("CLIENTE") (REP-04) [RN-06]
+  RepR --> Srv : Rol
+  Srv -> Srv : estado = ACTIVO [DM-05]
+  Srv -> RepU : save(usuario) (REP-03)
+  RepU -> BD : INSERT usuario
+  BD --> RepU : id
+  RepU --> Srv : Usuario
+  Srv ->> Notif : solicitarBienvenida(usuarioId, email) (INT-01)
+  note right : asincronica, mock declarado;\nno bloquea el alta y un fallo se registra en el log
+  Srv --> Ctrl : Usuario
+  Ctrl --> Cliente : 201 UsuarioResponse (DTO-02)
+end
+end
+@enduml

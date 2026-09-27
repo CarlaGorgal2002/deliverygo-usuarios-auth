@@ -1,0 +1,40 @@
+@startuml der
+skinparam dpi 170
+hide circle
+skinparam linetype ortho
+entity "usuario" as usuario {
+  * id : BIGINT <<PK>>
+  --
+  * nombre : VARCHAR(80)
+  * apellido : VARCHAR(80)
+  * email : VARCHAR(120) <<UNIQUE>>
+  * password_hash : VARCHAR(100)
+  telefono : VARCHAR(30)
+  * estado : VARCHAR(10)
+  * fecha_alta : TIMESTAMP
+  * rol_id : BIGINT <<FK>>
+}
+entity "rol" as rol {
+  * id : BIGINT <<PK>>
+  --
+  * nombre : VARCHAR(30) <<UNIQUE>>
+  descripcion : VARCHAR(120)
+}
+entity "direccion" as direccion {
+  * id : BIGINT <<PK>>
+  --
+  * usuario_id : BIGINT <<FK>>
+  * calle : VARCHAR(100)
+  * numero : VARCHAR(10)
+  piso : VARCHAR(10)
+  departamento : VARCHAR(10)
+  * ciudad : VARCHAR(80)
+  * provincia : VARCHAR(80)
+  * codigo_postal : VARCHAR(10)
+  referencia : VARCHAR(150)
+  * predeterminada : BOOLEAN
+  * activa : BOOLEAN
+}
+rol ||--o{ usuario : "REL-02"
+usuario ||--o{ direccion : "REL-01"
+@enduml
