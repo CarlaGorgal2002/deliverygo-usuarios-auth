@@ -10,12 +10,12 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Integrantes
 
-| Integrante | Responsabilidad |
+| Integrante | 
 |---|---|
-| Camacho Lucas | A definir |
-| Gorgal Carla Fátima | A definir |
-| Hanine Santiago | A definir |
-| Safadie Ezra | A definir |
+| Camacho Lucas | 
+| Gorgal Carla Fátima | 
+| Hanine Santiago | 
+| Safadie Ezra | 
 
 ## Tecnologías
 
