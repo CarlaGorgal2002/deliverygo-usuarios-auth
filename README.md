@@ -8,15 +8,6 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 **Etapa 1: diseño y arquitectura.** El documento de la Primera Entrega está en [`docs/`](docs/). La implementación de los cinco casos de uso CORE corresponde a la Etapa 2.
 
-## Integrantes
-
-| Integrante | 
-|---|---|
-| Camacho Lucas | 
-| Gorgal Carla Fátima | 
-| Hanine Santiago | 
-| Safadie Ezra | 
-
 ## Tecnologías
 
 - Java 25 y Maven
