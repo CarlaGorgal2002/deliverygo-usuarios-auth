@@ -1,0 +1,28 @@
+skinparam dpi 150
+skinparam defaultFontSize 11
+skinparam maxMessageSize 230
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+skinparam shadowing false
+skinparam ParticipantPadding 6
+skinparam BoxPadding 4
+skinparam sequence {
+  ArrowColor #2E5496
+  LifeLineBorderColor #7F8FA6
+  ParticipantBorderColor #2E5496
+  ParticipantBackgroundColor #EAF0F7
+  ActorBorderColor #2E5496
+  ActorBackgroundColor #EAF0F7
+  GroupBorderColor #7F8FA6
+  GroupBackgroundColor #F5F8FC
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C9A227
+}
+skinparam database {
+  BackgroundColor #EAF0F7
+  BorderColor #2E5496
+}
+hide footbox
+autonumber

@@ -1,0 +1,58 @@
+@startuml capas
+skinparam dpi 150
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BackgroundColor #EAF0F7
+  BorderColor #2E5496
+}
+skinparam component {
+  BackgroundColor #EAF0F7
+  BorderColor #2E5496
+}
+skinparam database {
+  BackgroundColor #EAF0F7
+  BorderColor #2E5496
+}
+skinparam ArrowColor #2E5496
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C9A227
+}
+skinparam actor {
+  BackgroundColor #EAF0F7
+  BorderColor #2E5496
+}
+
+actor "Portal Web\n(INT-02)" as Portal
+actor "Pedidos, Logística, Catálogo,\nNotificaciones, Pagos,\nOpiniones y Analítica\n(INT-03 a INT-05)" as Mods
+
+rectangle "Módulo Usuarios y Autenticación" {
+  component "security\nJwtAuthFilter, JwtProvider,\nSecurityConfig" as Sec
+  component "controller\nAuthController, UsuarioController,\nDireccionController" as Ctrl
+  component "services\nAuthService, UsuarioService,\nDireccionService" as Srv
+  component "repository\nUsuarioRepository, RolRepository,\nDireccionRepository" as Rep
+  component "model\nUsuario, Rol, Direccion,\nEstadoUsuario" as Model
+  component "dto y mapper\nDTO-01 a DTO-09,\nUsuarioMapper, DireccionMapper" as Dto
+  component "exception\nGlobalExceptionHandler" as Exc
+  component "integration\nNotificacionesClient" as Int
+  database "BD Usuarios\n(propia, DM-11)" as BD
+}
+component "Notificaciones\nPOST /api/v1/notifications" as Notif
+
+Portal --> Ctrl : API-01, API-02\nrutas públicas
+Portal --> Sec : API-03 a API-09\nBearer JWT
+Mods --> Sec : APIs autorizadas\ncredencial de módulo
+Sec --> Ctrl : solicitud autenticada
+Ctrl --> Srv : invoca Service
+Srv --> Rep
+Rep --> BD : JPA / Hibernate
+Srv --> Int
+Int --> Notif : INT-01
+Ctrl ..> Dto
+Srv ..> Dto
+Srv ..> Model
+Rep ..> Model
+Ctrl ..> Exc : errores
+@enduml

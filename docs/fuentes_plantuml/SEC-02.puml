@@ -1,0 +1,44 @@
+@startuml SEC-02
+!include common.iuml
+title SEC-02 Iniciar sesión (CU-02)
+actor "Usuario\nvía Portal" as Cli
+participant "AuthController" as Ctrl
+participant "AuthService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+participant "PasswordEncoder" as Enc
+participant "JwtProvider" as Jwt
+
+Cli -> Ctrl : POST /api/v1/auth/login (API-02)\nLoginRequest (DTO-03)
+Ctrl -> Ctrl : validar email y contraseña presentes [RN-01]
+alt falta un dato (A1)
+  Ctrl --> Cli : 400 ErrorResponse (DTO-08)\nVALIDATION_ERROR
+else datos presentes
+  Ctrl -> Srv : iniciarSesion(DTO-03) (SRV-02)
+  note over Srv : sólo lectura
+  Srv -> RepU : findByEmail(email) (REP-01)
+  RepU -> BD : SELECT usuario por email
+  BD --> RepU : resultado
+  RepU --> Srv : Optional<Usuario>
+  alt email inexistente [RN-08] (A2)
+    Srv --> Ctrl : error INVALID_CREDENTIALS
+    Ctrl --> Cli : 401 ErrorResponse (DTO-08)\nmensaje genérico
+  else usuario encontrado
+    Srv -> Enc : verificar contraseña contra passwordHash [RN-03]
+    Enc --> Srv : coincide / no coincide
+    alt contraseña incorrecta [RN-08] (A2)
+      Srv --> Ctrl : error INVALID_CREDENTIALS
+      Ctrl --> Cli : 401 ErrorResponse (DTO-08)\nmismo mensaje genérico
+    else usuario INACTIVO [RN-04] (A3)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    else credenciales válidas y usuario ACTIVO
+      Srv -> Jwt : emitir token con sub (id), rol y exp [RN-09]
+      Jwt --> Srv : token firmado
+      note right of Srv : la sesión no se persiste [DM-03]
+      Srv --> Ctrl : LoginResponse (DTO-04)
+      Ctrl --> Cli : 200 LoginResponse (DTO-04)
+    end
+  end
+end
+@enduml

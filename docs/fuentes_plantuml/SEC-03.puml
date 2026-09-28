@@ -1,0 +1,37 @@
+@startuml SEC-03
+!include common.iuml
+title SEC-03 Consultar perfil (CU-03)
+actor "Usuario vía Portal\no módulo consumidor" as Cli
+participant "JwtAuthFilter" as Sec
+participant "UsuarioController" as Ctrl
+participant "UsuarioService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+
+Cli -> Sec : GET /api/v1/users/{id} (API-03)\nBearer JWT o credencial de módulo
+Sec -> Sec : validar sesión [RN-09] o módulo autorizado [RN-05] [DM-08]
+alt token faltante, inválido o vencido (A1)
+  Sec --> Cli : 401 ErrorResponse (DTO-08)\nUNAUTHENTICATED
+else módulo no autorizado (A1) o perfil ajeno [RN-05] (A2)
+  Sec --> Cli : 403 ErrorResponse (DTO-08)\nFORBIDDEN
+else titular del perfil o módulo autorizado
+  Sec -> Ctrl : solicitud autenticada
+  Ctrl -> Srv : consultarPerfil(id) (SRV-03)
+  note over Srv : sólo lectura
+  Srv -> RepU : findById(id) (REP-02)
+  RepU -> BD : SELECT usuario por id
+  BD --> RepU : resultado
+  RepU --> Srv : Optional<Usuario>
+  alt usuario inexistente (A3)
+    Srv --> Ctrl : error USER_NOT_FOUND
+    Ctrl --> Cli : 404 ErrorResponse (DTO-08)
+  else consulta el titular y está INACTIVO [RN-04] (A4)
+    Srv --> Ctrl : error USER_INACTIVE
+    Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+  else perfil disponible
+    Srv --> Ctrl : UsuarioResponse (DTO-02)
+    note right of Ctrl : con rol y estado; sin contraseña [RN-03].\nUn módulo recibe el estado y decide\nsegún sus propias reglas.
+    Ctrl --> Cli : 200 UsuarioResponse (DTO-02)
+  end
+end
+@enduml

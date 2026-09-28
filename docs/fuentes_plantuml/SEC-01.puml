@@ -1,0 +1,45 @@
+@startuml SEC-01
+!include common.iuml
+title SEC-01 Registrar usuario (CU-01)
+actor "Cliente\nvía Portal" as Cli
+participant "AuthController" as Ctrl
+participant "AuthService" as Srv
+participant "PasswordEncoder" as Enc
+participant "UsuarioRepository" as RepU
+participant "RolRepository" as RepR
+database "BD Usuarios" as BD
+participant "NotificacionesClient" as Notif
+
+Cli -> Ctrl : POST /api/v1/auth/register (API-01)\nRegistrarUsuarioRequest (DTO-01)
+Ctrl -> Ctrl : validar obligatorios y formato [RN-01]
+alt datos faltantes o inválidos (A1)
+  Ctrl --> Cli : 400 ErrorResponse (DTO-08)\nVALIDATION_ERROR
+else datos válidos
+  Ctrl -> Srv : registrarUsuario(DTO-01) (SRV-01)
+  note over Srv : transacción [DM-10]
+  Srv -> RepU : findByEmail(email) (REP-01)
+  RepU -> BD : SELECT usuario por email
+  BD --> RepU : resultado
+  RepU --> Srv : Optional<Usuario>
+  alt email ya registrado [RN-02] (A2)
+    Srv --> Ctrl : error EMAIL_ALREADY_REGISTERED
+    Ctrl --> Cli : 409 ErrorResponse (DTO-08)
+  else email disponible
+    Srv -> Enc : proteger contraseña [RN-03]
+    Enc --> Srv : passwordHash
+    Srv -> RepR : findByNombre("CLIENTE") (REP-04)
+    RepR -> BD : SELECT rol por nombre
+    BD --> RepR : resultado
+    RepR --> Srv : Optional<Rol>
+    Srv -> Srv : asignar rol CLIENTE y estado ACTIVO,\nfechaAlta [RN-06]
+    Srv -> RepU : save(usuario) (REP-03)
+    RepU -> BD : INSERT usuario
+    BD --> RepU : id generado
+    RepU --> Srv : Usuario
+    Srv ->> Notif : POST /api/v1/notifications (INT-01)\ndestinatario, canal, plantilla de bienvenida
+    note right of Notif : solicitud no bloqueante.\nSi Notificaciones no responde o falla,\nel alta no se revierte ni se condiciona (A3)
+    Srv --> Ctrl : UsuarioResponse (DTO-02)
+    Ctrl --> Cli : 201 UsuarioResponse (DTO-02)\nsin contraseña [RN-03]
+  end
+end
+@enduml

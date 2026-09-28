@@ -1,0 +1,121 @@
+@startuml SEC-05
+!include common.iuml
+title SEC-05 Administrar direcciones (CU-05), parte a
+actor "Cliente vía Portal\no Pedidos (sólo listado)" as Cli
+participant "JwtAuthFilter" as Sec
+participant "DireccionController" as Ctrl
+participant "DireccionService" as Srv
+participant "UsuarioRepository" as RepU
+participant "DireccionRepository" as RepD
+database "BD Usuarios" as BD
+
+Cli -> Sec : API-05 a API-09 sobre /api/v1/users/{id}/addresses\nBearer JWT (titular) o credencial de módulo (Pedidos)
+Sec -> Sec : validar sesión [RN-09], identidad o módulo autorizado [RN-05] [DM-08]
+alt token faltante, inválido o vencido (A1)
+  Sec --> Cli : 401 ErrorResponse (DTO-08) UNAUTHENTICATED
+else datos de otro usuario, módulo no autorizado,\no Pedidos en API-06 a API-09 [RN-05] (A1)
+  Sec --> Cli : 403 ErrorResponse (DTO-08) FORBIDDEN
+else solicitud autorizada
+  Sec -> Ctrl : solicitud autenticada
+  alt Listado: GET .../addresses (API-05), titular o Pedidos
+    Ctrl -> Srv : listarDirecciones(id) (SRV-09)
+    Srv -> RepU : findById(id) (REP-02)
+    RepU -> BD : SELECT usuario
+    break usuario inexistente, consulta de Pedidos (A5)
+      Srv --> Ctrl : error USER_NOT_FOUND
+      Ctrl --> Cli : 404 ErrorResponse (DTO-08)
+    end
+    break consulta el titular y está INACTIVO [RN-04] (A1)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    end
+    Srv -> RepD : findByUsuarioIdAndActivaTrue(id) (REP-05) [RN-05]
+    RepD -> BD : SELECT direcciones activas
+    Ctrl --> Cli : 200 lista de DireccionResponse (DTO-07)
+
+  else Alta: POST .../addresses (API-06), sólo titular
+    Ctrl -> Ctrl : validar obligatorios y formato [RN-01]
+    break datos inválidos (A2)
+      Ctrl --> Cli : 400 ErrorResponse (DTO-08) VALIDATION_ERROR
+    end
+    Ctrl -> Srv : crearDireccion(id, DTO-06) (SRV-05)
+    note right of Srv : transacción [DM-10]
+    Srv -> RepU : findById(id) (REP-02)
+    break usuario INACTIVO [RN-04] (A1)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    end
+    opt la nueva dirección se indica como predeterminada [RN-07]
+      Srv -> RepD : findByUsuarioIdAndPredeterminadaTrue(id) (REP-08)
+      opt existe una predeterminada anterior
+        Srv -> RepD : save(anterior, sin predeterminada) (REP-07)
+      end
+    end
+    Srv -> RepD : save(nueva direccion) (REP-07)
+    RepD -> BD : INSERT direccion
+    Ctrl --> Cli : 201 DireccionResponse (DTO-07)
+
+  newpage SEC-05 Administrar direcciones (CU-05), parte b
+  else Modificación: PUT .../addresses/{addressId} (API-07), sólo titular
+    Ctrl -> Ctrl : validar obligatorios y formato [RN-01]
+    break datos inválidos (A2)
+      Ctrl --> Cli : 400 ErrorResponse (DTO-08) VALIDATION_ERROR
+    end
+    Ctrl -> Srv : modificarDireccion(id, addressId, DTO-09) (SRV-06)
+    note right of Srv : transacción [DM-10]
+    Srv -> RepU : findById(id) (REP-02)
+    break usuario INACTIVO [RN-04] (A1)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    end
+    Srv -> RepD : findByIdAndUsuarioIdAndActivaTrue(addressId, id) (REP-06) [RN-05]
+    break no existe, inactiva o ajena (A3)
+      Srv --> Ctrl : error ADDRESS_NOT_FOUND
+      Ctrl --> Cli : 404 ErrorResponse (DTO-08)
+    end
+    Srv -> Srv : actualizar datos; la predeterminada no cambia [RN-07]
+    Srv -> RepD : save(direccion) (REP-07)
+    RepD -> BD : UPDATE direccion
+    Ctrl --> Cli : 200 DireccionResponse (DTO-07)
+
+  else Baja: DELETE .../addresses/{addressId} (API-08), sólo titular
+    Ctrl -> Srv : eliminarDireccion(id, addressId) (SRV-07)
+    note right of Srv : transacción [DM-10]
+    Srv -> RepU : findById(id) (REP-02)
+    break usuario INACTIVO [RN-04] (A1)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    end
+    Srv -> RepD : findByIdAndUsuarioIdAndActivaTrue(addressId, id) (REP-06) [RN-05]
+    break no existe, inactiva o ajena (A3)
+      Srv --> Ctrl : error ADDRESS_NOT_FOUND
+      Ctrl --> Cli : 404 ErrorResponse (DTO-08)
+    end
+    Srv -> Srv : activa = false; si era predeterminada, deja de serlo [DM-04] (A4)
+    Srv -> RepD : save(direccion) (REP-07)
+    RepD -> BD : UPDATE direccion
+    Ctrl --> Cli : 204 sin cuerpo
+
+  else Selección: PATCH .../addresses/{addressId}/default (API-09), sólo titular
+    Ctrl -> Srv : seleccionarDireccionPredeterminada(id, addressId) (SRV-08)
+    note right of Srv : una sola transacción:\ndesmarcar y marcar [DM-10]
+    Srv -> RepU : findById(id) (REP-02)
+    break usuario INACTIVO [RN-04] (A1)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    end
+    Srv -> RepD : findByIdAndUsuarioIdAndActivaTrue(addressId, id) (REP-06) [RN-05]
+    break no existe, inactiva o ajena (A3)
+      Srv --> Ctrl : error ADDRESS_NOT_FOUND
+      Ctrl --> Cli : 404 ErrorResponse (DTO-08)
+    end
+    Srv -> RepD : findByUsuarioIdAndPredeterminadaTrue(id) (REP-08)
+    opt existe una predeterminada anterior [RN-07]
+      Srv -> RepD : save(anterior, sin predeterminada) (REP-07)
+    end
+    Srv -> RepD : save(seleccionada, predeterminada) (REP-07)
+    RepD -> BD : UPDATE direcciones
+    Ctrl --> Cli : 200 DireccionResponse (DTO-07)
+  end
+end
+@enduml

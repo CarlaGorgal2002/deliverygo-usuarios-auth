@@ -3,39 +3,39 @@ skinparam dpi 170
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
 hide circle
+hide empty methods
 class Usuario <<ENT-01>> {
-  - id : Long
+  - id : Long {PK}
   - nombre : String
   - apellido : String
   - email : String {unique}
   - passwordHash : String
-  - telefono : String
+  - telefono : String [0..1]
   - estado : EstadoUsuario
   - fechaAlta : LocalDateTime
 }
-enum EstadoUsuario <<DM-05>> {
+enum EstadoUsuario <<enumeration>> {
   ACTIVO
   INACTIVO
 }
 class Rol <<ENT-02>> {
-  - id : Long
+  - id : Long {PK}
   - nombre : String {unique}
-  - descripcion : String
 }
 class Direccion <<ENT-03>> {
-  - id : Long
+  - id : Long {PK}
   - calle : String
   - numero : String
-  - piso : String
-  - departamento : String
+  - piso : String [0..1]
+  - departamento : String [0..1]
   - ciudad : String
   - provincia : String
   - codigoPostal : String
-  - referencia : String
   - predeterminada : boolean
   - activa : boolean
 }
-Direccion "0..*" --> "1" Usuario : REL-01 pertenece a
-Usuario "0..*" --> "1" Rol : REL-02 tiene
-Usuario ..> EstadoUsuario
+Direccion "0..*" --> "1" Usuario : REL-01\nusuario
+Usuario "0..*" --> "1" Rol : REL-02\nrol
+note right of EstadoUsuario : DM-05
+Usuario -[hidden]right- EstadoUsuario
 @enduml

@@ -1,0 +1,56 @@
+@startuml SEC-04
+!include common.iuml
+title SEC-04 Modificar perfil (CU-04)
+actor "Usuario\nvía Portal" as Cli
+participant "JwtAuthFilter" as Sec
+participant "UsuarioController" as Ctrl
+participant "UsuarioService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+
+Cli -> Sec : PUT /api/v1/users/{id} (API-04)\nBearer JWT + ModificarPerfilRequest (DTO-05)
+Sec -> Sec : validar sesión [RN-09] e identidad [RN-05] [DM-08]
+alt token faltante, inválido o vencido (A1)
+  Sec --> Cli : 401 ErrorResponse (DTO-08)\nUNAUTHENTICATED
+else el id no es el del token [RN-05] (A1)
+  Sec --> Cli : 403 ErrorResponse (DTO-08)\nFORBIDDEN
+else titular autenticado
+  Sec -> Ctrl : solicitud autenticada
+  Ctrl -> Ctrl : validar obligatorios y formato [RN-01]
+  alt datos inválidos (A2)
+    Ctrl --> Cli : 400 ErrorResponse (DTO-08)\nVALIDATION_ERROR
+  else datos válidos
+    Ctrl -> Srv : modificarPerfil(id, DTO-05) (SRV-04)
+    note over Srv : transacción [DM-10]
+    Srv -> RepU : findById(id) (REP-02)
+    RepU -> BD : SELECT usuario por id
+    BD --> RepU : resultado
+    RepU --> Srv : Optional<Usuario>
+    alt usuario inexistente (A3)
+      Srv --> Ctrl : error USER_NOT_FOUND
+      Ctrl --> Cli : 404 ErrorResponse (DTO-08)
+    else usuario INACTIVO [RN-04] (A4)
+      Srv --> Ctrl : error USER_INACTIVE
+      Ctrl --> Cli : 403 ErrorResponse (DTO-08)
+    else usuario ACTIVO
+      opt el email cambia
+        Srv -> RepU : findByEmail(nuevoEmail) (REP-01)
+        RepU -> BD : SELECT usuario por email
+        BD --> RepU : resultado
+        RepU --> Srv : Optional<Usuario>
+        break el nuevo email pertenece a otro usuario [RN-02] (A5)
+          Srv --> Ctrl : error EMAIL_ALREADY_REGISTERED
+          Ctrl --> Cli : 409 ErrorResponse (DTO-08)
+        end
+      end
+      Srv -> Srv : actualizar nombre, apellido, teléfono y email;\nrol, estado y contraseña sin cambios [RN-10]
+      Srv -> RepU : save(usuario) (REP-03)
+      RepU -> BD : UPDATE usuario
+      BD --> RepU : ok
+      RepU --> Srv : Usuario
+      Srv --> Ctrl : UsuarioResponse (DTO-02)
+      Ctrl --> Cli : 200 UsuarioResponse (DTO-02)\nsin contraseña [RN-03]
+    end
+  end
+end
+@enduml

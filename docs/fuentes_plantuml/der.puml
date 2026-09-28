@@ -1,7 +1,13 @@
 @startuml der
 skinparam dpi 170
+skinparam defaultFontSize 12
 hide circle
 skinparam linetype ortho
+entity "rol" as rol {
+  * id : BIGINT <<PK>>
+  --
+  * nombre : VARCHAR(30) <<UNIQUE>>
+}
 entity "usuario" as usuario {
   * id : BIGINT <<PK>>
   --
@@ -14,12 +20,6 @@ entity "usuario" as usuario {
   * fecha_alta : TIMESTAMP
   * rol_id : BIGINT <<FK>>
 }
-entity "rol" as rol {
-  * id : BIGINT <<PK>>
-  --
-  * nombre : VARCHAR(30) <<UNIQUE>>
-  descripcion : VARCHAR(120)
-}
 entity "direccion" as direccion {
   * id : BIGINT <<PK>>
   --
@@ -31,7 +31,6 @@ entity "direccion" as direccion {
   * ciudad : VARCHAR(80)
   * provincia : VARCHAR(80)
   * codigo_postal : VARCHAR(10)
-  referencia : VARCHAR(150)
   * predeterminada : BOOLEAN
   * activa : BOOLEAN
 }
