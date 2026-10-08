@@ -25,7 +25,7 @@ public class Usuario {
     private String email;
 
     @Column(nullable = false)
-    private String password_hash;
+    private String passwordHash;
 
     @Column(nullable = false)
     private String telefono;
@@ -33,7 +33,7 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     private EstadoUsuario estado;
 
-    private LocalDateTime fecha_alta;
+    private LocalDateTime fechaAlta;
 
     @OneToMany(mappedBy = "usuario")
     private List<Direccion> direcciones = new ArrayList<>();
@@ -44,15 +44,36 @@ public class Usuario {
 
     public Usuario() {}
 
-    public Usuario (String nombre, String apellido, String email, String password_hash, String telefono) {
+    public Usuario (String nombre, String apellido, String email, String passwordHash, String telefono) {
         this.nombre = nombre;
         this.apellido = apellido;
         this.email = email;
-        this.password_hash = password_hash;
+        this.passwordHash = passwordHash;
         this.telefono = telefono;
         this.estado = EstadoUsuario.ACTIVO;
 
-        this.fecha_alta = LocalDateTime.now();
+        this.fechaAlta = LocalDateTime.now();
+    }
+
+    public Usuario (String nombre, String apellido, String email, String passwordHash, String telefono, Rol rol) {
+        this.nombre = nombre;
+        this.apellido = apellido;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.telefono = telefono;
+        this.rol = rol;
+
+        this.estado = EstadoUsuario.ACTIVO;
+
+        this.fechaAlta = LocalDateTime.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getNombre() {
@@ -79,12 +100,12 @@ public class Usuario {
         this.email = email;
     }
 
-    public String getPassword_hash() {
-        return password_hash;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public void setPassword_hash(String password_hash) {
-        this.password_hash = password_hash;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getTelefono() {
@@ -103,12 +124,12 @@ public class Usuario {
         this.estado = estado;
     }
 
-    public LocalDateTime getFecha_alta() {
-        return fecha_alta;
+    public LocalDateTime getFechaAlta() {
+        return fechaAlta;
     }
 
-    public void setFecha_alta(LocalDateTime fecha_alta) {
-        this.fecha_alta = fecha_alta;
+    public void setFechaAlta(LocalDateTime fechaAlta) {
+        this.fechaAlta = fechaAlta;
     }
 
     public List<Direccion> getDirecciones() {
