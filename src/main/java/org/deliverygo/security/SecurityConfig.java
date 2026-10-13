@@ -35,11 +35,11 @@ public class SecurityConfig {
                 }).headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/v1/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/v1/auth/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/v1/auth/**").hasAnyRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/v1/auth/**").hasAnyRole("ADMIN")
+                        .requestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/auth/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").hasAnyRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/auth/**").hasAnyRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -67,7 +67,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration c = new CorsConfiguration();
-        c.setAllowedOrigins(List.of("http://localhost:5173"));
+        c.setAllowedOrigins(List.of("http://localhost:5174"));
         c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         c.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
