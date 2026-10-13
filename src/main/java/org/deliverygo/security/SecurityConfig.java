@@ -1,5 +1,8 @@
-package ar.edu.uade.api.deliverygo.security;
+package org.deliverygo.security;
 
+import org.deliverygo.model.EstadoUsuario;
+import org.deliverygo.model.Usuario;
+import org.deliverygo.repository.UsuarioRepository;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.*;
@@ -19,9 +22,11 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
+    private final UsuarioRepository usuarioRepository;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter, UsuarioRepository usuarioRepository) {
         this.jwtFilter = jwtFilter;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Bean
@@ -31,10 +36,10 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/v1/comercios/**").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/v1/comercios/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/v1/comercios/**").hasAnyRole("ADMIN", "COMERCIO")
-                        .requestMatchers(HttpMethod.PUT, "/v1/comercios/**").hasAnyRole("ADMIN", "COMERCIO")
+                        .requestMatchers(HttpMethod.GET, "/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/v1/auth/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/v1/auth/**").hasAnyRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/v1/auth/**").hasAnyRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -46,10 +51,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    UserDetailsService users(PasswordEncoder encoder) {
-        UserDetails admin = User.withUsername("admin").password(encoder.encode("admin123")).roles("ADMIN").build();
-        UserDetails comercio = User.withUsername("comercio").password(encoder.encode("comercio123")).roles("COMERCIO").build();
-        return new InMemoryUserDetailsManager(admin, comercio);
+    UserDetailsService users(UsuarioRepository usuarioRepository) {
+        return email -> {
+            Usuario usuario = usuarioRepository.findByEmail(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
+
+            return User.withUsername(usuario.getEmail())
+                    .password(usuario.getPasswordHash())
+                    .roles(usuario.getRol().getNombre())   // agrega "ROLE_" solo → ROLE_ADMIN, ROLE_CLIENTE...
+                    .disabled(usuario.getEstado() == EstadoUsuario.INACTIVO)
+                    .build();
+        };
     }
 
     @Bean

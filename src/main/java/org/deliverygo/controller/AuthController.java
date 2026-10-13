@@ -1,32 +1,40 @@
 package org.deliverygo.controller;
 
+import org.deliverygo.dto.LoginDto;
+import org.deliverygo.dto.TokenDto;
+import org.deliverygo.security.JwtService;
 import org.deliverygo.dto.RegistrarUsuarioRequest;
 import org.deliverygo.dto.UsuarioResponse;
-import org.deliverygo.services.UsuarioService;
+import org.deliverygo.services.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
-    private final UsuarioService usuarioService;
+    private final AuthService authService;
 
-    public AuthController(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            JwtService jwtService,
+            AuthService authService
+            ) {
+
+        this.authService = authService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<TokenDto> login(@RequestBody LoginDto dto) {
+        return ResponseEntity.ok(authService.login(dto));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UsuarioResponse> crearUsuario(@RequestBody RegistrarUsuarioRequest registrarUsuarioRequest) {
-
-        UsuarioResponse usuarioResponse = usuarioService.crearUsuario(registrarUsuarioRequest);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioResponse);
-
+    public ResponseEntity<UsuarioResponse> register(@RequestBody RegistrarUsuarioRequest usuarioRegistro) {
+        UsuarioResponse usuario = authService.registrar(usuarioRegistro);
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuario);
     }
-
 }

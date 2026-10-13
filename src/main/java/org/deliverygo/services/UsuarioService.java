@@ -3,10 +3,12 @@ package org.deliverygo.services;
 import jakarta.transaction.Transactional;
 import org.deliverygo.dto.RegistrarUsuarioRequest;
 import org.deliverygo.dto.UsuarioResponse;
+import org.deliverygo.exceptions.EmailDuplicadoException;
 import org.deliverygo.model.Rol;
 import org.deliverygo.model.Usuario;
 import org.deliverygo.repository.RolRepository;
 import org.deliverygo.repository.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,10 +16,12 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public static UsuarioResponse toDto(Usuario u) {
@@ -48,7 +52,7 @@ public class UsuarioService {
             throw new IllegalArgumentException("El email no tiene un formato válido");
         }
         if(usuarioRepository.existsByEmail(usuario.getEmail())) {
-            throw new IllegalArgumentException("Ya existe un usuario con ese email");
+            throw new EmailDuplicadoException("Ya existe un usuario con ese email");
         }
         if(usuario.getRolId() == null) {
             throw new IllegalArgumentException("El rol no puede ser nulo");
@@ -69,11 +73,15 @@ public class UsuarioService {
         Rol rol = rolRepository.findById(usuario.getRolId())
                 .orElseThrow(() -> new IllegalArgumentException("Rol no encontrado"));
 
+        if ("ADMIN".equals(rol.getNombre())) {
+            throw new IllegalArgumentException("No se puede registrar un usuario ADMIN");
+        }
+
         Usuario nuevoUsuario = new Usuario(
                 usuario.getNombre(),
                 usuario.getApellido(),
                 usuario.getEmail(),
-                usuario.getPassword(),
+                passwordEncoder.encode(usuario.getPassword()),
                 usuario.getTelefono(),
                 rol
         );

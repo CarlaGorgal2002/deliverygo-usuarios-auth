@@ -1,4 +1,4 @@
-package ar.edu.uade.api.deliverygo.security;
+package org.deliverygo.security;
 
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
