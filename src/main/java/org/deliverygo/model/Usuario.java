@@ -1,7 +1,6 @@
 package org.deliverygo.model;
 
 import jakarta.persistence.*;
-import org.deliverygo.enums.EstadoUsuario;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

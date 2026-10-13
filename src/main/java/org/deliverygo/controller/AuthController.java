@@ -1,7 +1,7 @@
 package org.deliverygo.controller;
 
-import org.deliverygo.dto.CrearUsuarioDto;
-import org.deliverygo.dto.UsuarioDto;
+import org.deliverygo.dto.RegistrarUsuarioRequest;
+import org.deliverygo.dto.UsuarioResponse;
 import org.deliverygo.services.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,11 +21,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UsuarioDto> crearUsuario(@RequestBody CrearUsuarioDto crearUsuarioDto) {
+    public ResponseEntity<UsuarioResponse> crearUsuario(@RequestBody RegistrarUsuarioRequest registrarUsuarioRequest) {
 
-        UsuarioDto usuarioDto = usuarioService.crearUsuario(crearUsuarioDto);
+        UsuarioResponse usuarioResponse = usuarioService.crearUsuario(registrarUsuarioRequest);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioResponse);
 
     }
 

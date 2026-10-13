@@ -14,10 +14,10 @@ public class Direccion {
     private String calle;
 
     @Column(nullable = false)
-    private Integer  numero;
+    private String  numero;
 
     // cambiaria del DER de Sring a Integer (Ej: piso: 2)
-    private Integer piso;
+    private String piso;
 
     private String departamento;
 
@@ -42,7 +42,7 @@ public class Direccion {
 
     public Direccion() {}
 
-    public Direccion(String calle, Integer numero, Integer piso, String departamento, String ciudad, String provincia, String codigoPostal, String referencia, boolean predeterminada, boolean activa, Usuario usuario) {
+    public Direccion(String calle, String numero, String piso, String departamento, String ciudad, String provincia, String codigoPostal, String referencia, boolean predeterminada, boolean activa, Usuario usuario) {
         this.calle = calle;
         this.numero = numero;
         this.piso = piso;
@@ -64,19 +64,19 @@ public class Direccion {
         this.calle = calle;
     }
 
-    public Integer getNumero() {
+    public String getNumero() {
         return numero;
     }
 
-    public void setNumero(Integer numero) {
+    public void setNumero(String numero) {
         this.numero = numero;
     }
 
-    public Integer getPiso() {
+    public String getPiso() {
         return piso;
     }
 
-    public void setPiso(Integer piso) {
+    public void setPiso(String piso) {
         this.piso = piso;
     }
 

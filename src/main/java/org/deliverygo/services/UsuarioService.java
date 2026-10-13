@@ -1,8 +1,8 @@
 package org.deliverygo.services;
 
 import jakarta.transaction.Transactional;
-import org.deliverygo.dto.CrearUsuarioDto;
-import org.deliverygo.dto.UsuarioDto;
+import org.deliverygo.dto.RegistrarUsuarioRequest;
+import org.deliverygo.dto.UsuarioResponse;
 import org.deliverygo.model.Rol;
 import org.deliverygo.model.Usuario;
 import org.deliverygo.repository.RolRepository;
@@ -20,8 +20,8 @@ public class UsuarioService {
         this.rolRepository = rolRepository;
     }
 
-    public static UsuarioDto toDto(Usuario u) {
-        return new UsuarioDto(
+    public static UsuarioResponse toDto(Usuario u) {
+        return new UsuarioResponse(
                 u.getId(),
                 u.getNombre(),
                 u.getApellido(),
@@ -33,7 +33,7 @@ public class UsuarioService {
         );
     }
 
-    private void validarUsuario(CrearUsuarioDto usuario) {
+    private void validarUsuario(RegistrarUsuarioRequest usuario) {
 
         if (usuario.getNombre() == null || usuario.getNombre().isBlank()) {
             throw new IllegalArgumentException("El nombre no puede ser nulo o vacío");
@@ -62,7 +62,7 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioDto crearUsuario (CrearUsuarioDto usuario) {
+    public UsuarioResponse crearUsuario (RegistrarUsuarioRequest usuario) {
 
         validarUsuario(usuario);
 

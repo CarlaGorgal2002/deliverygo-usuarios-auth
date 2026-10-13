@@ -1,4 +1,4 @@
-package org.deliverygo.enums;
+package org.deliverygo.model;
 
 public enum EstadoUsuario {
 
