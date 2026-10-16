@@ -5,16 +5,24 @@ import java.time.LocalDateTime;
 public class ErrorResponse {
 
     private int status;
+    private String code;
     private String mensaje;
     private LocalDateTime fecha;
 
     public ErrorResponse() {
     }
 
-    public ErrorResponse(int status, String mensaje) {
+    public ErrorResponse(int status,String code, String mensaje) {
         this.status = status;
+        this.code = code;
         this.mensaje = mensaje;
         this.fecha = LocalDateTime.now();
+    }
+    public String  getCodigo() {
+        return code;
+    }
+    public void setCodigo(String code) {
+        this.code = code;
     }
 
     public int getStatus() {

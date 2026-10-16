@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 public class UsuarioResponse {
 
-    private Long id; //se saca
+    private Long id;
     private String nombre;
     private String apellido;
     private String email;

@@ -11,6 +11,15 @@ public class RegistrarUsuarioRequest {
     public RegistrarUsuarioRequest() {
     }
 
+    public RegistrarUsuarioRequest(String nombre, String apellido, String email, String password, String telefono, Long rolId) {
+        this.nombre = nombre;
+        this.apellido = apellido;
+        this.email = email;
+        this.password = password;
+        this.telefono = telefono;
+        this.rolId = rolId;
+    }
+
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
 

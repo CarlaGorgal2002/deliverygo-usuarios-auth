@@ -91,8 +91,7 @@ public class JwtService {
    * Obtiene el rol almacenado
    * dentro del JWT.
    */
-  public String obtenerRol(
-          String token) {
+  public String obtenerRol(String token) {
 
     return obtenerClaims(token)
             .get(
