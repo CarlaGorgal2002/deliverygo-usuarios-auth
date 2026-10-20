@@ -6,18 +6,17 @@ public class RegistrarUsuarioRequest {
     private String email;
     private String password;
     private String telefono;
-    private Long rolId;
+
 
     public RegistrarUsuarioRequest() {
     }
 
-    public RegistrarUsuarioRequest(String nombre, String apellido, String email, String password, String telefono, Long rolId) {
+    public RegistrarUsuarioRequest(String nombre, String apellido, String email, String password, String telefono) {
         this.nombre = nombre;
         this.apellido = apellido;
         this.email = email;
         this.password = password;
         this.telefono = telefono;
-        this.rolId = rolId;
     }
 
     public String getNombre() { return nombre; }
@@ -35,6 +34,4 @@ public class RegistrarUsuarioRequest {
     public String getTelefono() { return telefono; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
 
-    public Long getRolId() { return rolId; }
-    public void setRolId(Long rolId) { this.rolId = rolId; }
 }

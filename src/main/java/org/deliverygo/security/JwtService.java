@@ -39,26 +39,27 @@ public class JwtService {
   /**
    * Genera un JWT para un usuario autenticado.
    *
-   * @param username usuario autenticado
+   * @param userId usuario autenticado
+   * @param email mail del usuario
    * @param rol      rol del usuario: ADMIN, COMERCIO, USER, etc.
    * @return JWT firmado
    */
   public String generarToken(
-          String username,
+          Long userId,
+          String email,
           String rol) {
 
     Date fechaCreacion = new Date();
 
     Date fechaExpiracion =
-            new Date(
-                    fechaCreacion.getTime()
-                            + expirationMillis
-            );
+            new Date(fechaCreacion.getTime() + expirationMillis);
 
     return Jwts.builder()
 
             // Identifica al usuario
-            .subject(username)
+            .subject(email)
+
+            .claim("UID", userId)
 
             // Información adicional del JWT
             .claim("role", rol)
@@ -76,15 +77,25 @@ public class JwtService {
             .compact();
   }
 
-  /**
+    /**
+     * Obtiene el email del usuario,
+     * almacenado en el campo "sub" del JWT.
+     */
+    public String obtenerEmail(String token) {
+
+        return obtenerClaims(token)
+                .getSubject();
+    }
+
+    /**
    * Obtiene el username almacenado
    * en el campo "sub" del JWT.
    */
-  public String obtenerUsername(
+  public Long obtenerUserId(
           String token) {
 
     return obtenerClaims(token)
-            .getSubject();
+            .get("UID", Long.class);
   }
 
   /**
