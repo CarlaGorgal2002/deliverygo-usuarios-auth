@@ -26,7 +26,7 @@ public class Usuario {
     @Column(nullable = false)
     private String passwordHash;
 
-    @Column(nullable = false)
+    @Column
     private String telefono;
 
     @Enumerated(EnumType.STRING)

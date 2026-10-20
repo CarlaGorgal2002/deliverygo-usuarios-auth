@@ -1,6 +1,7 @@
 package org.deliverygo.dto;
 
 public class DireccionResponse {
+    private Long Id;
     private String calle;
     private String numero;
     private String departamento;
@@ -11,7 +12,8 @@ public class DireccionResponse {
     private String referencia;
     private Boolean predeterminada;
 
-    public DireccionResponse(String calle, String numero, String departamento, String piso, String ciudad, String provincia, String codigoPostal, String referencia, Boolean predeterminada) {
+    public DireccionResponse(Long Id, String calle, String numero, String departamento, String piso, String ciudad, String provincia, String codigoPostal, String referencia, Boolean predeterminada) {
+        this.Id = Id;
         this.calle = calle;
         this.numero = numero;
         this.departamento = departamento;
@@ -21,6 +23,9 @@ public class DireccionResponse {
         this.codigoPostal = codigoPostal;
         this.referencia = referencia;
         this.predeterminada = predeterminada;
+    }
+    public Long getId() {
+        return Id;
     }
 
     public String getCalle() {

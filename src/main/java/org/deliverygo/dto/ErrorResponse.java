@@ -18,6 +18,8 @@ public class ErrorResponse {
         this.mensaje = mensaje;
         this.fecha = LocalDateTime.now();
     }
+
+
     public String  getCodigo() {
         return code;
     }

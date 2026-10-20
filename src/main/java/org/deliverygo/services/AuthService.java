@@ -4,63 +4,72 @@ import org.deliverygo.dto.LoginDto;
 import org.deliverygo.dto.RegistrarUsuarioRequest;
 import org.deliverygo.dto.TokenDto;
 import org.deliverygo.dto.UsuarioResponse;
+import org.deliverygo.exceptions.CredencialesInvalidasException;
+import org.deliverygo.exceptions.UsuarioInactivoException;
+import org.deliverygo.model.EstadoUsuario;
+import org.deliverygo.model.Usuario;
+import org.deliverygo.repository.UsuarioRepository;
 import org.deliverygo.security.JwtService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
 
-    private final AuthenticationManager authenticationManager;
+    private static final String MSG_CREDENCIALES = "Credenciales inválidas";
+
     private final UsuarioService usuarioService;
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public AuthService(UsuarioService usuarioService, JwtService jwtService, AuthenticationManager authenticationManager) {
+    public AuthService(UsuarioService usuarioService,
+                       UsuarioRepository usuarioRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
         this.usuarioService = usuarioService;
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.authenticationManager = authenticationManager;
     }
 
     public UsuarioResponse registrar(RegistrarUsuarioRequest request) {
-        return usuarioService.crearUsuario(request);
+        return usuarioService.registrarUsuario(request);
     }
 
-    public TokenDto login (LoginDto dto) {
+    @Transactional(readOnly = true)
+    public TokenDto login(LoginDto dto) {
 
-        Authentication authentication =
-                authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(
-                                dto.username(),
-                                dto.password()
-                        )
-                );
+        // RN-01
+        if (dto.getUsername() == null || dto.getUsername().isBlank()
+                || dto.getPassword() == null || dto.getPassword().isBlank()) {
+            throw new IllegalArgumentException("El email y la contraseña son obligatorios");
+        }
 
-        String username =
-                authentication.getName();
+        String email = dto.getUsername().trim().toLowerCase();
 
-        String rol =
-                authentication
-                        .getAuthorities()
-                        .stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .findFirst()
-                        .orElse("ROLE_USER")
-                        .replace("ROLE_", "");
+        // RN-08: mismo mensaje si el email no existe o la contraseña no coincide
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new CredencialesInvalidasException(MSG_CREDENCIALES));
 
-        String token =
-                jwtService.generarToken(
-                        username,
-                        rol
-                );
+        // RN-03
+        if (!passwordEncoder.matches(dto.getPassword(), usuario.getPasswordHash())) {
+            throw new CredencialesInvalidasException(MSG_CREDENCIALES);
+        }
 
-        return new TokenDto(
-                        token,
-                        "Bearer",
-                        jwtService.getExpirationSeconds()
-                );
+        // RN-04: se evalúa DESPUÉS de validar la contraseña (RN-08)
+        if (usuario.getEstado() != EstadoUsuario.ACTIVO) {
+            throw new UsuarioInactivoException("Cuenta inactiva");
+        }
+
+        // RN-09: token con vencimiento, id y rol
+        String token = jwtService.generarToken(
+                usuario.getId(),
+                usuario.getEmail(),
+                usuario.getRol().getNombre()
+        );
+
+        return new TokenDto(token, "Bearer", jwtService.getExpirationSeconds());
     }
 }
