@@ -6,7 +6,9 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Etapa 1: diseño y arquitectura.** El documento de la Primera Entrega está en [`docs/`](docs/). La implementación de los cinco casos de uso CORE corresponde a la Etapa 2.
+**Avance de contratos de la Etapa 2.** La entrega Swagger está en [`docs/openapi/`](docs/openapi/README.md): [YAML completo](docs/openapi/deliverygo-usuarios.yaml), tres vistas por área, trazabilidad y validación reproducible. Formaliza las nueve operaciones de los cinco CU CORE a partir del PDF adjunto `G02_Usuarios_PrimeraEntrega_v1.5.pdf`. El backend actual es parcial; las [diferencias con el contrato](docs/openapi/ACUERDOS_Y_BRECHAS.md) están documentadas. Los PDF y diagramas anteriores se conservan en [`docs/`](docs/).
+
+Paquete para entregar: [G02 Usuarios Swagger — 30/10/2026](entregables/G02_Usuarios_Swagger_2026-10-30.zip).
 
 ## Tecnologías
 

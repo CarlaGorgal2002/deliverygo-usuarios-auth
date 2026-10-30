@@ -1,0 +1,190 @@
+{
+  "fecha_relevamiento": "2026-10-30",
+  "base_original": "Escritorio del usuario",
+  "referencias": [
+    {
+      "id": "F01",
+      "source": "Transcripción TODAS las clases de API.txt",
+      "exists": true,
+      "bytes": 1197219,
+      "sha256": "52724f5df1ed228dcee4fde70508a58438d636bc3307a3a4aa5c8add113b9b12"
+    },
+    {
+      "id": "F02",
+      "source": "Publicaciones Teams API.docx",
+      "exists": true,
+      "bytes": 26275,
+      "sha256": "faaf63055d24262f894414ea6bb507083cbbc65d5829438346d8f3690a8c6669"
+    },
+    {
+      "id": "F03",
+      "source": "Teoría API.docx",
+      "exists": true,
+      "bytes": 59716,
+      "sha256": "8176c8093f424ff4d2444c59fefde9f3ca9a18643f14abb441ba1e23f47fa28f"
+    },
+    {
+      "id": "F04",
+      "source": "Archivos Teams API/DeliveryGo_Guia_Funcional_y_Hoja_de_Ruta_TPO_2026.docx",
+      "exists": true,
+      "bytes": 61307,
+      "sha256": "318b8f6b2346be05e5008996a3dd169da5666ce86f2ec82c1040e0b10667044e"
+    },
+    {
+      "id": "F05",
+      "source": "Archivos Teams API/Instructivo_Instalacion_Java25_Maven.md",
+      "exists": true,
+      "bytes": 4836,
+      "sha256": "f6286b1ebd9485d159381bbbc863f464f1ff053e1b2aafdafdf42c73d9ee01f7"
+    },
+    {
+      "id": "F06",
+      "source": "Archivos Teams API/Template_Guia_Primera_Entrega_TPO_DeliveryGo.docx.pdf",
+      "exists": true,
+      "bytes": 302595,
+      "sha256": "e2055c2110ce1b07203a1c94547222519e0bf17a39b82dc5dfc88d4b2e8c29f3",
+      "pages": 10
+    },
+    {
+      "id": "F07",
+      "source": "Archivos Teams API/Template_Guia_Primera_Entrega_TPO_DeliveryGo_2.0.pdf",
+      "exists": true,
+      "bytes": 302595,
+      "sha256": "e2055c2110ce1b07203a1c94547222519e0bf17a39b82dc5dfc88d4b2e8c29f3",
+      "pages": 10
+    },
+    {
+      "id": "F08",
+      "source": "Laboratorios/deliverygo-persistence 2-290926.zip",
+      "exists": true,
+      "bytes": 65481,
+      "sha256": "ce9149bfdfe883c46a64f409e7e75ba22647b39876b087fdddccd1f541002502",
+      "entries": 126,
+      "source_entries": 94
+    },
+    {
+      "id": "F09",
+      "source": "Laboratorios/App/backend-reference.zip",
+      "exists": true,
+      "bytes": 47380,
+      "sha256": "2314aec44d6345d2fde20c0e027fd742b350b6c543b5cfeed9b4abaed3683dd4",
+      "entries": 98,
+      "source_entries": 65
+    },
+    {
+      "id": "F10",
+      "source": "Laboratorios/App/frontend-react.zip",
+      "exists": true,
+      "bytes": 14060836,
+      "sha256": "0ea37e9ea2323d8b34164e7a6d1794a0b7e0b21da60f8067fdb2cec7f1a64144",
+      "entries": 929,
+      "source_entries": 42
+    },
+    {
+      "id": "F11",
+      "source": "Laboratorios/Clase 13-10-26/backend-reference_2.zip",
+      "exists": true,
+      "bytes": 47380,
+      "sha256": "2314aec44d6345d2fde20c0e027fd742b350b6c543b5cfeed9b4abaed3683dd4",
+      "entries": 98,
+      "source_entries": 65
+    },
+    {
+      "id": "F12",
+      "source": "Laboratorios/Clase 13-10-26/DeliveryGo_React_Publico_Privado_2.zip",
+      "exists": true,
+      "bytes": 12744,
+      "sha256": "182498b4167cc95289a44660d21a5ea3be2d458a498ed54efe7748f8cee8bc0b",
+      "entries": 20,
+      "source_entries": 20
+    },
+    {
+      "id": "F13",
+      "source": "Laboratorios/Clase 13-10-26/descarga.svg",
+      "exists": true,
+      "bytes": 3421,
+      "sha256": "fe0ca5ee460e31f55f6f861bfc012ab5ffe7f87e093aab420f15630e4a2eb05a"
+    },
+    {
+      "id": "F14",
+      "source": "Laboratorios/Old/deliverygo_clase_2_v2.zip",
+      "exists": true,
+      "bytes": 5116,
+      "sha256": "218c662d58d5145f5097f4d8b404ed8fa789ac8fa742f718fd32714058d5d61e",
+      "entries": 9,
+      "source_entries": 9
+    },
+    {
+      "id": "F15",
+      "source": "Laboratorios/Old/deliverygo-persistence 2.zip",
+      "exists": true,
+      "bytes": 48680785,
+      "sha256": "4976a8ea98010bd00a8dd9190e6012b158cf1b970ee2a4a8583cea4fc7ddfaa9",
+      "entries": 144,
+      "source_entries": 51
+    },
+    {
+      "id": "F16",
+      "source": "Laboratorios/Old/deliverygo-persistence 2-150926.zip",
+      "exists": true,
+      "bytes": 56679,
+      "sha256": "439ddfef5834cede58b0ca800075baed239f63423aa2c3a7ea33e2c24dd7cfb3",
+      "entries": 112,
+      "source_entries": 81
+    },
+    {
+      "id": "F17",
+      "source": "Laboratorios/Old/deliverygo-persistence.zip",
+      "exists": true,
+      "bytes": 48656356,
+      "sha256": "0c732a051fccaee3e3ce4fa276834b044033756b6251c8c6c68544431db6f04d",
+      "entries": 108,
+      "source_entries": 33
+    },
+    {
+      "id": "F18",
+      "source": "Laboratorios/Old/DiagramaDERClases.drawio",
+      "exists": true,
+      "bytes": 17621,
+      "sha256": "f6489a67e719e89deed162f258ce998b571925119a988bcbdf9bfe6042f43186"
+    },
+    {
+      "id": "F19",
+      "source": "TPO/DeliveryGo_Guia_Funcional_y_Hoja_de_Ruta_TPO_2026.docx",
+      "exists": true,
+      "bytes": 61307,
+      "sha256": "318b8f6b2346be05e5008996a3dd169da5666ce86f2ec82c1040e0b10667044e"
+    },
+    {
+      "id": "F20",
+      "source": "TPO/Template_Guia_Primera_Entrega_TPO_DeliveryGo.docx.pdf",
+      "exists": true,
+      "bytes": 302595,
+      "sha256": "e2055c2110ce1b07203a1c94547222519e0bf17a39b82dc5dfc88d4b2e8c29f3",
+      "pages": 10
+    },
+    {
+      "id": "F21",
+      "source": "TPO/TPO DeliveryGo Aplicaciones Interactivas 2026.pdf",
+      "exists": true,
+      "bytes": 3357283,
+      "sha256": "2751e23fa25179829c94455ad2525cd726938929ad9a50e4ed036c710a1828d3",
+      "pages": 30
+    },
+    {
+      "id": "F22",
+      "source": "G02_Usuarios_PrimeraEntrega_v1.5.pdf",
+      "exists": true,
+      "bytes": 2208282,
+      "sha256": "8cfa98378a0fae75dd35c75a9c1a12557180400b57645816ee2706871d34c650",
+      "pages": 45
+    },
+    {
+      "id": "F23",
+      "source": "TPO/Seguridad.jpg",
+      "exists": true,
+      "bytes": 97492,
+      "sha256": "fdf49dbd8e4bf7332ab603c52b26bfb311f72b0507727cdfb74ad1214020666a"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+Validación local del contrato - 2026-10-30
+Comando: python docs/openapi/validar_contratos.py
+
+OK deliverygo-usuarios.yaml: 9 operaciones; 705 comprobaciones de ejemplos (incluye referencias expandidas).
+OK 51 escenarios positivos/negativos y cobertura exacta de las 9 operaciones CORE.
+OK vistas\autenticacion.yaml: 2 operaciones; 148 comprobaciones de ejemplos (incluye referencias expandidas).
+OK vistas\usuarios.yaml: 2 operaciones; 185 comprobaciones de ejemplos (incluye referencias expandidas).
+OK vistas\direcciones.yaml: 5 operaciones; 411 comprobaciones de ejemplos (incluye referencias expandidas).
+RESULTADO: contratos válidos y vistas sincronizadas. No se ejecutaron pruebas HTTP ni de persistencia.

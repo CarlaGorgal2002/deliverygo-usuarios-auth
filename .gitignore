@@ -16,6 +16,7 @@
 *.nar
 *.ear
 *.zip
+!entregables/G02_Usuarios_Swagger_2026-10-30.zip
 *.tar.gz
 *.rar
 
