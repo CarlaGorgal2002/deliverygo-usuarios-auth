@@ -1,0 +1,710 @@
+# GENERADO: editar deliverygo-usuarios.yaml y ejecutar exportar_vistas.py.
+openapi: 3.0.3
+info:
+  title: DeliveryGo - Usuarios y Autenticación - Grupo 02 - Usuarios
+  version: 1.0.0
+  description: |-
+    Vista generada por área. Es parte del mismo servicio, no un microservicio independiente. El contrato completo y editable es deliverygo-usuarios.yaml.
+
+    Contrato objetivo de los cinco casos de uso CORE (CU-01 a CU-05), con nueve operaciones API-01 a API-09.
+    Basado en G02_Usuarios_PrimeraEntrega_v1.5.pdf, consigna, guía funcional, teoría, publicaciones y clases, hasta el material adjunto.
+    Grupo académico 02; módulo Usuarios, identificado como Equipo 1 en la guía general.
+
+    Entrega de contrato, 30/10/2026. No es una exportación del backend actual ni certifica que éste implemente todas las operaciones.
+    La implementación parcial y los acuerdos pendientes se describen en ACUERDOS_Y_BRECHAS.md. CU-06 a CU-10 quedan en el backlog de evolución.
+
+    Convenciones: rutas /api/v1; JSON UTF-8; IDs Long positivos; DTO separados de entidades; fechas ISO-8601 con zona;
+    errores normalizados; PUT completo; baja lógica con 204 sin cuerpo. Datos de ejemplo ficticios.
+    La autenticación Bearer de usuario se formaliza aquí. Las credenciales propias entre módulos todavía requieren acuerdo
+    y no se sustituyen por roles humanos privilegiados. Usuarios emite el JWT; cada servicio valida firma, vencimiento y permisos.
+    El objetivo de firma es asimétrico, conforme a la teoría. No se distribuyen claves privadas en el contrato.
+
+    Decisiones que completan ambigüedades de la primera entrega: DC-01 campos desconocidos rechazados;
+    DC-02 normalización de email; DC-03 ausencia/null de opcionales y reemplazo PUT;
+    DC-04 zona horaria; DC-05 validación de login; DC-06 correlación; DC-07 errores de ruta y usuario inexistente.
+    Se documentan como decisiones del equipo, no como nuevas instrucciones del profesor.
+  contact:
+    name: Grupo 02 - Usuarios y Autenticación
+servers:
+- url: http://localhost:8089
+  description: Puerto de desarrollo configurado en el repositorio; requiere backend conforme al contrato.
+- url: '{scheme}://{host}:{port}'
+  description: Integración; reemplazar host y puerto por los acordados. No representa un despliegue existente.
+  variables:
+    scheme:
+      default: http
+      enum:
+      - http
+      - https
+      description: HTTP sólo para laboratorio controlado; HTTPS para entornos expuestos.
+    host:
+      default: localhost
+      description: Host del módulo Usuarios, pendiente de asignación.
+    port:
+      default: '8089'
+      description: Puerto del módulo Usuarios.
+tags:
+- name: Usuarios
+  description: CU-03 y CU-04. Consulta y modificación del perfil propio.
+security:
+- bearerAuth: []
+paths:
+  /api/v1/users/{id}:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar perfil
+      description: |-
+        El titular consulta su propio perfil; sub debe coincidir con id y la cuenta debe estar ACTIVA.
+        No devuelve contraseña ni hash, y las direcciones se obtienen en API-05.
+        Diseño de integración pendiente: un módulo autenticado y expresamente autorizado podrá consultar el perfil de otro usuario,
+        incluido su estado INACTIVO (200), para decidir con sus propias reglas. La autorización por credencial de módulo no está
+        habilitada por el esquema Bearer de usuario de este YAML; ver x-integracion-modulos y ACUERDOS_Y_BRECHAS.md.
+      operationId: consultarPerfil
+      x-trazabilidad:
+        api: API-03
+        caso-de-uso: CU-03
+        reglas:
+        - RN-03
+        - RN-04
+        - RN-05
+        - RN-09
+        secuencia: SEC-03
+        servicio: SRV-03
+      parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '200':
+          description: 'Consultar perfil: operación completada.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+              examples:
+                perfilPropio:
+                  value:
+                    id: 1
+                    nombre: Ana
+                    apellido: Pérez
+                    email: ana.perez@example.com
+                    telefono: +54 11 5555 0101
+                    rol: CLIENTE
+                    estado: ACTIVO
+                    fechaAlta: '2026-10-30T15:00:00Z'
+        '400':
+          description: 'VALIDATION_ERROR: La solicitud contiene datos inválidos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 400
+                    code: VALIDATION_ERROR
+                    message: La solicitud contiene datos inválidos
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+                    details:
+                    - campo: id
+                      mensaje: Debe ser un entero positivo
+        '401':
+          description: 'UNAUTHENTICATED: La autenticación falta, es inválida o está vencida.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            WWW-Authenticate:
+              $ref: '#/components/headers/Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 401
+                    code: UNAUTHENTICATED
+                    message: La autenticación falta, es inválida o está vencida
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '403':
+          description: 'FORBIDDEN: No tiene permiso para acceder a este recurso; USER_INACTIVE: La cuenta está inactiva.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: No tiene permiso para acceder a este recurso
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+                USER_INACTIVE:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: USER_INACTIVE
+                    message: La cuenta está inactiva
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '404':
+          description: 'USER_NOT_FOUND: Usuario no encontrado.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                USER_NOT_FOUND:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 404
+                    code: USER_NOT_FOUND
+                    message: Usuario no encontrado
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '500':
+          description: 'INTERNAL_ERROR: Ocurrió un error interno.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 500
+                    code: INTERNAL_ERROR
+                    message: Ocurrió un error interno
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+      x-integracion-modulos:
+        consumidores:
+        - Pedidos
+        - Logística
+        - Catálogo
+        - Notificaciones
+        - Pagos
+        - Opiniones y Analítica
+        estado: Credencial propia pendiente de acuerdo; no habilitada por este contrato Bearer de usuario.
+        regla: Sólo lectura y autorización explícita por operación. Un rol humano distinto de CLIENTE no identifica
+          a un módulo.
+      x-estado-implementacion: Parcial; revisar ACUERDOS_Y_BRECHAS.md
+    put:
+      tags:
+      - Usuarios
+      summary: Modificar perfil completo
+      description: |-
+        Sólo el titular ACTIVO. Reemplaza el conjunto de campos editables: nombre, apellido, email y telefono.
+        nombre, apellido y email siempre son obligatorios; omitir telefono o enviarlo null/en blanco lo elimina.
+        No es una actualización parcial. No modifica rol, estado ni contraseña; esos campos no se admiten en el cuerpo.
+        Si el nuevo email pertenece a otro usuario responde 409. Repetir el mismo PUT conserva el resultado.
+        Cambiar el email no cambia el identificador sub del JWT.
+      operationId: modificarPerfil
+      x-trazabilidad:
+        api: API-04
+        caso-de-uso: CU-04
+        reglas:
+        - RN-01
+        - RN-02
+        - RN-03
+        - RN-04
+        - RN-05
+        - RN-09
+        - RN-10
+        secuencia: SEC-04
+        servicio: SRV-04
+      parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '200':
+          description: 'Modificar perfil completo: operación completada.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+              examples:
+                perfilActualizado:
+                  value:
+                    id: 1
+                    nombre: Ana
+                    apellido: Pérez
+                    email: ana.perez@example.com
+                    telefono: null
+                    rol: CLIENTE
+                    estado: ACTIVO
+                    fechaAlta: '2026-10-30T15:00:00Z'
+        '400':
+          description: 'VALIDATION_ERROR: La solicitud contiene datos inválidos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 400
+                    code: VALIDATION_ERROR
+                    message: La solicitud contiene datos inválidos
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+                    details:
+                    - campo: id
+                      mensaje: Debe ser un entero positivo
+        '401':
+          description: 'UNAUTHENTICATED: La autenticación falta, es inválida o está vencida.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            WWW-Authenticate:
+              $ref: '#/components/headers/Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 401
+                    code: UNAUTHENTICATED
+                    message: La autenticación falta, es inválida o está vencida
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '403':
+          description: 'FORBIDDEN: No tiene permiso para acceder a este recurso; USER_INACTIVE: La cuenta está inactiva.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: No tiene permiso para acceder a este recurso
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+                USER_INACTIVE:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: USER_INACTIVE
+                    message: La cuenta está inactiva
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '404':
+          description: 'USER_NOT_FOUND: Usuario no encontrado.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                USER_NOT_FOUND:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 404
+                    code: USER_NOT_FOUND
+                    message: Usuario no encontrado
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '409':
+          description: 'EMAIL_ALREADY_REGISTERED: El email ya está registrado.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                EMAIL_ALREADY_REGISTERED:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 409
+                    code: EMAIL_ALREADY_REGISTERED
+                    message: El email ya está registrado
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+        '500':
+          description: 'INTERNAL_ERROR: Ocurrió un error interno.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 500
+                    code: INTERNAL_ERROR
+                    message: Ocurrió un error interno
+                    path: /api/v1/users/1
+                    correlationId: g02-demo-001
+      requestBody:
+        required: true
+        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModificarPerfilRequest'
+            examples:
+              quitarTelefono:
+                value:
+                  nombre: Ana
+                  apellido: Pérez
+                  email: ana.perez@example.com
+                  telefono: null
+      x-estado-implementacion: Parcial; revisar ACUERDOS_Y_BRECHAS.md
+components:
+  headers:
+    Authenticate:
+      description: Desafío de autenticación Bearer. En el login indica el esquema del recurso de autenticación;
+        la API no usa HTTP Basic.
+      schema:
+        type: string
+        example: Bearer realm="deliverygo-usuarios"
+    CorrelationId:
+      description: Identificador de correlación. Se reutiliza el recibido si es válido; en su ausencia se genera
+        uno. Si la cabecera es inválida, la respuesta 400 usa uno nuevo (DC-06).
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: ^[A-Za-z0-9._-]+$
+        example: g02-demo-001
+        description: Reutiliza X-Correlation-Id válido o genera uno nuevo. Coincide con la cabecera de respuesta.
+    NoStore:
+      description: Impide almacenar datos de sesión y perfil en cachés compartidas.
+      schema:
+        type: string
+        enum:
+        - no-store
+        example: no-store
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Identificador de correlación. Se reutiliza el recibido si es válido; en su ausencia se genera
+        uno. Si la cabecera es inválida, la respuesta 400 usa uno nuevo (DC-06).
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: ^[A-Za-z0-9._-]+$
+        example: g02-demo-001
+        description: Reutiliza X-Correlation-Id válido o genera uno nuevo. Coincide con la cabecera de respuesta.
+    UsuarioId:
+      name: id
+      in: path
+      required: true
+      description: Identificador Long positivo del usuario. En llamadas de usuario debe coincidir con sub del JWT.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+        maximum: 9223372036854775807
+        example: 1
+  schemas:
+    DetalleValidacion:
+      type: object
+      additionalProperties: false
+      description: Detalle de validación de un campo (DTO-08). Para ruta o cabecera se usa su nombre; para un JSON
+        ilegible, body.
+      required:
+      - campo
+      - mensaje
+      properties:
+        campo:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: email
+        mensaje:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: Debe tener un formato de email válido
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      description: DTO-08. Error común de Controller, Service y Security. status coincide con el código HTTP. Nunca
+        expone stack traces, SQL, tokens ni contraseñas.
+      required:
+      - timestamp
+      - status
+      - code
+      - message
+      - path
+      - correlationId
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Fecha ISO-8601 con zona horaria; se usa UTC en los ejemplos (DC-04).
+          example: '2026-10-30T15:00:00Z'
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          example: 400
+        code:
+          type: string
+          enum:
+          - VALIDATION_ERROR
+          - UNAUTHENTICATED
+          - INVALID_CREDENTIALS
+          - FORBIDDEN
+          - USER_INACTIVE
+          - USER_NOT_FOUND
+          - ADDRESS_NOT_FOUND
+          - EMAIL_ALREADY_REGISTERED
+          - INTERNAL_ERROR
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: La solicitud contiene datos inválidos
+        path:
+          type: string
+          pattern: ^/api/v1/
+          example: /api/v1/auth/register
+          description: Ruta concreta solicitada, sin query string, credenciales ni datos internos.
+        correlationId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9._-]+$
+          example: g02-demo-001
+          description: Reutiliza X-Correlation-Id válido o genera uno nuevo. Coincide con la cabecera de respuesta.
+        details:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DetalleValidacion'
+          description: Sólo se incluye en VALIDATION_ERROR. Para errores generales de JSON se usa campo body; no
+            incluye valores recibidos ni contraseñas.
+      x-dto-id: DTO-08
+    EstadoUsuario:
+      type: string
+      enum:
+      - ACTIVO
+      - INACTIVO
+      example: ACTIVO
+    ModificarPerfilRequest:
+      type: object
+      additionalProperties: false
+      description: DTO-05. PUT reemplaza todos los datos editables; telefono ausente/null/en blanco borra el anterior.
+        No admite rol, estado ni password (RN-10).
+      required:
+      - nombre
+      - apellido
+      - email
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: Ana
+        apellido:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: Pérez
+        email:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: ana.perez@example.com
+          format: email
+          description: Email válido. Se recortan espacios exteriores y se normaliza a minúsculas antes de comparar
+            o persistir (DC-02).
+        telefono:
+          type: string
+          nullable: true
+          description: Opcional. Ausente, null o en blanco significa sin teléfono; en PUT elimina el valor anterior
+            (DC-03).
+          example: +54 11 5555 0101
+      x-dto-id: DTO-05
+    Rol:
+      type: string
+      enum:
+      - CLIENTE
+      - COMERCIO
+      - REPARTIDOR
+      - ADMIN
+      example: CLIENTE
+      description: Un rol por usuario (REL-02). El registro público siempre asigna CLIENTE. Otros roles requieren
+        aprovisionamiento controlado; su administración es CU-07, fuera del CORE.
+    UsuarioResponse:
+      type: object
+      additionalProperties: false
+      description: DTO-02. Perfil sin contraseña ni hash. No incluye direcciones; se consultan mediante API-05.
+        Los campos opcionales sin valor se devuelven como null (DC-03).
+      required:
+      - id
+      - nombre
+      - apellido
+      - email
+      - telefono
+      - rol
+      - estado
+      - fechaAlta
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+          example: 1
+          readOnly: true
+        nombre:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: Ana
+        apellido:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: Pérez
+        email:
+          type: string
+          minLength: 1
+          pattern: \S
+          example: ana.perez@example.com
+          format: email
+          description: Email válido. Se recortan espacios exteriores y se normaliza a minúsculas antes de comparar
+            o persistir (DC-02).
+        telefono:
+          type: string
+          nullable: true
+          description: Teléfono de contacto; null si no se informó.
+          example: +54 11 5555 0101
+        rol:
+          $ref: '#/components/schemas/Rol'
+        estado:
+          $ref: '#/components/schemas/EstadoUsuario'
+        fechaAlta:
+          type: string
+          format: date-time
+          description: Fecha ISO-8601 con zona horaria; se usa UTC en los ejemplos (DC-04).
+          example: '2026-10-30T15:00:00Z'
+          readOnly: true
+      x-dto-id: DTO-02
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT de usuario emitido por POST /api/v1/auth/login. En Swagger UI pegar sólo el token. sub contiene
+        el id del usuario como texto; role su rol; exp el vencimiento. Validar firma, vencimiento, titularidad y
+        estado en backend. No es una credencial de módulo.
+x-jwt-usuario:
+  estado: Contrato objetivo; el backend actual requiere adaptación.
+  claims:
+    sub: Identificador Long del usuario convertido a string, estable ante cambios de email.
+    role: 'Rol actual: CLIENTE, COMERCIO, REPARTIDOR o ADMIN, sin prefijo ROLE_.'
+    iat: NumericDate de emisión, segundos desde Unix epoch.
+    exp: NumericDate de vencimiento, segundos desde Unix epoch; corresponde a expiraEn.
+  ejemplo-payload:
+    sub: '1'
+    role: CLIENTE
+    iat: 1793372400
+    exp: 1793376000
+  firma: Objetivo asimétrico; RS256 es una propuesta de implementación, no un acuerdo interequipos confirmado.
+  pendientes:
+  - Distribución y rotación de claves públicas
+  - Emisor, audiencias y algoritmo definitivo
+  - Identidad y permisos de las credenciales propias de módulos
+x-fuentes:
+- F01
+- F02
+- F03
+- F04
+- F05
+- F06
+- F07
+- F08
+- F09
+- F10
+- F11
+- F12
+- F13
+- F14
+- F15
+- F16
+- F17
+- F18
+- F19
+- F20
+- F21
+- F22
+- F23
+x-generado-desde: deliverygo-usuarios.yaml
