@@ -1,6 +1,6 @@
 # Decisiones del contrato y trabajo pendiente
 
-Este documento acompaña los YAML del Grupo 02. Distingue el diseño ya presentado, las decisiones que hacen preciso el intercambio y los acuerdos externos pendientes. El alcance de este avance es entregar contratos; no se modificó la implementación Java ni se declaró completada la Etapa 2.
+Este documento acompaña los YAML del Grupo 02. Distingue el diseño ya presentado, las decisiones que hacen preciso el intercambio y los acuerdos externos pendientes. El backend Java ya implementa las nueve operaciones del contrato; este documento registra qué se resolvió, qué decisiones se tomaron al hacerlo y qué sigue pendiente de acuerdo con otros equipos. No se declara completada la Etapa 2: faltan los CU de evolución y los acuerdos de integración.
 
 ## Base elegida
 
@@ -26,24 +26,28 @@ Son precisiones de diseño de esta entrega, no nuevas exigencias atribuidas al p
 
 `numero` y `piso` siguen siendo texto, como en el diseño: no se convierten a entero porque pueden contener `S/N`, `PB` o valores alfanuméricos. El atributo `referencia` existe en el código actual pero no en los DTO de la primera entrega; queda fuera del contrato CORE. Añadirlo después requiere documentar la extensión.
 
-No se inventan longitudes máximas de nombre, calle o teléfono que los adjuntos no establecen. Antes de cerrar la implementación, conviene acordar los límites de almacenamiento y la política de longitud en bytes que admita el codificador de contraseñas, y reflejarlos de forma coherente en DTO, persistencia y OpenAPI.
+Las longitudes máximas siguen el modelo de datos (DER) y son las mismas en DTO, columnas y OpenAPI: nombre y apellido 80, email 120, teléfono 30, calle 100, número/piso/departamento/código postal 10, ciudad y provincia 80. La contraseña tiene mínimo 8 caracteres y, como BCrypt sólo considera los primeros 72 bytes, el registro rechaza con 400 las que superan 72 bytes en UTF-8 en lugar de truncarlas en silencio; el login acepta cualquier longitud (simplemente no coincidirá).
 
-`details` se define como una lista de `{campo, mensaje}` únicamente en `VALIDATION_ERROR`. No repite el valor recibido; para un cuerpo ilegible se usa `campo: body`. El estado inactivo devuelve **403**, como establece expresamente la sección 12.2.3 del PDF, no el 422 que usa el código actual.
+`details` se define como una lista de `{campo, mensaje}` únicamente en `VALIDATION_ERROR`. No repite el valor recibido; para un cuerpo ilegible se usa `campo: body`. El estado inactivo devuelve **403**, como establece expresamente la sección 12.2.3 del PDF (el código anterior devolvía 422).
+
+Además de los códigos del catálogo, el servidor usa cuatro códigos técnicos para rutas o formatos que ninguna operación del contrato contempla, con el mismo formato DTO-08: `NOT_FOUND` (404, ruta inexistente), `METHOD_NOT_ALLOWED` (405), `NOT_ACCEPTABLE` (406) y `UNSUPPORTED_MEDIA_TYPE` (415). Están fuera del `enum` de códigos del YAML porque ninguna operación documentada los devuelve; si el Portal necesita tratarlos, conviene sumarlos al catálogo compartido.
 
 ## JWT y autorización entre módulos
 
 Usuarios autentica y emite; el Portal transporta el token; cada backend consumidor valida y autoriza. La imagen `Seguridad.jpg` muestra alternativas con acceso directo y gateway. Para este contrato se adopta el flujo directo coherente con `descarga.svg`; no se introduce una dependencia obligatoria de gateway.
 
-La teoría, página etiquetada 27, explicita firma asimétrica. Los ZIP de laboratorio y `JwtService` actual usan HMAC con clave compartida. Se toma la firma asimétrica como objetivo; **RS256 es una propuesta técnica**, todavía no un algoritmo pactado con los demás grupos. La clave privada queda sólo en Usuarios; los verificadores reciben la pública por un mecanismo acordado. No se inventa un endpoint JWKS ni se copian claves del laboratorio al YAML.
+La teoría, página etiquetada 27, explicita firma asimétrica. Los ZIP de laboratorio y `JwtService` usan HMAC con clave compartida. Se toma la firma asimétrica como objetivo; **RS256 es una propuesta técnica**, todavía no un algoritmo pactado con los demás grupos, y **no está implementada**: hoy se firma con HS256. La clave privada quedaría sólo en Usuarios; los verificadores recibirían la pública por un mecanismo acordado. No se inventa un endpoint JWKS ni se copian claves del laboratorio al YAML.
 
-| Dato | Contrato objetivo | Situación actual |
+| Dato | Contrato | Situación actual |
 |---|---|---|
-| `sub` | ID estable del usuario convertido a texto | Email |
-| `role` | Un rol: `CLIENTE`, `COMERCIO`, `REPARTIDOR`, `ADMIN`; sin `ROLE_` | Claim `role` ya presente |
-| `iat` y `exp` | NumericDate en segundos | Presentes mediante JJWT |
-| `expiraEn` | Vencimiento absoluto ISO-8601, coherente con `exp` | Respuesta con `expiresInSeconds` |
-| `UID` | No es necesario si `sub` contiene el ID | Claim personalizado usado por el filtro |
-| Algoritmo y claves | Firma asimétrica, algoritmo y distribución a acordar | HMAC con secreto configurable |
+| `sub` | ID estable del usuario convertido a texto | Implementado: `sub` es el id (antes era el email) |
+| `role` | Un rol: `CLIENTE`, `COMERCIO`, `REPARTIDOR`, `ADMIN`; sin `ROLE_` | Implementado |
+| `iat` y `exp` | NumericDate en segundos | Implementado (JJWT) |
+| `expiraEn` | Vencimiento absoluto ISO-8601, coherente con `exp` | Implementado en la respuesta de login |
+| `UID` | No es necesario si `sub` contiene el ID | Eliminado |
+| Algoritmo y claves | Firma asimétrica, algoritmo y distribución a acordar | **Pendiente**: HS256 con secreto en `JWT_SECRET` (mínimo 32 bytes; el servicio no arranca con uno más corto) |
+
+**Aviso para los equipos consumidores y el Portal:** el cambio de `sub` (email → id) rompe cualquier lector que use `sub` como email. Hay que avisarles antes de integrar.
 
 El tipo de `sub` y la unidad de `exp` siguen [RFC 7519](https://www.rfc-editor.org/rfc/rfc7519.html). Para implementar la verificación, fijar los algoritmos permitidos y validar emisor/audiencia según los valores que acuerde el ecosistema; no confiar en el algoritmo declarado por un token recibido. Véase [RFC 8725](https://www.rfc-editor.org/rfc/rfc8725.html). Esas decisiones de despliegue no se presentan como acuerdos ya celebrados.
 
@@ -64,35 +68,50 @@ Cuando se implemente esa integración, los módulos autorizados podrán leer el 
 
 INT-01 solicita la bienvenida después del alta. La ruta de referencia es `POST /api/v1/notifications`, propiedad del equipo Notificaciones. El DTO definitivo, autenticación, tiempos de espera y propagación de correlación todavía requieren su contrato; por eso esa API no aparece como un endpoint propio de Usuarios.
 
-Un fallo de bienvenida no revierte el alta ni transforma el 201 en un error. El diseño contempla un mock declarado; la clase `NotificacionesClientes` del repositorio está vacía y el mock todavía debe materializarse. No hay evidencia de una integración HTTP real en este avance.
+Un fallo de bienvenida no revierte el alta ni transforma el 201 en un error. El cliente se invoca después de confirmar el alta (`NotificacionesClient`, con el mock declarado `NotificacionesClientMock`, que sólo registra el id del usuario en el log, sin email ni nombre). `BienvenidaApiTest` verifica que se solicita una vez por alta confirmada, que no se solicita si el registro falla y que una excepción del cliente no cambia el 201. No hay integración HTTP real: queda sujeta al contrato de Notificaciones.
 
-## Diferencias comprobadas en el repositorio
+## Estado de la implementación frente al contrato
 
-Relevamiento estático del 30/10/2026. «Parcial» significa que hay código, no que se haya validado su comportamiento por HTTP.
+Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resueltas. La columna de evidencia indica qué prueba automática lo comprueba (detalle en [VERIFICACION.md](VERIFICACION.md)).
 
-| Área | Evidencia actual | Trabajo necesario para cumplir el YAML |
+| Área | Resolución en el backend | Evidencia |
 |---|---|---|
-| Login de entrada | `AuthController` recibe `LoginDto.username`; `LoginRequest` está vacío | Recibir `email` y `password` como DTO-03 |
-| Login de salida | Devuelve `TokenDto(token, tipo, expiresInSeconds)`; `LoginResponse` está vacío | Devolver `expiraEn`, `usuarioId`, `nombre`, `rol`, además de token y tipo |
-| JWT | `sub=email`, `UID=id`, firma HMAC | Coordinar el contrato de claims y firma; actualizar emisor y consumidores juntos |
-| Registro | Implementa unicidad, hash, rol CLIENTE y estado ACTIVO | Validar DTO, restricciones de campos desconocidos, cabeceras y bienvenida |
-| PUT de perfil | Actualiza sólo campos no nulos | Exigir nombre/apellido/email y aplicar reemplazo de opcionales |
-| Direcciones | `DireccionController` y `DireccionService` vacíos | Implementar API-05 a API-09, mapeo, pertenencia y transacciones |
-| DTO de dirección | Incluyen `referencia` | Ajustar al diseño o registrar una extensión explícita antes de cambiar el contrato |
-| Formato de errores | `ErrorResponse` serializa getters `codigo`, `mensaje`, `fecha`, `status` | Unificar `timestamp`, `status`, `code`, `message`, `path`, `correlationId` y details de validación |
-| Códigos de error | Usa nombres en español; inactivo devuelve 422 | Usar el catálogo del PDF y 403 para `USER_INACTIVE` |
-| Seguridad | El filtro considera módulo a todo rol distinto de CLIENTE para GET | Sustituir por identificación explícita de consumidor y permisos por operación; no ampliar acceso por rol humano |
-| Rutas de seguridad | La comprobación de titularidad usa regex limitada a 1–18 dígitos | Validar todos los IDs Long y rutas protegidas sin caminos que eludan el control |
-| Ausencia de token | Queda delegada al comportamiento por defecto de Spring Security | Configurar respuesta uniforme 401; tanto entry point como access denied handler deben emitir DTO-08 |
-| Consulta de inactivos | `UsuarioService.consultarPerfil` rechaza siempre el estado INACTIVO | Distinguir consulta del titular de consulta de módulo autorizada cuando se implemente esa identidad |
-| Fechas | DTO usa `LocalDateTime` | Serializar con zona definida conforme a DC-04 |
-| Validación | No hay `@Valid` en estos controladores; el POM no declara el starter de Validation | Agregar validación en la frontera y manejo uniforme de JSON/ruta inválidos |
-| Correlación | No se gestiona uniformemente; error del filtro no incluye correlationId | Crear/propagar el ID y devolverlo en cabecera y ErrorResponse |
-| CORS | Configura origen 5174; no incluye PATCH ni X-Correlation-Id | Acordar origen del Portal; permitir PATCH, cabecera de correlación y preflight; exponer cabeceras de respuesta necesarias |
-| Swagger generado | `OpenApiConfig` agrega seguridad global sin documentar excepciones en operaciones públicas | Anotar correctamente registro/login, DTO, estados y ejemplos; comprobar paridad con el contrato |
-| Java | `release=25` junto a `source/target=24` | Unificar configuración para Java 25 según el instructivo; no fue necesario compilar para validar YAML |
+| Login | Recibe `email` y `password`; devuelve `token`, `tipo`, `expiraEn`, `usuarioId`, `nombre` y `rol` | `AuthApiTest` |
+| JWT | `sub` = id, `role`, `iat`, `exp`; claim `UID` eliminado; HS256 | `JwtServiceTest`, `AuthApiTest` |
+| Registro | DTO validado, email normalizado y único (también en concurrencia), rol CLIENTE y estado ACTIVO fijos, contraseña con hash BCrypt | `AuthApiTest` |
+| PUT de perfil | Reemplazo completo de campos editables; rechaza password, rol y estado; 409 si el email es de otro usuario | `PerfilApiTest` |
+| Direcciones | API-05 a API-09 implementadas; baja lógica; una sola predeterminada, garantizada con bloqueo pesimista de la fila del usuario | `DireccionesApiTest` (incluye dos pruebas de concurrencia) |
+| DTO de dirección | Sin `referencia` en las entradas ni salidas; el atributo se conserva sólo en la entidad | `DireccionesApiTest` |
+| Formato de errores | `ErrorResponse` con `timestamp`, `status`, `code`, `message`, `path`, `correlationId` y `details`; un único `GlobalExceptionHandler` | todas las clases de prueba |
+| Códigos de error | Catálogo del PDF en inglés; inactivo devuelve 403 `USER_INACTIVE` | `AuthApiTest`, `PerfilApiTest` |
+| Seguridad | Sólo el titular opera sobre su recurso (`@PreAuthorize`); ADMIN y COMERCIO humanos reciben 403 | `PerfilApiTest` |
+| IDs de ruta | `Long` positivo; 400 para texto, cero, negativo, decimal o fuera de rango, después de autenticar | `PerfilApiTest` |
+| Ausencia o falla del token | 401 `UNAUTHENTICATED` con `WWW-Authenticate: Bearer`, en el formato común (entry point y access denied handler) | `PerfilApiTest`, `DireccionesApiTest` |
+| Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; la consulta de módulo autorizado sigue pendiente | `PerfilApiTest`, `DireccionesApiTest` |
+| Fechas | UTC, truncadas a segundos, serializadas con zona | `AuthApiTest` |
+| Validación | Starter de Validation; propiedades desconocidas y tipos incorrectos rechazados con 400 (sin conversión silenciosa) | `AuthApiTest`, `DireccionesApiTest` |
+| Correlación | `X-Correlation-Id` validado, generado si falta, devuelto en cabecera, cuerpo y log (MDC); `Cache-Control: no-store`; `Location` en los 201 | `CorrelacionApiTest` |
+| CORS | Orígenes configurables (`CORS_ALLOWED_ORIGINS`); permite PATCH y `X-Correlation-Id`; expone `X-Correlation-Id` y `Location` | `CorrelacionApiTest` |
+| Swagger generado | Interfaces `I*Controller` con anotaciones de springdoc; operaciones públicas sin candado; coincide con el YAML | revisión de `/v3/api-docs` |
+| Java y Maven | `java.version` 25 única; groupId `ar.edu.uade.api.deliverygo`; paquete `ar.edu.uade.api.deliverygo.usuarios` | `mvn test` |
+| Secreto JWT | Fuera del repositorio: variable `JWT_SECRET`; se exige un mínimo de 32 bytes | `JwtServiceTest` |
 
-Las reglas de concurrencia también requieren implementación real: la unicidad del email debe apoyarse en la base de datos y elegir una predeterminada debe impedir dos seleccionadas simultáneamente. Un `@Transactional` aislado no constituye evidencia de que se haya probado esa concurrencia.
+Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos registros con el mismo email; selecciones y altas simultáneas de predeterminada). Para comprobar que esas pruebas detectan el problema, se retiró temporalmente el bloqueo de la fila del usuario y ambas fallaron en tres corridas seguidas; con el bloqueo restituido pasan.
+
+## Pendientes y riesgos conocidos
+
+| Tema | Situación | Quién debe resolverlo |
+|---|---|---|
+| Firma asimétrica (RS256) y distribución de la clave pública | No implementada; HS256 con secreto compartido | Todos los grupos |
+| Credencial propia de los módulos consumidores | Sin definir; las consultas «de módulo» (Pedidos, Catálogo, etc.) no están habilitadas | Todos los grupos |
+| Cambio de `sub` (email → id) | Implementado; los consumidores y el Portal deben leer `sub` como id | Portal y módulos consumidores |
+| Contrato real de Notificaciones (INT-01) | Mock declarado que sólo escribe en el log | Notificaciones |
+| CU-06 a CU-10 | No implementados; ver el backlog | Este equipo |
+| Tokens vigentes de un usuario que pasa a INACTIVO | Siguen siendo válidos para el JWT, pero el servicio responde 403 `USER_INACTIVE`; la revocación se define con CU-06/CU-09 | Este equipo |
+| Secreto de desarrollo | El valor por defecto es sólo local. Un secreto anterior estuvo en el historial de Git: rotar el secreto de cualquier ambiente que lo haya usado | Este equipo |
+| Consola H2 y base en memoria | Habilitadas sólo para desarrollo; deshabilitar y usar base persistente en ambientes compartidos | Este equipo |
+| Códigos técnicos fuera del enum del YAML | `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `NOT_ACCEPTABLE`, `UNSUPPORTED_MEDIA_TYPE` | Acordar el catálogo común |
+| Diagramas | Los `.puml` e imágenes de `docs/Diagramas` no se regeneraron; el diagrama de clases sigue mostrando `LocalDateTime` y coincide con la entidad | Este equipo |
 
 ## Backlog de evolución
 
@@ -108,8 +127,8 @@ No se añadieron endpoints sin diseño para aparentar que estos cinco casos est�
 
 ## Orden de avance
 
-1. Compartir el YAML con el Portal para fijar `email`, DTO de sesión, PUT y errores; comunicar las diferencias frente al ejemplo de Comercio.
-2. Implementar las nueve operaciones y sus validaciones; unificar errores de aplicación y seguridad.
-3. Acordar firma, claves, emisor/audiencia e identidad de consumidores; implementar sólo los permisos pactados.
-4. Integrar bienvenida con un contrato real o un mock declarado y verificable.
-5. Ejecutar los escenarios funcionales, de seguridad y concurrencia; contrastar Swagger generado y contrato entregado.
+1. Compartir el YAML con el Portal para fijar `email`, DTO de sesión, PUT y errores; comunicar el cambio de `sub` y las diferencias frente al ejemplo de Comercio.
+2. Acordar firma, claves, emisor/audiencia e identidad de consumidores; implementar sólo los permisos pactados.
+3. Reemplazar el mock de bienvenida por el contrato real de Notificaciones.
+4. Implementar los casos de evolución (CU-06 a CU-10) con su contrato antes del código.
+5. Ante cualquier cambio, actualizar el YAML, regenerar las vistas, correr `validar_contratos.py` y `mvn test`, y contrastar la Swagger generada con el contrato.

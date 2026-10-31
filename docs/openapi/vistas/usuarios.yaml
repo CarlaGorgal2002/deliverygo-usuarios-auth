@@ -10,8 +10,8 @@ info:
     Basado en G02_Usuarios_PrimeraEntrega_v1.5.pdf, consigna, guía funcional, teoría, publicaciones y clases, hasta el material adjunto.
     Grupo académico 02; módulo Usuarios, identificado como Equipo 1 en la guía general.
 
-    Entrega de contrato, 30/10/2026. No es una exportación del backend actual ni certifica que éste implemente todas las operaciones.
-    La implementación parcial y los acuerdos pendientes se describen en ACUERDOS_Y_BRECHAS.md. CU-06 a CU-10 quedan en el backlog de evolución.
+    Contrato de entrega del 30/10/2026. El backend del repositorio implementa las nueve operaciones y las verifican las pruebas de integración (VERIFICACION.md).
+    Los acuerdos pendientes con otros módulos se describen en ACUERDOS_Y_BRECHAS.md. CU-06 a CU-10 quedan en el backlog de evolución.
 
     Convenciones: rutas /api/v1; JSON UTF-8; IDs Long positivos; DTO separados de entidades; fechas ISO-8601 con zona;
     errores normalizados; PUT completo; baja lógica con 204 sin cuerpo. Datos de ejemplo ficticios.
@@ -27,7 +27,7 @@ info:
     name: Grupo 02 - Usuarios y Autenticación
 servers:
 - url: http://localhost:8089
-  description: Puerto de desarrollo configurado en el repositorio; requiere backend conforme al contrato.
+  description: Puerto de desarrollo configurado en el repositorio.
 - url: '{scheme}://{host}:{port}'
   description: Integración; reemplazar host y puerto por los acordados. No representa un despliegue existente.
   variables:
@@ -221,7 +221,7 @@ paths:
         estado: Credencial propia pendiente de acuerdo; no habilitada por este contrato Bearer de usuario.
         regla: Sólo lectura y autorización explícita por operación. Un rol humano distinto de CLIENTE no identifica
           a un módulo.
-      x-estado-implementacion: Parcial; revisar ACUERDOS_Y_BRECHAS.md
+      x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
     put:
       tags:
       - Usuarios
@@ -419,7 +419,7 @@ paths:
                   apellido: Pérez
                   email: ana.perez@example.com
                   telefono: null
-      x-estado-implementacion: Parcial; revisar ACUERDOS_Y_BRECHAS.md
+      x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
 components:
   headers:
     Authenticate:
@@ -570,16 +570,19 @@ components:
         nombre:
           type: string
           minLength: 1
+          maxLength: 80
           pattern: \S
           example: Ana
         apellido:
           type: string
           minLength: 1
+          maxLength: 80
           pattern: \S
           example: Pérez
         email:
           type: string
           minLength: 1
+          maxLength: 120
           pattern: \S
           example: ana.perez@example.com
           format: email
@@ -587,6 +590,7 @@ components:
             o persistir (DC-02).
         telefono:
           type: string
+          maxLength: 30
           nullable: true
           description: Opcional. Ausente, null o en blanco significa sin teléfono; en PUT elimina el valor anterior
             (DC-03).
@@ -627,16 +631,19 @@ components:
         nombre:
           type: string
           minLength: 1
+          maxLength: 80
           pattern: \S
           example: Ana
         apellido:
           type: string
           minLength: 1
+          maxLength: 80
           pattern: \S
           example: Pérez
         email:
           type: string
           minLength: 1
+          maxLength: 120
           pattern: \S
           example: ana.perez@example.com
           format: email
@@ -644,6 +651,7 @@ components:
             o persistir (DC-02).
         telefono:
           type: string
+          maxLength: 30
           nullable: true
           description: Teléfono de contacto; null si no se informó.
           example: +54 11 5555 0101
@@ -667,7 +675,8 @@ components:
         el id del usuario como texto; role su rol; exp el vencimiento. Validar firma, vencimiento, titularidad y
         estado en backend. No es una credencial de módulo.
 x-jwt-usuario:
-  estado: Contrato objetivo; el backend actual requiere adaptación.
+  estado: 'Claims sub, role, iat y exp implementados por el backend. Pendiente: firma asimétrica (hoy HS256 con
+    clave compartida configurable por JWT_SECRET).'
   claims:
     sub: Identificador Long del usuario convertido a string, estable ante cambios de email.
     role: 'Rol actual: CLIENTE, COMERCIO, REPARTIDOR o ADMIN, sin prefijo ROLE_.'

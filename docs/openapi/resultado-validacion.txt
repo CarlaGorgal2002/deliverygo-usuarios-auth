@@ -6,4 +6,4 @@ OK 51 escenarios positivos/negativos y cobertura exacta de las 9 operaciones COR
 OK vistas\autenticacion.yaml: 2 operaciones; 148 comprobaciones de ejemplos (incluye referencias expandidas).
 OK vistas\usuarios.yaml: 2 operaciones; 185 comprobaciones de ejemplos (incluye referencias expandidas).
 OK vistas\direcciones.yaml: 5 operaciones; 411 comprobaciones de ejemplos (incluye referencias expandidas).
-RESULTADO: contratos válidos y vistas sincronizadas. No se ejecutaron pruebas HTTP ni de persistencia.
+RESULTADO: contratos válidos y vistas sincronizadas. Valida el documento, no el servidor: las pruebas del backend se ejecutan con mvn test.

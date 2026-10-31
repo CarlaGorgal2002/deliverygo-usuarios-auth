@@ -203,7 +203,7 @@ def main():
         path = ROOT / 'vistas' / f'{filename}.yaml'
         view, _ = check_document(path)
         require(view == make_view(source, tag), 'Vista desactualizada: ' + filename)
-    print('RESULTADO: contratos válidos y vistas sincronizadas. No se ejecutaron pruebas HTTP ni de persistencia.')
+    print('RESULTADO: contratos válidos y vistas sincronizadas. Valida el documento, no el servidor: las pruebas del backend se ejecutan con mvn test.')
 
 
 if __name__ == '__main__':
