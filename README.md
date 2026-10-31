@@ -6,7 +6,9 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Avance de contratos de la Etapa 2.** La entrega Swagger está en [`docs/openapi/`](docs/openapi/README.md): [YAML completo](docs/openapi/deliverygo-usuarios.yaml), tres vistas por área, trazabilidad y validación reproducible. Formaliza las nueve operaciones de los cinco CU CORE a partir del PDF adjunto `G02_Usuarios_PrimeraEntrega_v1.5.pdf`. El backend actual es parcial; las [diferencias con el contrato](docs/openapi/ACUERDOS_Y_BRECHAS.md) están documentadas. Los PDF y diagramas anteriores se conservan en [`docs/`](docs/).
+**Etapa 2: backend de los cinco CU CORE implementado y verificado.** El servicio expone las nueve operaciones del contrato, con JWT, validación en la frontera, formato de error común y correlación. Se comprueba con 47 pruebas automáticas de integración (incluidas las de concurrencia de email y de dirección predeterminada); ver [VERIFICACION.md](docs/openapi/VERIFICACION.md).
+
+La entrega Swagger está en [`docs/openapi/`](docs/openapi/README.md): [YAML completo](docs/openapi/deliverygo-usuarios.yaml), tres vistas por área, trazabilidad y validación reproducible. Quedan pendientes de acuerdo con el ecosistema (no implementados) la firma asimétrica del JWT, la credencial propia de los módulos consumidores y los CU-06 a CU-10; ver [ACUERDOS_Y_BRECHAS.md](docs/openapi/ACUERDOS_Y_BRECHAS.md). Los PDF y diagramas anteriores se conservan en [`docs/`](docs/).
 
 Paquete para entregar: [G02 Usuarios Swagger — 30/10/2026](entregables/G02_Usuarios_Swagger_2026-10-30.zip).
 
@@ -28,9 +30,9 @@ Paquete para entregar: [G02 Usuarios Swagger — 30/10/2026](entregables/G02_Usu
 | CU-04 | Modificar datos del perfil |
 | CU-05 | Administrar direcciones: alta, modificación, baja y selección de predeterminada |
 
-## Endpoints previstos
+## Endpoints
 
-Base URL: `/api/v1`. Todos, salvo registro y login, requieren `Authorization: Bearer <token>`.
+Base URL: `/api/v1`. Todos, salvo registro y login, requieren `Authorization: Bearer <token>` y que el token pertenezca al usuario de la ruta.
 
 | Método | Ruta | CU |
 |---|---|---|
@@ -44,7 +46,7 @@ Base URL: `/api/v1`. Todos, salvo registro y login, requieren `Authorization: Be
 | DELETE | `/api/v1/users/{id}/addresses/{addressId}` | CU-05 |
 | PATCH | `/api/v1/users/{id}/addresses/{addressId}/default` | CU-05 |
 
-Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`, `code`, `message`, `path`, `correlationId`.
+Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`, `code`, `message`, `path`, `correlationId` (y `details` en `VALIDATION_ERROR`). Cada respuesta devuelve la cabecera `X-Correlation-Id`.
 
 ## Integraciones
 
@@ -60,10 +62,12 @@ Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`,
 
 ```
 docs/                     Documento de entrega y diagramas (fuentes .puml e imágenes)
+docs/openapi/             Contrato OpenAPI, vistas, trazabilidad y verificación
+entregables/              Paquete Swagger para entregar
 src/main/java/ar/edu/uade/api/deliverygo/usuarios/
   controller/  service/  repository/  domain/  dto/
   mapper/  exception/  config/  security/  integration/
-src/test/
+src/test/java/ar/edu/uade/api/deliverygo/usuarios/   Pruebas de integración y unitarias
 ```
 
 ## Flujo de trabajo con Git
@@ -74,4 +78,23 @@ src/test/
 
 ## Instalación y ejecución
 
-Se completará en la Etapa 2 junto con el código.
+Requisitos: JDK 25 y Maven (ver el instructivo de la cátedra).
+
+```bash
+mvn test                 # 47 pruebas automáticas
+mvn spring-boot:run      # levanta el servicio en http://localhost:8089
+```
+
+Configuración por variables de entorno (todas opcionales en desarrollo):
+
+| Variable | Uso | Valor por defecto |
+|---|---|---|
+| `JWT_SECRET` | Secreto de firma del JWT, mínimo 32 caracteres | Valor de desarrollo local; **no usarlo en ambientes compartidos** |
+| `JWT_EXPIRATION_MINUTES` | Vigencia del token | `60` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del Portal, separados por coma | `http://localhost:5173,http://localhost:5174` |
+
+`src/main/resources/application.properties.example` documenta el resto de la configuración. No se deben subir secretos reales al repositorio.
+
+- Swagger UI: `http://localhost:8089/swagger-ui.html` (JSON en `/v3/api-docs`).
+- Consola H2 de desarrollo: `http://localhost:8089/h2-console` (URL `jdbc:h2:mem:deliverygo-usuarios`, usuario `sa`, sin contraseña). La base se vacía al reiniciar; al arrancar se crean los roles CLIENTE, COMERCIO, REPARTIDOR y ADMIN.
+- INT-01 (bienvenida de Notificaciones) está resuelta con un mock declarado que sólo escribe en el log; su falla nunca revierte el registro.

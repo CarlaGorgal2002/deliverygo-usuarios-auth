@@ -19,13 +19,30 @@ El validador cuenta las comprobaciones de ejemplos después de expandir referenc
 
 **Resultado: especificaciones y ejemplos válidos; vistas sincronizadas.** El archivo `resultado-validacion.txt` contiene la salida reproducible del comando.
 
-## Qué no demuestra esta validación
+## Qué no demuestra la validación del YAML
 
-No se ejecutó el backend ni se alteraron sus datos. No se probó la firma criptográfica, autorización real, serialización de Jackson, transacciones, concurrencia ni integración HTTP entre grupos. El token de ejemplo tiene una firma ficticia. Las diferencias observadas por lectura de código están en `ACUERDOS_Y_BRECHAS.md`.
+`validar_contratos.py` comprueba el documento OpenAPI y sus ejemplos; no ejecuta el servidor. El token de ejemplo tiene una firma ficticia. El comportamiento real lo cubren las pruebas de la sección siguiente.
 
-Una descripción OpenAPI puede expresar una regla como «sólo el titular» o «una sola dirección predeterminada», pero esa regla necesita código y pruebas funcionales. Los siguientes escenarios son criterios de aceptación pendientes de ejecutar sobre una implementación conforme.
+## Pruebas automáticas del backend
+
+Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2, más pruebas unitarias del JWT. Resultado de la última corrida: **47 pruebas, 0 fallas, 0 errores**.
+
+| Clase | Pruebas | Cobertura |
+|---|---|---|
+| `AuthApiTest` | 13 | CU-01 y CU-02: alta, email normalizado y duplicado, validación por campo, campos no permitidos, tipos incorrectos, contraseña de más de 72 bytes, login (mismo 401 para email inexistente y contraseña incorrecta, 403 sólo con la contraseña correcta), rutas públicas aun con token viejo, dos registros simultáneos |
+| `PerfilApiTest` | 11 | CU-03 y CU-04 y las reglas RN-04, RN-05, RN-09: titular, 401 por token ausente, alterado, basura, vencido o de otra clave, 403 cruzado incluidos ADMIN y COMERCIO, IDs inválidos, titular inactivo, usuario inexistente, PUT completo e idempotente, campos protegidos, email de otro usuario, rutas y métodos fuera del contrato |
+| `DireccionesApiTest` | 9 | CU-05: recorrido completo (listar vacío, altas, predeterminada, PUT, baja lógica, repetir baja), dirección ajena como inexistente, PUT sin predeterminada ni activa, límites de campos, tipos incorrectos, 401, usuario inactivo, y dos pruebas de concurrencia sobre la predeterminada |
+| `CorrelacionApiTest` | 5 | Reutilización, generación e invalidez de `X-Correlation-Id`; preflight CORS con PATCH; origen no autorizado |
+| `BienvenidaApiTest` | 3 | INT-01: se solicita después del alta, no se solicita si el alta falla, una falla del cliente no cambia el 201 |
+| `JwtServiceTest` | 6 | Emisión y lectura de `sub`=id y `role`; rechazo de otra clave, vencido, sin firma y `sub` no numérico; clave mínima de 32 bytes |
+
+Además se hizo una prueba de mutación de la concurrencia: al quitar temporalmente el bloqueo de la fila del usuario (`findByIdForUpdate`), las dos pruebas de concurrencia de direcciones fallaron en tres corridas consecutivas; con el bloqueo restituido pasan. Y un recorrido real por HTTP con el servidor levantado (registro con 201 y `Location`, 409 con un `X-Correlation-Id` propio, login, 403 sobre otro usuario, 400 por ID `abc`, alta de dirección con 201 y `Location`, y registro del mock INT-01 en el log) dio los resultados esperados.
+
+No cubren: firma asimétrica (no implementada), credencial de módulos consumidores (sin acordar), integración HTTP real con otros grupos, ni la base persistente de ambientes compartidos (las pruebas usan H2 en memoria).
 
 ## Recorrido funcional para la demo
+
+Los 14 pasos están cubiertos por `AuthApiTest`, `PerfilApiTest` y `DireccionesApiTest` (principalmente `recorridoCompletoDelCasoDeUso`) y pueden repetirse a mano desde Swagger UI.
 
 Preparar dos usuarios ficticios A y B; obtener sus IDs de las respuestas de registro. Eliminar dependencias de IDs fijos en los scripts de prueba. Para probar un usuario INACTIVO mientras CU-06 no existe, preparar el estado con una fixture controlada del entorno de pruebas, no con un endpoint inventado.
 
@@ -47,6 +64,8 @@ Preparar dos usuarios ficticios A y B; obtener sus IDs de las respuestas de regi
 | 14 | Repetir DELETE de D1 | 404 `ADDRESS_NOT_FOUND`; estado persistido sin cambios |
 
 ## Rechazos y consistencia
+
+Todos los escenarios de esta tabla tienen una prueba automática, con una excepción: el rollback ante una falla a mitad del cambio de predeterminada se garantiza porque ambos cambios ocurren en una única transacción con la fila del usuario bloqueada, pero no hay una prueba que fuerce una falla intermedia.
 
 | Escenario | Resultado esperado | Trazabilidad |
 |---|---|---|
@@ -74,6 +93,8 @@ Preparar dos usuarios ficticios A y B; obtener sus IDs de las respuestas de regi
 | Falla dentro del cambio de predeterminada | Rollback de ambos cambios; no queda un estado parcial | RN-07, DM-10 |
 
 ## Integración pendiente de acuerdo
+
+Estos escenarios no se ejecutaron ni están implementados: dependen de la credencial de módulo, todavía sin acordar.
 
 Después de acordar y documentar la credencial de módulo:
 

@@ -4,7 +4,7 @@ Contrato de **Usuarios y Autenticación** de DeliveryGo, preparado el **30 de oc
 
 **Archivo principal para entregar: [deliverygo-usuarios.yaml](deliverygo-usuarios.yaml).** Es autónomo: todas sus referencias están dentro del mismo archivo. Corresponde al Grupo 02 académico, denominado Equipo 1 del ecosistema en la guía funcional.
 
-Este es el **contrato objetivo** basado en la primera entrega. El backend del repositorio es parcial y todavía difiere del contrato. Validar estos archivos no demuestra que el servidor ya implemente las nueve operaciones. El detalle está en [ACUERDOS_Y_BRECHAS.md](ACUERDOS_Y_BRECHAS.md).
+Este es el contrato basado en la primera entrega. El backend del repositorio implementa las nueve operaciones y la Swagger generada por Springdoc coincide con él (operaciones, códigos de respuesta y seguridad). La validación del YAML (`validar_contratos.py`) comprueba el documento; el comportamiento del servidor lo comprueban las pruebas automáticas descritas en [VERIFICACION.md](VERIFICACION.md). Lo que sigue pendiente de acuerdo externo está en [ACUERDOS_Y_BRECHAS.md](ACUERDOS_Y_BRECHAS.md).
 
 ## Archivos de la entrega
 
@@ -15,8 +15,8 @@ Este es el **contrato objetivo** basado en la primera entrega. El backend del re
 | `vistas/usuarios.yaml` | Vista autónoma de consulta y modificación de perfil; 2 operaciones |
 | `vistas/direcciones.yaml` | Vista autónoma de direcciones; 5 operaciones |
 | `TRAZABILIDAD_Y_FUENTES.md` | Correspondencia con API, CU, RN, SRV, DTO y los 23 adjuntos |
-| `ACUERDOS_Y_BRECHAS.md` | Decisiones de contrato, integración JWT y diferencias con Java |
-| `VERIFICACION.md` | Validación ejecutada y escenarios HTTP pendientes de implementación |
+| `ACUERDOS_Y_BRECHAS.md` | Decisiones de contrato, integración JWT, estado de la implementación y pendientes |
+| `VERIFICACION.md` | Validación del contrato, pruebas automáticas del backend y escenarios aún por acordar |
 | `exportar_vistas.py` | Regenera las vistas a partir del principal |
 | `validar_contratos.py` | Valida especificaciones, ejemplos y restricciones del contrato |
 
@@ -26,8 +26,8 @@ Las vistas son formas de compartir partes del mismo servicio, no tres microservi
 
 1. Importar `deliverygo-usuarios.yaml` en Swagger Editor o en una herramienta que soporte OpenAPI 3.0.3. También puede importarse en Postman como definición OpenAPI.
 2. Revisar las secciones **Autenticación**, **Usuarios** y **Direcciones**. El contrato puede leerse sin ejecutar Java ni Maven.
-3. Para ejecutar solicitudes, seleccionar el servidor correcto. El puerto local **8089** coincide con `application.properties`; la URL de integración es configurable y todavía no identifica un despliegue real.
-4. Cuando el backend cumpla el contrato, registrar un usuario e iniciar sesión usando `email` y `password`. Copiar el `token` de la respuesta real y pegarlo en **Authorize**, sin escribir el prefijo `Bearer`.
+3. Para ejecutar solicitudes, seleccionar el servidor correcto. El puerto local **8089** coincide con `application.properties`; la URL de integración es configurable y todavía no identifica un despliegue real. Con `mvn spring-boot:run`, la Swagger UI del propio servicio está en `http://localhost:8089/swagger-ui.html`.
+4. Registrar un usuario e iniciar sesión usando `email` y `password`. Copiar el `token` de la respuesta real y pegarlo en **Authorize**, sin escribir el prefijo `Bearer`.
 5. Usar el `usuarioId` real en las rutas del perfil y direcciones. El token incluido en los ejemplos tiene una firma ficticia y no permite iniciar sesión.
 
 Swagger UI permite explorar la API, mientras que OpenAPI es la definición formal de sus operaciones. La autenticación HTTP Bearer se declara con `type: http`, `scheme: bearer`; registro y login la desactivan mediante `security: []`. Referencias técnicas: [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3) y [Swagger Bearer Authentication](https://swagger.io/docs/specification/v3_0/authentication/bearer-authentication/).
@@ -77,6 +77,6 @@ Para verificar sólo la sincronización de las vistas sin reescribirlas:
 
 ## Próximo paso de implementación
 
-Adaptar el backend al contrato antes de usarlo en la integración real. En particular: completar direcciones; corregir login y errores; aplicar validación en la frontera; distinguir titular y módulo consumidor; coordinar claves y claims del JWT. Después, ejecutar los escenarios de [VERIFICACION.md](VERIFICACION.md) y comparar la documentación generada por Springdoc con este YAML.
+Coordinar con los demás grupos lo que no depende de este módulo: algoritmo y distribución de claves del JWT (hoy HS256 con secreto compartido; la firma asimétrica es una propuesta), credencial propia de los módulos consumidores y contrato real de Notificaciones (hoy un mock declarado). Los claims actuales son `sub` = id del usuario, `role`, `iat` y `exp`; los consumidores no deben leer `sub` como email.
 
-No debe reemplazarse este archivo por una exportación automática del backend parcial: se perderían operaciones, ejemplos y restricciones ya diseñadas. Tampoco basta con configurar Swagger UI para mostrarlo si Java sigue devolviendo otro JSON.
+No debe reemplazarse este archivo por una exportación automática de Springdoc: se perderían ejemplos, trazabilidad y restricciones ya diseñadas. Ante un cambio de comportamiento, actualizar el YAML, regenerar las vistas y volver a correr `validar_contratos.py` y `mvn test`.
