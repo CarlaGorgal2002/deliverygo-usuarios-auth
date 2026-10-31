@@ -63,6 +63,6 @@ public class JwtService {
         if (sub == null || rol == null) {
             throw new JwtException("Token incompleto");
         }
-        return new UsuarioAutenticado(Long.valueOf(sub), rol);
+        return new UsuarioAutenticado(Long.valueOf(sub), rol, claims.getExpiration().toInstant());
     }
 }

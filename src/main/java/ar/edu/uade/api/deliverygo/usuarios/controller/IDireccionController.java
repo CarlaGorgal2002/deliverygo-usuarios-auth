@@ -5,20 +5,24 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.DireccionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ErrorResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ModificarDireccionRequest;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-// Contrato documentado de CU-05. Sólo el titular ACTIVO administra sus direcciones.
+// Contrato documentado de CU-05. Sólo el titular ACTIVO administra sus direcciones; Pedidos puede listarlas.
 @Tag(name = "Direcciones", description = "CU-05. Listado, alta, modificación, baja lógica y predeterminada.")
 public interface IDireccionController {
 
@@ -28,11 +32,16 @@ public interface IDireccionController {
             "ADDRESS_NOT_FOUND: La dirección no existe, está dada de baja o pertenece a otro usuario (no se distingue la causa).";
 
     @Operation(operationId = "listarDirecciones", summary = "Listar direcciones (API-05 / CU-05)",
-            description = "Devuelve las direcciones activas del titular, sin paginación. Sin direcciones devuelve 200 y []. Hay cero o una predeterminada.")
+            description = """
+                    Devuelve las direcciones activas del usuario, sin paginación. Sin direcciones devuelve 200 y []. Hay cero o una predeterminada.
+                    Con JWT: sólo el titular ACTIVO. Con X-Api-Key: sólo el módulo Pedidos, que también recibe las direcciones de una cuenta
+                    INACTIVA; cualquier otro módulo recibe 403.""")
+    @SecurityRequirements({@SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "moduleApiKey")})
     @ApiResponse(responseCode = "200", description = "Direcciones activas del usuario.")
     @ErroresDeSesion
     @ErroresComunes
-    ResponseEntity<List<DireccionResponse>> listarDirecciones(@PathVariable @Positive(message = ID_POSITIVO) Long id);
+    ResponseEntity<List<DireccionResponse>> listarDirecciones(@PathVariable @Positive(message = ID_POSITIVO) Long id,
+                                                              @Parameter(hidden = true) Authentication authentication);
 
     @Operation(operationId = "crearDireccion", summary = "Crear dirección (API-06 / CU-05)",
             description = """

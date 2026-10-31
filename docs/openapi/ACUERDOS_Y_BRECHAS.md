@@ -1,6 +1,6 @@
 # Decisiones del contrato y trabajo pendiente
 
-Este documento acompaña los YAML del Grupo 02. Distingue el diseño ya presentado, las decisiones que hacen preciso el intercambio y los acuerdos externos pendientes. El backend Java ya implementa las nueve operaciones del contrato; este documento registra qué se resolvió, qué decisiones se tomaron al hacerlo y qué sigue pendiente de acuerdo con otros equipos. No se declara completada la Etapa 2: faltan los CU de evolución y los acuerdos de integración.
+Este documento acompaña los YAML del Grupo 02. Distingue el diseño ya presentado, las decisiones que hacen preciso el intercambio y los acuerdos externos pendientes. El backend Java implementa las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución); este documento registra qué se resolvió, qué decisiones se tomaron al hacerlo y qué sigue pendiente de acuerdo con otros equipos. El diseño de CU-06 a CU-10 está en [DISENO_CU_EVOLUCION.md](DISENO_CU_EVOLUCION.md).
 
 ## Base elegida
 
@@ -8,7 +8,7 @@ La referencia funcional es `G02_Usuarios_PrimeraEntrega_v1.5.pdf`, especialmente
 
 Se mantienen los cinco endpoints obligatorios de la consigna y los cuatro que el equipo añadió para completar direcciones. Los ejemplos de Comercio enseñan patrones de implementación; sus rutas `/auth/login`, `/v1/comercios`, `username` y `expiresInSeconds` no reemplazan los contratos particulares de Usuarios.
 
-La transcripción C13 vuelve a mencionar los diez CU para el trabajo final. Este avance formaliza los cinco CORE ya desarrollados y registra los cinco de evolución al final de este documento. No se presenta el CORE como el alcance total de la entrega final.
+La transcripción C13 vuelve a mencionar los diez CU para el trabajo final. El contrato formaliza los diez: los cinco CORE (API-01 a API-09) y los cinco de evolución (API-10 a API-16). La guía funcional pide incorporar los CU evolutivos «priorizados»; el equipo los incorporó todos.
 
 ## Decisiones que completan el contrato
 
@@ -23,10 +23,15 @@ Son precisiones de diseño de esta entrega, no nuevas exigencias atribuidas al p
 | DC-05 | En alta, contraseña mínima de 8 caracteres; en login, obligatoria y no vacía | Sigue las validaciones específicas de DTO-01 y DTO-03. No se reaplica al login una política de registro. La contraseña nunca se recorta ni normaliza. El email de login usa formato email. |
 | DC-06 | Correlación en todas las respuestas, incluida seguridad; aceptar 1–128 caracteres `A-Za-z0-9._-` | Se devuelve el ID válido recibido o se genera uno. Una cabecera inválida produce 400 con ID nuevo. Las respuestas incluyen `Cache-Control: no-store`; las altas incluyen `Location` y los 401 `WWW-Authenticate`. Estos detalles completan el contrato HTTP. |
 | DC-07 | IDs Long positivos; 400 para formato/rango inválido; 404 si el usuario autenticado/autorizado solicitado no existe | Completa casos técnicos omitidos de algunas filas del PDF, especialmente API-06. Primero se autentica y autoriza; no se usa 404 para permitir consultar la existencia de perfiles ajenos. |
+| DC-08 | Los módulos consumidores se identifican con una API Key propia en `X-Api-Key`, de sólo lectura | La clase presenta API Key, OAuth Client Credentials y JWT como opciones entre APIs. La API Key es la más simple y no exige un servidor de autorización ni acordar claves; cada equipo recibe la suya. Habilita API-03 (todos los módulos), API-05 (sólo Pedidos) y API-16 (todos). Si los equipos acuerdan otra, se reemplaza el filtro sin tocar los casos de uso. |
+| DC-09 | La solicitud de recuperación de contraseña responde siempre 202; el token es de un solo uso, vence a los 30 minutos y sólo se guarda su hash | Una respuesta distinta según exista la cuenta revelaría qué emails están registrados (RN-13), igual que RN-08 en el login. Un token con estado y vencimiento es lo que permite el uso único. |
+| DC-10 | El JWT no se revoca; el rol y el estado vigentes se consultan con API-15 y API-16 | Mantiene DM-03 (sesión sin estado). Un token emitido conserva su rol hasta vencer, pero las operaciones sobre perfil y direcciones rechazan a las cuentas inactivas y la administración verifica al administrador en la base. |
 
 `numero` y `piso` siguen siendo texto, como en el diseño: no se convierten a entero porque pueden contener `S/N`, `PB` o valores alfanuméricos. El atributo `referencia` existe en el código actual pero no en los DTO de la primera entrega; queda fuera del contrato CORE. Añadirlo después requiere documentar la extensión.
 
 Las longitudes máximas siguen el modelo de datos (DER) y son las mismas en DTO, columnas y OpenAPI: nombre y apellido 80, email 120, teléfono 30, calle 100, número/piso/departamento/código postal 10, ciudad y provincia 80. La contraseña tiene mínimo 8 caracteres y, como BCrypt sólo considera los primeros 72 bytes, el registro rechaza con 400 las que superan 72 bytes en UTF-8 en lugar de truncarlas en silencio; el login acepta cualquier longitud (simplemente no coincidirá).
+
+`INVALID_RESET_TOKEN` (400) se suma al catálogo de errores para el token de recuperación inexistente, vencido, usado o de una cuenta inactiva; no se distingue la causa.
 
 `details` se define como una lista de `{campo, mensaje}` únicamente en `VALIDATION_ERROR`. No repite el valor recibido; para un cuerpo ilegible se usa `campo: body`. El estado inactivo devuelve **403**, como establece expresamente la sección 12.2.3 del PDF (el código anterior devolvía 422).
 
@@ -51,22 +56,25 @@ La teoría, página etiquetada 27, explicita firma asimétrica. Los ZIP de labor
 
 El tipo de `sub` y la unidad de `exp` siguen [RFC 7519](https://www.rfc-editor.org/rfc/rfc7519.html). Para implementar la verificación, fijar los algoritmos permitidos y validar emisor/audiencia según los valores que acuerde el ecosistema; no confiar en el algoritmo declarado por un token recibido. Véase [RFC 8725](https://www.rfc-editor.org/rfc/rfc8725.html). Esas decisiones de despliegue no se presentan como acuerdos ya celebrados.
 
-Una persona con rol ADMIN o COMERCIO no se convierte en un módulo consumidor. Para el CORE, todos los roles humanos sólo operan sobre su propio perfil. El registro público crea CLIENTE y no permite autoasignarse permisos. El alta o cambio de otros roles pertenece a CU-07.
+Una persona con rol ADMIN o COMERCIO no se convierte en un módulo consumidor. Todos los roles humanos operan sobre su propio perfil; la única excepción es la administración de cuentas ajenas (CU-06, CU-07), reservada a ADMIN y verificada contra la base. El registro público crea CLIENTE y no permite autoasignarse permisos: los demás roles los asigna un ADMIN con CU-07, y el primer ADMIN se aprovisiona por configuración (`ADMIN_EMAIL`, `ADMIN_PASSWORD`; sin ellas no se crea ninguno).
 
-| Actor | Consulta de perfil API-03 | Listado de direcciones API-05 | Escrituras sobre perfil/direcciones |
-|---|---|---|---|
-| Titular autenticado y ACTIVO | Su propio perfil | Sus direcciones | Sólo sus recursos |
-| Pedidos con credencial propia autorizada | Diseñada | Diseñado | No |
-| Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica con credencial propia autorizada | Diseñada | No | No |
-| Otro usuario o consumidor sin permiso | 403 | 403 | 403 |
+| Actor | Perfil API-03 | Direcciones API-05 | Estado y rol API-16 | Escrituras sobre perfil/direcciones | Estado y rol de otras cuentas (API-10, API-11) |
+|---|---|---|---|---|---|
+| Titular autenticado y ACTIVO | Su propio perfil | Sus direcciones | 403 | Sólo sus recursos | 403 |
+| ADMIN ACTIVO | 403 (no es el titular) | 403 | 403 | 403 | Sí, salvo su propia cuenta |
+| Pedidos con API Key | Sí, también cuentas INACTIVAS | Sí, también cuentas INACTIVAS | Sí | No (403) | No (403) |
+| Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica con API Key | Sí, también cuentas INACTIVAS | 403 | Sí | No (403) | No (403) |
+| Sin credencial, credencial inválida o de otra persona | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 |
 
-**La credencial propia de los módulos sigue pendiente**, tal como señala la primera entrega. El esquema `bearerAuth` de los YAML formaliza el JWT de usuario; no habilita una supuesta identidad de servicio. Las extensiones `x-integracion-modulos` de API-03 y API-05 registran las capacidades previstas sin inventar un API key, un flujo OAuth ni roles técnicos aceptados. Hasta acordar ese mecanismo, esas consultas con identidad propia de servicio deben permanecer deshabilitadas o probarse con un mock explícito. Una llamada que propague el JWT del usuario conserva los permisos de ese usuario, no los de un módulo.
+**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. Se resolvió con una API Key por módulo, configurada por variable de entorno (`MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA`). Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: no hay claves por defecto. La clave se compara en tiempo constante y se envía en `X-Api-Key`; si la solicitud trae además `Authorization`, manda el JWT, de modo que un usuario no se hace pasar por un módulo. Qué credencial usa cada equipo para llamar a Usuarios sigue siendo un acuerdo entre equipos: el esquema `moduleApiKey` del YAML es la propuesta de este módulo y cada equipo debe recibir su clave por un canal seguro.
 
-Cuando se implemente esa integración, los módulos autorizados podrán leer el perfil de un usuario INACTIVO con 200 y decidir con sus reglas; el titular inactivo recibe 403. Pedidos podrá listar direcciones activas y consultar API-03 para conocer el estado del usuario. Es la distinción especificada en CU-03 y SRV-09.
+Una llamada que propague el JWT del usuario conserva los permisos de ese usuario, no los de un módulo. Los módulos autorizados leen el perfil de un usuario INACTIVO con 200 y deciden con sus reglas; el titular inactivo recibe 403. Pedidos lista direcciones activas y consulta API-03 o API-16 para conocer el estado del usuario. Es la distinción especificada en CU-03 y SRV-09.
 
 ## Notificaciones y disponibilidad
 
 INT-01 solicita la bienvenida después del alta. La ruta de referencia es `POST /api/v1/notifications`, propiedad del equipo Notificaciones. El DTO definitivo, autenticación, tiempos de espera y propagación de correlación todavía requieren su contrato; por eso esa API no aparece como un endpoint propio de Usuarios.
+
+INT-06 solicita a Notificaciones el envío del token de recuperación de contraseña (CU-08). Es también un mock declarado y no bloqueante; por defecto sólo registra el id del usuario. Con `MOCK_LOG_RECOVERY_TOKEN=true` escribe además el token en el log, únicamente para demostrar el flujo en local, ya que de otro modo nadie lo recibiría.
 
 Un fallo de bienvenida no revierte el alta ni transforma el 201 en un error. El cliente se invoca después de confirmar el alta (`NotificacionesClient`, con el mock declarado `NotificacionesClientMock`, que sólo registra el id del usuario en el log, sin email ni nombre). `BienvenidaApiTest` verifica que se solicita una vez por alta confirmada, que no se solicita si el registro falla y que una excepción del cliente no cambia el 201. No hay integración HTTP real: queda sujeta al contrato de Notificaciones.
 
@@ -87,48 +95,43 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 | Seguridad | Sólo el titular opera sobre su recurso (`@PreAuthorize`); ADMIN y COMERCIO humanos reciben 403 | `PerfilApiTest` |
 | IDs de ruta | `Long` positivo; 400 para texto, cero, negativo, decimal o fuera de rango, después de autenticar | `PerfilApiTest` |
 | Ausencia o falla del token | 401 `UNAUTHENTICATED` con `WWW-Authenticate: Bearer`, en el formato común (entry point y access denied handler) | `PerfilApiTest`, `DireccionesApiTest` |
-| Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; la consulta de módulo autorizado sigue pendiente | `PerfilApiTest`, `DireccionesApiTest` |
+| Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; los módulos con API Key sí reciben la cuenta inactiva con 200 | `PerfilApiTest`, `DireccionesApiTest`, `ModulosApiTest` |
 | Fechas | UTC, truncadas a segundos, serializadas con zona | `AuthApiTest` |
 | Validación | Starter de Validation; propiedades desconocidas y tipos incorrectos rechazados con 400 (sin conversión silenciosa) | `AuthApiTest`, `DireccionesApiTest` |
 | Correlación | `X-Correlation-Id` validado, generado si falta, devuelto en cabecera, cuerpo y log (MDC); `Cache-Control: no-store`; `Location` en los 201 | `CorrelacionApiTest` |
 | CORS | Orígenes configurables (`CORS_ALLOWED_ORIGINS`); permite PATCH y `X-Correlation-Id`; expone `X-Correlation-Id` y `Location` | `CorrelacionApiTest` |
-| Swagger generado | Interfaces `I*Controller` con anotaciones de springdoc; operaciones públicas sin candado; coincide con el YAML | revisión de `/v3/api-docs` |
+| Swagger generado | Interfaces `I*Controller` con anotaciones de springdoc; operaciones públicas sin candado; las 16 operaciones, sus códigos de respuesta y sus esquemas de seguridad coinciden con el YAML | comparación de `/v3/api-docs` con el YAML (ver VERIFICACION.md) |
 | Java y Maven | `java.version` 25 única; groupId `ar.edu.uade.api.deliverygo`; paquete `ar.edu.uade.api.deliverygo.usuarios` | `mvn test` |
 | Secreto JWT | Fuera del repositorio: variable `JWT_SECRET`; se exige un mínimo de 32 bytes | `JwtServiceTest` |
+| CU-06 Desactivar o reactivar | API-10, sólo ADMIN ACTIVO verificado en la base; idempotente; un administrador no modifica su propia cuenta | `AdministracionApiTest` |
+| CU-07 Asignar rol | API-11 con las mismas reglas; dos administradores que se degradan a la vez no se dejan sin ninguno (bloqueo de filas en orden de id) | `AdministracionApiTest` (incluye concurrencia) |
+| CU-08 Recuperar contraseña | API-12 (202 uniforme) y API-13 (token de un solo uso, vencimiento, sólo hash, atómico ante pedidos simultáneos) | `RecuperacionApiTest` (incluye concurrencia) |
+| CU-09 Renovar y validar sesión | API-14 renueva con el rol actual; API-15 informa rol y estado vigentes; ambas rechazan cuentas inactivas, inexistentes y tokens vencidos | `SesionApiTest` |
+| CU-10 Estado y rol para módulos | API-16 con API Key; API-03 y API-05 abiertas a módulos según RN-15; los módulos nunca escriben | `ModulosApiTest` |
+| Administrador inicial | Se crea sólo con `ADMIN_EMAIL` y `ADMIN_PASSWORD`; sin ellos no hay ninguno | `AdministradorInicialTest` |
 
-Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos registros con el mismo email; selecciones y altas simultáneas de predeterminada). Para comprobar que esas pruebas detectan el problema, se retiró temporalmente el bloqueo de la fila del usuario y ambas fallaron en tres corridas seguidas; con el bloqueo restituido pasan.
+Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos registros con el mismo email; selecciones y altas simultáneas de predeterminada). Para comprobar que esas pruebas detectan el problema, se retiró temporalmente el bloqueo de la fila del usuario y ambas fallaron en tres corridas seguidas; con el bloqueo restituido pasan. Se hizo lo mismo con las dos garantías de los casos de evolución (bloqueo de las filas de los administradores y consumo atómico del token de recuperación): sin ellas fallan las pruebas de concurrencia correspondientes.
 
 ## Pendientes y riesgos conocidos
 
 | Tema | Situación | Quién debe resolverlo |
 |---|---|---|
 | Firma asimétrica (RS256) y distribución de la clave pública | No implementada; HS256 con secreto compartido | Todos los grupos |
-| Credencial propia de los módulos consumidores | Sin definir; las consultas «de módulo» (Pedidos, Catálogo, etc.) no están habilitadas | Todos los grupos |
+| API Keys de los módulos | Implementadas; cada equipo debe recibir la suya por un canal seguro, usar HTTPS fuera de laboratorio y acordar la rotación. Si los equipos eligen otro mecanismo (OAuth, JWT de servicio), se reemplaza el filtro | Todos los grupos |
 | Cambio de `sub` (email → id) | Implementado; los consumidores y el Portal deben leer `sub` como id | Portal y módulos consumidores |
-| Contrato real de Notificaciones (INT-01) | Mock declarado que sólo escribe en el log | Notificaciones |
-| CU-06 a CU-10 | No implementados; ver el backlog | Este equipo |
-| Tokens vigentes de un usuario que pasa a INACTIVO | Siguen siendo válidos para el JWT, pero el servicio responde 403 `USER_INACTIVE`; la revocación se define con CU-06/CU-09 | Este equipo |
+| Contrato real de Notificaciones (INT-01 e INT-06) | Mock declarado que sólo escribe en el log | Notificaciones |
+| JWT sin revocación (DC-10) | Un token emitido conserva su rol y sigue siendo válido hasta vencer aunque la cuenta cambie de rol, se desactive o restablezca su contraseña. API-15 y API-16 dan el dato vigente; las operaciones sobre perfil y direcciones rechazan a las cuentas inactivas | Este equipo |
+| Renovación deslizante | Un token robado y vigente puede renovarse mientras la cuenta esté ACTIVA; se corta con CU-06. Un token de renovación persistido lo evitaría (DM-03 lo anticipa) | Este equipo |
+| Recuperación sin límite de pedidos | No hay limitación por cuenta ni por origen; conviene sumarla (por ejemplo, en un gateway) antes de exponer el servicio | Este equipo |
+| Primer administrador | Se aprovisiona con `ADMIN_EMAIL` y `ADMIN_PASSWORD`; usar una contraseña propia, no la de los ejemplos | Este equipo |
 | Secreto de desarrollo | El valor por defecto es sólo local. Un secreto anterior estuvo en el historial de Git: rotar el secreto de cualquier ambiente que lo haya usado | Este equipo |
 | Consola H2 y base en memoria | Habilitadas sólo para desarrollo; deshabilitar y usar base persistente en ambientes compartidos | Este equipo |
 | Códigos técnicos fuera del enum del YAML | `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `NOT_ACCEPTABLE`, `UNSUPPORTED_MEDIA_TYPE` | Acordar el catálogo común |
-| Diagramas | Los `.puml` e imágenes de `docs/Diagramas` no se regeneraron; el diagrama de clases sigue mostrando `LocalDateTime` y coincide con la entidad | Este equipo |
-
-## Backlog de evolución
-
-| CU | Función | Definición pendiente antes de publicar un contrato de evolución |
-|---|---|---|
-| CU-06 | Desactivar o reactivar usuario | Quién puede hacerlo, transiciones y efecto sobre tokens vigentes |
-| CU-07 | Administrar roles | Permisos de administración, roles asignables y actualización de claims |
-| CU-08 | Recuperar contraseña | Token de recuperación, expiración, consumo único y contrato de Notificaciones |
-| CU-09 | Renovar o validar sesión/token | Mecanismo de renovación/validación, almacenamiento y revocación si corresponde |
-| CU-10 | Consultar estado y rol para otro módulo | Credencial de servicio, DTO mínimo y permisos por consumidor |
-
-No se añadieron endpoints sin diseño para aparentar que estos cinco casos están terminados. La consulta completa de perfil por API-03 y su futura autorización entre módulos ya forman parte del CORE; CU-10 es la consulta liviana adicional de estado/rol.
+| Diagramas | Los `.puml` e imágenes de `docs/Diagramas` no se regeneraron; el diagrama de clases sigue mostrando `LocalDateTime` y no incluye ENT-04. Las secuencias SEC-06 a SEC-10 están en Mermaid en DISENO_CU_EVOLUCION.md | Este equipo |
 
 ## Orden de avance
 
-1. Compartir el YAML con el Portal para fijar `email`, DTO de sesión, PUT y errores; comunicar el cambio de `sub` y las diferencias frente al ejemplo de Comercio.
-2. Acordar firma, claves, emisor/audiencia e identidad de consumidores; implementar sólo los permisos pactados.
-3. Reemplazar el mock de bienvenida por el contrato real de Notificaciones.
-4. Implementar los casos de evolución (CU-06 a CU-10) con su contrato antes del código.
-5. Ante cualquier cambio, actualizar el YAML, regenerar las vistas, correr `validar_contratos.py` y `mvn test`, y contrastar la Swagger generada con el contrato.
+1. Compartir el YAML con el Portal y los módulos: DTO de sesión, errores, administración, recuperación de contraseña y API Key; comunicar el cambio de `sub`.
+2. Acordar firma, claves, emisor/audiencia y la forma de entregar y rotar las API Keys; si se elige otro mecanismo para los módulos, reemplazar el filtro.
+3. Reemplazar los mocks de Notificaciones (INT-01 e INT-06) por el contrato real.
+4. Ante cualquier cambio, actualizar el YAML, regenerar las vistas, correr `validar_contratos.py` y `mvn test`, y contrastar la Swagger generada con el contrato.

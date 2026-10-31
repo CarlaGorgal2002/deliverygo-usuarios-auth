@@ -25,8 +25,9 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ModulosApiKeys modulos,
                                             ErrorResponseWriter errorWriter) throws Exception {
+        JwtAuthenticationFilter filtroJwt = new JwtAuthenticationFilter(jwtService, errorWriter);
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))   // la consola H2 usa frames
@@ -40,11 +41,13 @@ public class SecurityConfig {
                                 request, response, HttpStatus.FORBIDDEN, "FORBIDDEN",
                                 "No tiene permiso para acceder a este recurso")))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, RutasPublicas.postPublicos()).permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
-                        // El resto exige token; la titularidad de /users/{id}/** se verifica en los controllers.
+                        // El resto exige una identidad (JWT o API Key de módulo); qué puede hacer cada una
+                        // (titular, administrador, módulo) lo decide @PreAuthorize en los controllers.
                         .anyRequest().authenticated())
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorWriter), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new ApiKeyAuthenticationFilter(modulos, errorWriter), JwtAuthenticationFilter.class);
         return http.build();
     }
 
@@ -58,6 +61,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origenes);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // Los módulos consumidores llaman servidor a servidor: X-Api-Key no se habilita para el navegador.
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", ApiRequestFilter.CORRELATION_HEADER));
         config.setExposedHeaders(List.of(ApiRequestFilter.CORRELATION_HEADER, "Location"));
         config.setMaxAge(3600L);

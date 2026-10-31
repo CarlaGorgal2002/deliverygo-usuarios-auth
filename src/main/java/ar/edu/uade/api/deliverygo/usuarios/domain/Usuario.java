@@ -93,6 +93,11 @@ public class Usuario {
         return passwordHash;
     }
 
+    // CU-08: sólo se guarda el hash (RN-03).
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public String getTelefono() {
         return telefono;
     }
@@ -115,5 +120,10 @@ public class Usuario {
 
     public Rol getRol() {
         return rol;
+    }
+
+    // CU-07: sólo la administración cambia el rol.
+    public void setRol(Rol rol) {
+        this.rol = rol;
     }
 }

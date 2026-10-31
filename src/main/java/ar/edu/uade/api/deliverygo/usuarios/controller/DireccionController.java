@@ -3,9 +3,11 @@ package ar.edu.uade.api.deliverygo.usuarios.controller;
 import ar.edu.uade.api.deliverygo.usuarios.dto.CrearDireccionRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.DireccionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ModificarDireccionRequest;
+import ar.edu.uade.api.deliverygo.usuarios.security.ModuloAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.DireccionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,14 +32,17 @@ public class DireccionController implements IDireccionController {
 
     @Override
     @GetMapping
-    @PreAuthorize("principal.id() == #id")
-    public ResponseEntity<List<DireccionResponse>> listarDirecciones(Long id) {
-        return ResponseEntity.ok(direccionService.listarDirecciones(id));
+    @PreAuthorize("@acceso.titularOModulo(principal, #id, 'pedidos')")
+    public ResponseEntity<List<DireccionResponse>> listarDirecciones(Long id, Authentication authentication) {
+        boolean esModulo = authentication.getPrincipal() instanceof ModuloAutenticado;
+        return ResponseEntity.ok(esModulo
+                ? direccionService.listarDireccionesParaModulo(id)
+                : direccionService.listarDirecciones(id));
     }
 
     @Override
     @PostMapping
-    @PreAuthorize("principal.id() == #id")
+    @PreAuthorize("@acceso.titular(principal, #id)")
     public ResponseEntity<DireccionResponse> crearDireccion(Long id, CrearDireccionRequest request) {
         DireccionResponse creada = direccionService.crearDireccion(id, request);
         return ResponseEntity.created(URI.create("/api/v1/users/" + id + "/addresses/" + creada.id())).body(creada);
@@ -45,14 +50,14 @@ public class DireccionController implements IDireccionController {
 
     @Override
     @PutMapping("/{addressId}")
-    @PreAuthorize("principal.id() == #id")
+    @PreAuthorize("@acceso.titular(principal, #id)")
     public ResponseEntity<DireccionResponse> modificarDireccion(Long id, Long addressId, ModificarDireccionRequest request) {
         return ResponseEntity.ok(direccionService.modificarDireccion(id, addressId, request));
     }
 
     @Override
     @DeleteMapping("/{addressId}")
-    @PreAuthorize("principal.id() == #id")
+    @PreAuthorize("@acceso.titular(principal, #id)")
     public ResponseEntity<Void> eliminarDireccion(Long id, Long addressId) {
         direccionService.eliminarDireccion(id, addressId);
         return ResponseEntity.noContent().build();
@@ -60,7 +65,7 @@ public class DireccionController implements IDireccionController {
 
     @Override
     @PatchMapping("/{addressId}/default")
-    @PreAuthorize("principal.id() == #id")
+    @PreAuthorize("@acceso.titular(principal, #id)")
     public ResponseEntity<DireccionResponse> seleccionarPredeterminada(Long id, Long addressId) {
         return ResponseEntity.ok(direccionService.seleccionarPredeterminada(id, addressId));
     }

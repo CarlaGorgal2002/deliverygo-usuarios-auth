@@ -2,26 +2,30 @@
 openapi: 3.0.3
 info:
   title: DeliveryGo - Usuarios y Autenticación - Grupo 02 - Usuarios
-  version: 1.0.0
+  version: 1.1.0
   description: |-
     Vista generada por área. Es parte del mismo servicio, no un microservicio independiente. El contrato completo y editable es deliverygo-usuarios.yaml.
 
-    Contrato objetivo de los cinco casos de uso CORE (CU-01 a CU-05), con nueve operaciones API-01 a API-09.
+    Contrato de los diez casos de uso del módulo: los cinco CORE (CU-01 a CU-05, API-01 a API-09) y los cinco de evolución
+    (CU-06 a CU-10, API-10 a API-16), con dieciséis operaciones.
     Basado en G02_Usuarios_PrimeraEntrega_v1.5.pdf, consigna, guía funcional, teoría, publicaciones y clases, hasta el material adjunto.
     Grupo académico 02; módulo Usuarios, identificado como Equipo 1 en la guía general.
 
-    Contrato de entrega del 30/10/2026. El backend del repositorio implementa las nueve operaciones y las verifican las pruebas de integración (VERIFICACION.md).
-    Los acuerdos pendientes con otros módulos se describen en ACUERDOS_Y_BRECHAS.md. CU-06 a CU-10 quedan en el backlog de evolución.
+    Contrato de entrega del 30/10/2026, versión 1.1.0. El backend del repositorio implementa las dieciséis operaciones y las verifican
+    las pruebas de integración (VERIFICACION.md). El diseño de CU-06 a CU-10 está en DISENO_CU_EVOLUCION.md.
+    Los acuerdos pendientes con otros módulos se describen en ACUERDOS_Y_BRECHAS.md.
 
     Convenciones: rutas /api/v1; JSON UTF-8; IDs Long positivos; DTO separados de entidades; fechas ISO-8601 con zona;
     errores normalizados; PUT completo; baja lógica con 204 sin cuerpo. Datos de ejemplo ficticios.
-    La autenticación Bearer de usuario se formaliza aquí. Las credenciales propias entre módulos todavía requieren acuerdo
-    y no se sustituyen por roles humanos privilegiados. Usuarios emite el JWT; cada servicio valida firma, vencimiento y permisos.
+    Hay dos credenciales: el JWT de usuario (Bearer) y la API Key de módulo consumidor (X-Api-Key, sólo lectura). Ninguna se sustituye por
+    roles humanos privilegiados: un ADMIN no es un módulo. Usuarios emite el JWT; cada servicio valida firma, vencimiento y permisos.
     El objetivo de firma es asimétrico, conforme a la teoría. No se distribuyen claves privadas en el contrato.
 
     Decisiones que completan ambigüedades de la primera entrega: DC-01 campos desconocidos rechazados;
     DC-02 normalización de email; DC-03 ausencia/null de opcionales y reemplazo PUT;
-    DC-04 zona horaria; DC-05 validación de login; DC-06 correlación; DC-07 errores de ruta y usuario inexistente.
+    DC-04 zona horaria; DC-05 validación de login; DC-06 correlación; DC-07 errores de ruta y usuario inexistente;
+    DC-08 credencial de módulo por API Key; DC-09 recuperación de contraseña uniforme y de un solo uso;
+    DC-10 rol y estado vigentes consultables, con JWT sin estado y sin revocación.
     Se documentan como decisiones del equipo, no como nuevas instrucciones del profesor.
   contact:
     name: Grupo 02 - Usuarios y Autenticación
@@ -45,7 +49,8 @@ servers:
       description: Puerto del módulo Usuarios.
 tags:
 - name: Usuarios
-  description: CU-03 y CU-04. Consulta y modificación del perfil propio.
+  description: CU-03, CU-04, CU-06, CU-07 y CU-10. Perfil propio, administración de estado y rol, y consulta de
+    estado y rol para otros módulos.
 security:
 - bearerAuth: []
 paths:
@@ -55,11 +60,9 @@ paths:
       - Usuarios
       summary: Consultar perfil
       description: |-
-        El titular consulta su propio perfil; sub debe coincidir con id y la cuenta debe estar ACTIVA.
+        Con JWT: el titular consulta su propio perfil; sub debe coincidir con id y la cuenta debe estar ACTIVA.
+        Con X-Api-Key: cualquier módulo consumidor con credencial consulta el perfil de un usuario y recibe 200 también si la cuenta está INACTIVA, para decidir con sus propias reglas (RN-15). Un JWT de otra persona, aunque sea ADMIN, recibe 403.
         No devuelve contraseña ni hash, y las direcciones se obtienen en API-05.
-        Diseño de integración pendiente: un módulo autenticado y expresamente autorizado podrá consultar el perfil de otro usuario,
-        incluido su estado INACTIVO (200), para decidir con sus propias reglas. La autorización por credencial de módulo no está
-        habilitada por el esquema Bearer de usuario de este YAML; ver x-integracion-modulos y ACUERDOS_Y_BRECHAS.md.
       operationId: consultarPerfil
       x-trazabilidad:
         api: API-03
@@ -69,6 +72,7 @@ paths:
         - RN-04
         - RN-05
         - RN-09
+        - RN-15
         secuencia: SEC-03
         servicio: SRV-03
       parameters:
@@ -218,10 +222,13 @@ paths:
         - Notificaciones
         - Pagos
         - Opiniones y Analítica
-        estado: Credencial propia pendiente de acuerdo; no habilitada por este contrato Bearer de usuario.
-        regla: Sólo lectura y autorización explícita por operación. Un rol humano distinto de CLIENTE no identifica
-          a un módulo.
+        estado: Habilitada con API Key de módulo (RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
+        regla: Sólo lectura. Recibe el estado aunque la cuenta esté INACTIVA. Un rol humano distinto de CLIENTE
+          no identifica a un módulo.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
+      security:
+      - bearerAuth: []
+      - moduleApiKey: []
     put:
       tags:
       - Usuarios
@@ -420,6 +427,529 @@ paths:
                   email: ana.perez@example.com
                   telefono: null
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
+  /api/v1/users/{id}/status:
+    put:
+      tags:
+      - Usuarios
+      summary: Desactivar o reactivar usuario
+      description: |-
+        Sólo un ADMIN ACTIVO, verificado contra la base y no sólo por el rol del token (RN-11). Deja la cuenta en el estado pedido; repetir el estado actual es idempotente. Un administrador no puede modificar su propia cuenta (RN-12).
+        Una cuenta INACTIVA no puede iniciar sesión (RN-04) y sus JWT ya emitidos dejan de servir sobre su perfil y direcciones; API-14 y API-15 también los rechazan. Para los módulos consumidores la cuenta sigue consultable con 200 (API-03, API-16).
+      operationId: cambiarEstadoUsuario
+      x-trazabilidad:
+        api: API-10
+        caso-de-uso: CU-06
+        reglas:
+        - RN-04
+        - RN-05
+        - RN-09
+        - RN-11
+        - RN-12
+        secuencia: SEC-06
+        servicio: SRV-10
+      parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '200':
+          description: Cuenta con el estado pedido.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+              examples:
+                cuentaInactiva:
+                  value:
+                    id: 1
+                    nombre: Ana
+                    apellido: Pérez
+                    email: ana.perez@example.com
+                    telefono: +54 11 5555 0101
+                    rol: CLIENTE
+                    estado: INACTIVO
+                    fechaAlta: '2026-10-30T15:00:00Z'
+        '400':
+          description: 'VALIDATION_ERROR: La solicitud contiene datos inválidos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 400
+                    code: VALIDATION_ERROR
+                    message: La solicitud contiene datos inválidos
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+                    details:
+                    - campo: estado
+                      mensaje: Es obligatorio
+        '401':
+          description: 'UNAUTHENTICATED: La autenticación falta, es inválida o está vencida.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            WWW-Authenticate:
+              $ref: '#/components/headers/Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 401
+                    code: UNAUTHENTICATED
+                    message: La autenticación falta, es inválida o está vencida
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+        '403':
+          description: 'FORBIDDEN: El solicitante no es un administrador o intenta modificar su propia cuenta; USER_INACTIVE:
+            La cuenta del administrador está inactiva.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: Sólo un administrador puede realizar esta operación
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+                FORBIDDEN_PROPIA_CUENTA:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: Un administrador no puede modificar su propia cuenta
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+                USER_INACTIVE:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: USER_INACTIVE
+                    message: La cuenta está inactiva
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+        '404':
+          description: 'USER_NOT_FOUND: Usuario no encontrado.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                USER_NOT_FOUND:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 404
+                    code: USER_NOT_FOUND
+                    message: Usuario no encontrado
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+        '500':
+          description: 'INTERNAL_ERROR: Ocurrió un error interno.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 500
+                    code: INTERNAL_ERROR
+                    message: Ocurrió un error interno
+                    path: /api/v1/users/1/status
+                    correlationId: g02-demo-001
+      requestBody:
+        required: true
+        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarEstadoRequest'
+            examples:
+              desactivar:
+                value:
+                  estado: INACTIVO
+              reactivar:
+                value:
+                  estado: ACTIVO
+      x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
+  /api/v1/users/{id}/role:
+    put:
+      tags:
+      - Usuarios
+      summary: Asignar o modificar rol
+      description: |-
+        Sólo un ADMIN ACTIVO, verificado contra la base (RN-11). Asigna uno de los roles del catálogo; repetir el rol actual es idempotente. Un administrador no puede cambiar su propio rol (RN-12), de modo que siempre queda al menos uno.
+        Los JWT ya emitidos conservan el rol anterior hasta vencer (DM-03, DC-10): el rol vigente se consulta con API-15 o API-16, y API-14 emite un token con el rol nuevo.
+      operationId: cambiarRolUsuario
+      x-trazabilidad:
+        api: API-11
+        caso-de-uso: CU-07
+        reglas:
+        - RN-05
+        - RN-09
+        - RN-11
+        - RN-12
+        secuencia: SEC-07
+        servicio: SRV-11
+      parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '200':
+          description: Cuenta con el rol asignado.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioResponse'
+              examples:
+                rolAsignado:
+                  value:
+                    id: 1
+                    nombre: Ana
+                    apellido: Pérez
+                    email: ana.perez@example.com
+                    telefono: +54 11 5555 0101
+                    rol: COMERCIO
+                    estado: ACTIVO
+                    fechaAlta: '2026-10-30T15:00:00Z'
+        '400':
+          description: 'VALIDATION_ERROR: La solicitud contiene datos inválidos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 400
+                    code: VALIDATION_ERROR
+                    message: La solicitud contiene datos inválidos
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+                    details:
+                    - campo: rol
+                      mensaje: Debe ser CLIENTE, COMERCIO, REPARTIDOR o ADMIN
+        '401':
+          description: 'UNAUTHENTICATED: La autenticación falta, es inválida o está vencida.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            WWW-Authenticate:
+              $ref: '#/components/headers/Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 401
+                    code: UNAUTHENTICATED
+                    message: La autenticación falta, es inválida o está vencida
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+        '403':
+          description: 'FORBIDDEN: El solicitante no es un administrador o intenta modificar su propia cuenta; USER_INACTIVE:
+            La cuenta del administrador está inactiva.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: Sólo un administrador puede realizar esta operación
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+                FORBIDDEN_PROPIA_CUENTA:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: Un administrador no puede modificar su propia cuenta
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+                USER_INACTIVE:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: USER_INACTIVE
+                    message: La cuenta está inactiva
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+        '404':
+          description: 'USER_NOT_FOUND: Usuario no encontrado.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                USER_NOT_FOUND:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 404
+                    code: USER_NOT_FOUND
+                    message: Usuario no encontrado
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+        '500':
+          description: 'INTERNAL_ERROR: Ocurrió un error interno.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 500
+                    code: INTERNAL_ERROR
+                    message: Ocurrió un error interno
+                    path: /api/v1/users/1/role
+                    correlationId: g02-demo-001
+      requestBody:
+        required: true
+        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarRolRequest'
+            examples:
+              asignarComercio:
+                value:
+                  rol: COMERCIO
+      x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
+  /api/v1/users/{id}/access:
+    get:
+      tags:
+      - Usuarios
+      summary: Consultar estado y rol para otro módulo
+      description: 'Consulta liviana para módulos consumidores: devuelve sólo estado y rol vigentes, sin datos personales.
+        Se autentica con la API Key del módulo (X-Api-Key, RN-15); un JWT de usuario, aunque sea ADMIN, recibe 403.
+        Una cuenta INACTIVA se devuelve con 200 para que el módulo decida con sus propias reglas.'
+      operationId: consultarAccesoUsuario
+      x-trazabilidad:
+        api: API-16
+        caso-de-uso: CU-10
+        reglas:
+        - RN-04
+        - RN-15
+        secuencia: SEC-10
+        servicio: SRV-16
+      parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/UsuarioId'
+      responses:
+        '200':
+          description: Estado y rol del usuario.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccesoUsuarioResponse'
+              examples:
+                activo:
+                  value:
+                    usuarioId: 1
+                    estado: ACTIVO
+                    rol: CLIENTE
+                inactivo:
+                  value:
+                    usuarioId: 1
+                    estado: INACTIVO
+                    rol: CLIENTE
+        '400':
+          description: 'VALIDATION_ERROR: La solicitud contiene datos inválidos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 400
+                    code: VALIDATION_ERROR
+                    message: La solicitud contiene datos inválidos
+                    path: /api/v1/users/1/access
+                    correlationId: g02-demo-001
+                    details:
+                    - campo: id
+                      mensaje: Debe ser un entero positivo
+        '401':
+          description: 'UNAUTHENTICATED: La API Key falta o es inválida.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            WWW-Authenticate:
+              $ref: '#/components/headers/Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 401
+                    code: UNAUTHENTICATED
+                    message: La autenticación falta, es inválida o está vencida
+                    path: /api/v1/users/1/access
+                    correlationId: g02-demo-001
+        '403':
+          description: 'FORBIDDEN: La credencial no es de un módulo consumidor (por ejemplo, un JWT de usuario).'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 403
+                    code: FORBIDDEN
+                    message: No tiene permiso para acceder a este recurso
+                    path: /api/v1/users/1/access
+                    correlationId: g02-demo-001
+        '404':
+          description: 'USER_NOT_FOUND: Usuario no encontrado.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                USER_NOT_FOUND:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 404
+                    code: USER_NOT_FOUND
+                    message: Usuario no encontrado
+                    path: /api/v1/users/1/access
+                    correlationId: g02-demo-001
+        '500':
+          description: 'INTERNAL_ERROR: Ocurrió un error interno.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 500
+                    code: INTERNAL_ERROR
+                    message: Ocurrió un error interno
+                    path: /api/v1/users/1/access
+                    correlationId: g02-demo-001
+      security:
+      - moduleApiKey: []
+      x-integracion-modulos:
+        consumidores:
+        - Pedidos
+        - Logística
+        - Catálogo
+        - Notificaciones
+        - Pagos
+        - Opiniones y Analítica
+        estado: Habilitada con API Key de módulo (RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
+        regla: Sólo lectura. La clave identifica al módulo; no hay un rol humano que lo reemplace.
+      x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
 components:
   headers:
     Authenticate:
@@ -471,6 +1001,46 @@ components:
         maximum: 9223372036854775807
         example: 1
   schemas:
+    AccesoUsuarioResponse:
+      type: object
+      additionalProperties: false
+      description: DTO-15 (CU-10). Estado y rol de un usuario para otros módulos. Sin datos personales.
+      required:
+      - usuarioId
+      - estado
+      - rol
+      properties:
+        usuarioId:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+          example: 1
+        estado:
+          $ref: '#/components/schemas/EstadoUsuario'
+        rol:
+          $ref: '#/components/schemas/Rol'
+      x-dto-id: DTO-15
+    CambiarEstadoRequest:
+      type: object
+      additionalProperties: false
+      description: DTO-10 (CU-06). Sólo el estado deseado; repetir el estado actual es idempotente.
+      required:
+      - estado
+      properties:
+        estado:
+          $ref: '#/components/schemas/EstadoUsuario'
+      x-dto-id: DTO-10
+    CambiarRolRequest:
+      type: object
+      additionalProperties: false
+      description: DTO-11 (CU-07). El rol debe pertenecer al catálogo; repetir el rol actual es idempotente.
+      required:
+      - rol
+      properties:
+        rol:
+          $ref: '#/components/schemas/Rol'
+      x-dto-id: DTO-11
     DetalleValidacion:
       type: object
       additionalProperties: false
@@ -524,6 +1094,7 @@ components:
           - USER_NOT_FOUND
           - ADDRESS_NOT_FOUND
           - EMAIL_ALREADY_REGISTERED
+          - INVALID_RESET_TOKEN
           - INTERNAL_ERROR
           example: VALIDATION_ERROR
         message:
@@ -604,8 +1175,8 @@ components:
       - REPARTIDOR
       - ADMIN
       example: CLIENTE
-      description: Un rol por usuario (REL-02). El registro público siempre asigna CLIENTE. Otros roles requieren
-        aprovisionamiento controlado; su administración es CU-07, fuera del CORE.
+      description: Un rol por usuario (REL-02). El registro público siempre asigna CLIENTE. Los demás roles los
+        asigna un ADMIN con CU-07 (API-11); el primer ADMIN se aprovisiona por configuración (DM-07).
     UsuarioResponse:
       type: object
       additionalProperties: false
@@ -671,9 +1242,18 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT de usuario emitido por POST /api/v1/auth/login. En Swagger UI pegar sólo el token. sub contiene
-        el id del usuario como texto; role su rol; exp el vencimiento. Validar firma, vencimiento, titularidad y
-        estado en backend. No es una credencial de módulo.
+      description: JWT de usuario emitido por POST /api/v1/auth/login (o renovado con /api/v1/auth/refresh). En
+        Swagger UI pegar sólo el token. sub contiene el id del usuario como texto; role su rol; exp el vencimiento.
+        Validar firma, vencimiento, titularidad y estado en backend. No es una credencial de módulo.
+    moduleApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: 'Credencial propia de un módulo consumidor (Pedidos, Logística, Catálogo, Notificaciones, Pagos,
+        Opiniones y Analítica), entregada por el equipo de Usuarios y enviada servidor a servidor. Sólo permite
+        leer: API-03, API-05 (únicamente Pedidos) y API-16. Se configura por variable de entorno; una clave vacía
+        o de menos de 16 caracteres deja al módulo sin acceso. Si la solicitud trae también Authorization, manda
+        el JWT. No es una credencial de usuario.'
 x-jwt-usuario:
   estado: 'Claims sub, role, iat y exp implementados por el backend. Pendiente: firma asimétrica (hoy HS256 con
     clave compartida configurable por JWT_SECRET).'
@@ -691,7 +1271,8 @@ x-jwt-usuario:
   pendientes:
   - Distribución y rotación de claves públicas
   - Emisor, audiencias y algoritmo definitivo
-  - Identidad y permisos de las credenciales propias de módulos
+  revocacion: 'Sin revocación: un JWT emitido conserva su rol hasta vencer (DC-10). Rol y estado vigentes se consultan
+    con API-15 (validar sesión) o API-16 (módulos); API-14 emite un token con el rol actual.'
 x-fuentes:
 - F01
 - F02
