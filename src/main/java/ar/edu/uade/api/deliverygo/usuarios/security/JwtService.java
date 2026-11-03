@@ -16,7 +16,7 @@ import java.util.Date;
 
 // Emite y valida el JWT del módulo (RN-09). Claims: sub = id del usuario como texto, role, iat y exp.
 // Hoy la firma es HMAC-SHA256 con una clave compartida; la firma asimétrica es una decisión pendiente
-// de acordar con los consumidores (ver docs/openapi/ACUERDOS_Y_BRECHAS.md).
+// de acordar con los consumidores (ver doc/openapi/ACUERDOS_Y_BRECHAS.md).
 @Service
 public class JwtService {
 
@@ -63,6 +63,6 @@ public class JwtService {
         if (sub == null || rol == null) {
             throw new JwtException("Token incompleto");
         }
-        return new UsuarioAutenticado(Long.valueOf(sub), rol);
+        return new UsuarioAutenticado(Long.valueOf(sub), rol, claims.getExpiration().toInstant());
     }
 }

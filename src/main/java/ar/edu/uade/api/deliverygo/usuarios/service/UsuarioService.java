@@ -2,6 +2,7 @@ package ar.edu.uade.api.deliverygo.usuarios.service;
 
 import ar.edu.uade.api.deliverygo.usuarios.domain.Rol;
 import ar.edu.uade.api.deliverygo.usuarios.domain.Usuario;
+import ar.edu.uade.api.deliverygo.usuarios.dto.AccesoUsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ModificarPerfilRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.RegistrarUsuarioRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
@@ -108,10 +109,28 @@ public class UsuarioService {
         }
     }
 
+    // SRV-03 para módulos consumidores (CU-03, RN-15). El módulo recibe el estado y decide con sus reglas:
+    // una cuenta INACTIVA se devuelve igual, con 200.
+    @Transactional(readOnly = true)
+    public UsuarioResponse consultarPerfilParaModulo(Long usuarioId) {
+        return usuarioMapper.toResponse(buscarExistente(usuarioId));
+    }
+
+    // SRV-16 (CU-10). Sólo estado y rol, sin datos personales.
+    @Transactional(readOnly = true)
+    public AccesoUsuarioResponse consultarAcceso(Long usuarioId) {
+        Usuario usuario = buscarExistente(usuarioId);
+        return new AccesoUsuarioResponse(usuario.getId(), usuario.getEstado(), usuario.getRol().getNombre());
+    }
+
+    private Usuario buscarExistente(Long usuarioId) {
+        return usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(MSG_NO_ENCONTRADO));
+    }
+
     // RN-04: sólo un titular ACTIVO opera sobre su perfil; la identidad (RN-05) ya la verificó @PreAuthorize.
     private Usuario buscarTitularActivo(Long usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new UsuarioNoEncontradoException(MSG_NO_ENCONTRADO));
+        Usuario usuario = buscarExistente(usuarioId);
         if (!usuario.estaActivo()) {
             throw new UsuarioInactivoException(MSG_INACTIVO);
         }

@@ -56,6 +56,23 @@ def validator(schema, direction=None):
     return kind(schema, format_checker=OAS30Validator.FORMAT_CHECKER)
 
 
+PUBLIC_ROUTES = {'/api/v1/auth/register', '/api/v1/auth/login',
+                 '/api/v1/auth/password/forgot', '/api/v1/auth/password/reset'}
+# Operaciones que un módulo consumidor puede invocar con su API Key (RN-15); API-16 es exclusiva de módulos.
+MODULE_ONLY = {('get', '/api/v1/users/{id}/access')}
+USER_OR_MODULE = {('get', '/api/v1/users/{id}'), ('get', '/api/v1/users/{id}/addresses')}
+
+
+def expected_security(method, route):
+    if route in PUBLIC_ROUTES:
+        return []
+    if (method, route) in MODULE_ONLY:
+        return [{'moduleApiKey': []}]
+    if (method, route) in USER_OR_MODULE:
+        return [{'bearerAuth': []}, {'moduleApiKey': []}]
+    return [{'bearerAuth': []}]
+
+
 def check_document(path):
     doc = load(path)
     validate(doc)
@@ -97,8 +114,7 @@ def check_document(path):
             names = {p['name'] for p in item.get('parameters', []) + op.get('parameters', []) if p['in'] == 'path'}
             require(names == set(re.findall(r'{([^}]+)}', route)), 'Parámetros de ruta incorrectos: ' + route)
             security = op.get('security', expanded.get('security'))
-            is_public = route in ['/api/v1/auth/register', '/api/v1/auth/login']
-            require(security == ([] if is_public else [{'bearerAuth': []}]), 'Seguridad incorrecta: ' + route)
+            require(security == expected_security(method, route), 'Seguridad incorrecta: ' + route)
             if method in ['get', 'delete'] or route.endswith('/default'):
                 require('requestBody' not in op, 'Cuerpo inesperado: ' + route)
             for status, response in op['responses'].items():
@@ -166,6 +182,27 @@ def check_business_contract(doc):
     for field in ['predeterminada', 'activa', 'usuarioId', 'referencia']:
         expect('ModificarDireccionRequest', {**address, field: True}, False)
     expect('ModificarDireccionRequest', {'calle': 'Lima'}, False)
+    # CU-06 a CU-10
+    expect('CambiarEstadoRequest', {'estado': 'INACTIVO'}, True)
+    expect('CambiarEstadoRequest', {'estado': 'BLOQUEADO'}, False)
+    expect('CambiarEstadoRequest', {}, False)
+    expect('CambiarEstadoRequest', {'estado': None}, False)
+    expect('CambiarEstadoRequest', {'estado': 'ACTIVO', 'rol': 'ADMIN'}, False)
+    expect('CambiarRolRequest', {'rol': 'COMERCIO'}, True)
+    expect('CambiarRolRequest', {'rol': 'SUPERUSUARIO'}, False)
+    expect('CambiarRolRequest', {}, False)
+    expect('CambiarRolRequest', {'rol': 'ADMIN', 'estado': 'ACTIVO'}, False)
+    expect('SolicitarRecuperacionRequest', {'email': 'ana@example.com'}, True)
+    expect('SolicitarRecuperacionRequest', {'email': 'sin-arroba'}, False)
+    expect('SolicitarRecuperacionRequest', {'email': 'ana@example.com', 'rol': 'ADMIN'}, False)
+    expect('SolicitarRecuperacionRequest', {}, False)
+    restore = {'token': 'abc123', 'password': 'NuevaClave2026!'}
+    expect('RestablecerPasswordRequest', restore, True)
+    expect('RestablecerPasswordRequest', {**restore, 'password': '1234567'}, False)
+    expect('RestablecerPasswordRequest', {'password': 'NuevaClave2026!'}, False)
+    expect('RestablecerPasswordRequest', {'token': 'abc123'}, False)
+    expect('RestablecerPasswordRequest', {**restore, 'token': '   '}, False)
+    expect('RestablecerPasswordRequest', {**restore, 'email': 'ana@example.com'}, False)
     expect('EstadoUsuario', 'BLOQUEADO', False)
     expect('Rol', 'MODULO_PEDIDOS', False)
     # Reglas de frontera verificables sin ejecutar el backend.
@@ -175,14 +212,19 @@ def check_business_contract(doc):
             require(v.is_valid(value) == valid, f'ID inválido aceptado: {parameter} {value}')
             scenarios += 1
     require(schemas['CrearDireccionRequest']['properties']['predeterminada']['default'] is False, 'Predeterminada por omisión')
+    require(set(schemas['ErrorResponse']['properties']['code']['enum']) >= {'INVALID_RESET_TOKEN', 'USER_INACTIVE'}, 'Falta un código de error')
     expected = {
         ('post','/api/v1/auth/register'), ('post','/api/v1/auth/login'),
         ('get','/api/v1/users/{id}'), ('put','/api/v1/users/{id}'),
         ('get','/api/v1/users/{id}/addresses'), ('post','/api/v1/users/{id}/addresses'),
         ('put','/api/v1/users/{id}/addresses/{addressId}'), ('delete','/api/v1/users/{id}/addresses/{addressId}'),
-        ('patch','/api/v1/users/{id}/addresses/{addressId}/default')}
+        ('patch','/api/v1/users/{id}/addresses/{addressId}/default'),
+        ('post','/api/v1/auth/password/forgot'), ('post','/api/v1/auth/password/reset'),
+        ('post','/api/v1/auth/refresh'), ('get','/api/v1/auth/session'),
+        ('put','/api/v1/users/{id}/status'), ('put','/api/v1/users/{id}/role'),
+        ('get','/api/v1/users/{id}/access')}
     actual = {(method, route) for route, item in doc['paths'].items() for method in item if method in METHODS}
-    require(actual == expected, 'Cobertura CORE incorrecta')
+    require(actual == expected, 'Cobertura de las 16 operaciones incorrecta')
     for route, item in doc['paths'].items():
         for method, op in item.items():
             if method not in METHODS:
@@ -193,7 +235,7 @@ def check_business_contract(doc):
                         value = ex['value']
                         if isinstance(value, dict) and value.get('code') == 'USER_INACTIVE':
                             require(status == '403', 'Cuenta inactiva debe ser 403')
-    print(f'OK {scenarios} escenarios positivos/negativos y cobertura exacta de las 9 operaciones CORE.')
+    print(f'OK {scenarios} escenarios positivos/negativos y cobertura exacta de las 16 operaciones (CU-01 a CU-10).')
 
 
 def main():

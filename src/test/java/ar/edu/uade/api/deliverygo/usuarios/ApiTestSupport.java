@@ -12,13 +12,20 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,9 +34,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // Utilidades comunes a las pruebas HTTP: levantan la aplicación completa con H2 en memoria.
 @SpringBootTest
 @AutoConfigureMockMvc
+// Credenciales de módulo sólo para las pruebas (RN-15). 'pagos' tiene una clave demasiado corta a propósito:
+// debe quedar sin acceso.
+@TestPropertySource(properties = {
+        "app.modules.api-keys.pedidos=" + ApiTestSupport.CLAVE_PEDIDOS,
+        "app.modules.api-keys.catalogo=" + ApiTestSupport.CLAVE_CATALOGO,
+        "app.modules.api-keys.pagos=corta"})
 abstract class ApiTestSupport {
 
     static final String PASSWORD = "ClaveDemo2026!";
+    static final String CLAVE_PEDIDOS = "clave-de-pedidos-solo-para-pruebas-0123";
+    static final String CLAVE_CATALOGO = "clave-de-catalogo-solo-para-pruebas-0123";
 
     @Autowired
     protected MockMvc mvc;
@@ -100,6 +115,35 @@ abstract class ApiTestSupport {
         Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
         usuario.setEstado(EstadoUsuario.INACTIVO);
         usuarioRepository.save(usuario);
+    }
+
+    @FunctionalInterface
+    protected interface TareaParalela {
+        int ejecutar(int indice) throws Exception;
+    }
+
+    // Lanza las tareas a la vez y devuelve el estado HTTP de cada una.
+    protected List<Integer> enParalelo(int cantidad, TareaParalela tarea) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(cantidad);
+        try {
+            CountDownLatch largada = new CountDownLatch(1);
+            List<Future<Integer>> futuros = new ArrayList<>();
+            for (int i = 0; i < cantidad; i++) {
+                int indice = i;
+                futuros.add(pool.submit(() -> {
+                    largada.await();
+                    return tarea.ejecutar(indice);
+                }));
+            }
+            largada.countDown();
+            List<Integer> resultados = new ArrayList<>();
+            for (Future<Integer> futuro : futuros) {
+                resultados.add(futuro.get());
+            }
+            return resultados;
+        } finally {
+            pool.shutdown();
+        }
     }
 
     // Comprueba el formato común DTO-08.

@@ -76,6 +76,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return responder(request, HttpStatus.FORBIDDEN, "FORBIDDEN", MSG_PROHIBIDO, null);
     }
 
+    // 403 - RN-11 y RN-12: se pidió una operación que el solicitante autenticado no puede realizar
+    @ExceptionHandler(AccesoProhibidoException.class)
+    public ResponseEntity<Object> manejarAccesoProhibido(AccesoProhibidoException e, HttpServletRequest request) {
+        return responder(request, HttpStatus.FORBIDDEN, "FORBIDDEN", e.getMessage(), null);
+    }
+
+    // 401 - RN-09: el token es correcto pero la sesión que representa ya no sirve
+    @ExceptionHandler(SesionInvalidaException.class)
+    public ResponseEntity<Object> manejarSesionInvalida(SesionInvalidaException e, HttpServletRequest request) {
+        return responder(request, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", e.getMessage(), null);
+    }
+
+    // 400 - RN-13: token de recuperación inexistente, vencido o usado
+    @ExceptionHandler(TokenRecuperacionInvalidoException.class)
+    public ResponseEntity<Object> manejarTokenRecuperacion(TokenRecuperacionInvalidoException e, HttpServletRequest request) {
+        return responder(request, HttpStatus.BAD_REQUEST, "INVALID_RESET_TOKEN", e.getMessage(), null);
+    }
+
     @ExceptionHandler(UsuarioNoEncontradoException.class)
     public ResponseEntity<Object> manejarUsuarioNoEncontrado(UsuarioNoEncontradoException e, HttpServletRequest request) {
         return responder(request, HttpStatus.NOT_FOUND, "USER_NOT_FOUND", e.getMessage(), null);

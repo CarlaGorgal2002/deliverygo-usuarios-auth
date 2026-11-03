@@ -4,13 +4,18 @@ import ar.edu.uade.api.deliverygo.usuarios.domain.Usuario;
 import ar.edu.uade.api.deliverygo.usuarios.dto.LoginRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.LoginResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.RegistrarUsuarioRequest;
+import ar.edu.uade.api.deliverygo.usuarios.dto.RestablecerPasswordRequest;
+import ar.edu.uade.api.deliverygo.usuarios.dto.SesionResponse;
+import ar.edu.uade.api.deliverygo.usuarios.dto.SolicitarRecuperacionRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.exception.CredencialesInvalidasException;
+import ar.edu.uade.api.deliverygo.usuarios.exception.SesionInvalidaException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.UsuarioInactivoException;
 import ar.edu.uade.api.deliverygo.usuarios.integration.NotificacionesClient;
 import ar.edu.uade.api.deliverygo.usuarios.repository.UsuarioRepository;
 import ar.edu.uade.api.deliverygo.usuarios.security.JwtService;
 import ar.edu.uade.api.deliverygo.usuarios.security.TokenEmitido;
+import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,6 +38,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final NotificacionesClient notificacionesClient;
+    private final RecuperacionService recuperacionService;
 
     // Se compara contra este hash cuando el email no existe, para que el login tarde lo mismo
     // exista o no la cuenta (RN-08).
@@ -40,12 +46,13 @@ public class AuthService {
 
     public AuthService(UsuarioService usuarioService, UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder, JwtService jwtService,
-                       NotificacionesClient notificacionesClient) {
+                       NotificacionesClient notificacionesClient, RecuperacionService recuperacionService) {
         this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.notificacionesClient = notificacionesClient;
+        this.recuperacionService = recuperacionService;
         this.hashDeRelleno = passwordEncoder.encode("relleno-que-no-corresponde-a-ninguna-cuenta");
     }
 
@@ -81,7 +88,44 @@ public class AuthService {
             throw new UsuarioInactivoException(UsuarioService.MSG_INACTIVO);
         }
 
-        // RN-09: token con id, rol y vencimiento
+        return iniciarSesion(usuario);
+    }
+
+    // SRV-14 (CU-09). Sólo se renueva un token todavía vigente (RN-14): el filtro ya verificó firma y
+    // vencimiento. El token nuevo lleva el rol actual de la base, no el que tenía el anterior.
+    @Transactional(readOnly = true)
+    public LoginResponse renovarSesion(UsuarioAutenticado actual) {
+        return iniciarSesion(buscarUsuarioDeLaSesion(actual));
+    }
+
+    // SRV-15 (CU-09). Valida el token contra la base: informa el rol y el estado vigentes.
+    @Transactional(readOnly = true)
+    public SesionResponse validarSesion(UsuarioAutenticado actual) {
+        Usuario usuario = buscarUsuarioDeLaSesion(actual);
+        return new SesionResponse(usuario.getId(), usuario.getRol().getNombre(), usuario.getEstado(),
+                actual.expiraEn().atOffset(ZoneOffset.UTC));
+    }
+
+    // SRV-12 (CU-08, paso 1). No es transaccional: el aviso a Notificaciones sale recién con el token
+    // ya guardado. Responde igual exista o no la cuenta (RN-13).
+    public void solicitarRecuperacion(SolicitarRecuperacionRequest request) {
+        recuperacionService.generarToken(request.email()).ifPresent(emision -> {
+            // INT-06 no bloqueante: si falla, el token queda emitido y la respuesta no cambia.
+            try {
+                notificacionesClient.enviarRecuperacion(emision.usuarioId(), emision.nombre(), emision.email(), emision.token());
+            } catch (RuntimeException e) {
+                log.warn("INT-06: no se pudo solicitar la recuperación del usuario {}", emision.usuarioId(), e);
+            }
+        });
+    }
+
+    // SRV-13 (CU-08, paso 2)
+    public void restablecerPassword(RestablecerPasswordRequest request) {
+        recuperacionService.restablecerPassword(request.token(), request.password());
+    }
+
+    // RN-09: token con id, rol y vencimiento
+    private LoginResponse iniciarSesion(Usuario usuario) {
         TokenEmitido token = jwtService.generarToken(usuario.getId(), usuario.getRol().getNombre());
         return new LoginResponse(
                 token.token(),
@@ -90,5 +134,15 @@ public class AuthService {
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getRol().getNombre());
+    }
+
+    // RN-04 y RN-14: la sesión sólo sirve si la cuenta existe y está ACTIVA.
+    private Usuario buscarUsuarioDeLaSesion(UsuarioAutenticado actual) {
+        Usuario usuario = usuarioRepository.findById(actual.id())
+                .orElseThrow(() -> new SesionInvalidaException("La autenticación falta, es inválida o está vencida"));
+        if (!usuario.estaActivo()) {
+            throw new UsuarioInactivoException(UsuarioService.MSG_INACTIVO);
+        }
+        return usuario;
     }
 }

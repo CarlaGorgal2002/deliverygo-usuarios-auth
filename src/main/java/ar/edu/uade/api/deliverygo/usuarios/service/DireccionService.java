@@ -44,6 +44,17 @@ public class DireccionService {
                 .toList();
     }
 
+    // SRV-09 para Pedidos (API-05, RN-15). Devuelve las direcciones activas aunque la cuenta esté INACTIVA;
+    // si el usuario no existe, 404 (CU-05 A5).
+    @Transactional(readOnly = true)
+    public List<DireccionResponse> listarDireccionesParaModulo(Long usuarioId) {
+        usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(UsuarioService.MSG_NO_ENCONTRADO));
+        return direccionRepository.findByUsuarioIdAndActivaTrueOrderByIdAsc(usuarioId).stream()
+                .map(direccionMapper::toResponse)
+                .toList();
+    }
+
     // SRV-05 (API-06)
     @Transactional
     public DireccionResponse crearDireccion(Long usuarioId, CrearDireccionRequest request) {

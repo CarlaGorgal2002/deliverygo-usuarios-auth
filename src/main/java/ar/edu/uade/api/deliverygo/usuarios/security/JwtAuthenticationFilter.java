@@ -31,11 +31,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.errorWriter = errorWriter;
     }
 
-    // Registro y login son públicos: un token viejo guardado en el navegador no debe romperlos.
+    // Las rutas públicas no se filtran: un token viejo guardado en el navegador no debe romperlas.
+    // Renovar y validar la sesión sí pasan por acá: exigen un JWT válido.
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return !path.startsWith("/api/") || path.startsWith("/api/v1/auth/");
+        return !request.getRequestURI().startsWith("/api/") || RutasPublicas.esPublica(request);
     }
 
     @Override
