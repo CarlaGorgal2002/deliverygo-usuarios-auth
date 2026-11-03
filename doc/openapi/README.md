@@ -33,7 +33,7 @@ Las vistas son formas de compartir partes del mismo servicio, no tres microservi
 
 Para probar los casos de evolución en local, definir antes de arrancar `ADMIN_EMAIL` y `ADMIN_PASSWORD` (primer administrador), `MODULE_KEY_PEDIDOS` y las demás `MODULE_KEY_*` (claves de módulo, de al menos 16 caracteres) y, para ver el token de recuperación sin Notificaciones real, `MOCK_LOG_RECOVERY_TOKEN=true`. En **Authorize** hay dos esquemas: `bearerAuth` (JWT) y `moduleApiKey` (cabecera `X-Api-Key`).
 
-Swagger UI permite explorar la API, mientras que OpenAPI es la definición formal de sus operaciones. La autenticación HTTP Bearer se declara con `type: http`, `scheme: bearer`; las cuatro operaciones públicas (registro, login y las dos de recuperación de contraseña) la desactivan mediante `security: []`; API-03 y API-05 admiten Bearer o API Key de módulo, y API-16 sólo la API Key. Referencias técnicas: [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3) y [Swagger Bearer Authentication](https://swagger.io/docs/specification/v3_0/authentication/bearer-authentication/).
+Swagger UI permite explorar la API, mientras que OpenAPI es la definición formal de sus operaciones. La autenticación HTTP Bearer se declara con `type: http`, `scheme: bearer`; las cuatro operaciones públicas (registro, login y las dos de recuperación de contraseña) la desactivan mediante `security: []`; API-03 y API-05 admiten Bearer o API Key de módulo, y API-16 sólo la API Key. Referencias técnicas: [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3) y [Swagger Bearer Authentication](https://swagger.io/doc/specification/v3_0/authentication/bearer-authentication/).
 
 ## Operaciones incluidas
 
@@ -66,8 +66,8 @@ Desde la raíz del repositorio, con Python 3.10 o posterior:
 
 ```powershell
 python -m venv target/openapi-venv
-.\target\openapi-venv\Scripts\python.exe -m pip install -r docs/openapi/requirements.txt
-.\target\openapi-venv\Scripts\python.exe docs/openapi/validar_contratos.py
+.\target\openapi-venv\Scripts\python.exe -m pip install -r doc/openapi/requirements.txt
+.\target\openapi-venv\Scripts\python.exe doc/openapi/validar_contratos.py
 ```
 
 Si `python` apunta a otra instalación en Windows, se puede crear el entorno con `py -3.14 -m venv target/openapi-venv`. La verificación de esta entrega se ejecutó con Python 3.14.
@@ -75,14 +75,14 @@ Si `python` apunta a otra instalación en Windows, se puede crear el entorno con
 Después de modificar el archivo principal:
 
 ```powershell
-.\target\openapi-venv\Scripts\python.exe docs/openapi/exportar_vistas.py
-.\target\openapi-venv\Scripts\python.exe docs/openapi/validar_contratos.py
+.\target\openapi-venv\Scripts\python.exe doc/openapi/exportar_vistas.py
+.\target\openapi-venv\Scripts\python.exe doc/openapi/validar_contratos.py
 ```
 
 Para verificar sólo la sincronización de las vistas sin reescribirlas:
 
 ```powershell
-.\target\openapi-venv\Scripts\python.exe docs/openapi/exportar_vistas.py --check
+.\target\openapi-venv\Scripts\python.exe doc/openapi/exportar_vistas.py --check
 ```
 
 ## Próximo paso de implementación

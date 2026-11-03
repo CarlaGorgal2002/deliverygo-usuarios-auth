@@ -1,5 +1,5 @@
 Validación local del contrato - 2026-10-30
-Comando: python docs/openapi/validar_contratos.py
+Comando: python doc/openapi/validar_contratos.py
 
 OK deliverygo-usuarios.yaml: 16 operaciones; 1073 comprobaciones de ejemplos (incluye referencias expandidas).
 OK 70 escenarios positivos/negativos y cobertura exacta de las 16 operaciones (CU-01 a CU-10).

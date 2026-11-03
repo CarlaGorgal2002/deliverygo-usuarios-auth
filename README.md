@@ -6,9 +6,9 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT, API Key para módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 82 pruebas automáticas de integración, incluidas las de concurrencia; ver [VERIFICACION.md](docs/openapi/VERIFICACION.md).
+**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT, API Key para módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 82 pruebas automáticas de integración, incluidas las de concurrencia; ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
 
-La entrega Swagger está en [`docs/openapi/`](docs/openapi/README.md): [YAML completo](docs/openapi/deliverygo-usuarios.yaml), tres vistas por área, el [diseño de CU-06 a CU-10](docs/openapi/DISENO_CU_EVOLUCION.md), trazabilidad y validación reproducible. Quedan pendientes de acuerdo con el ecosistema (no implementados) la firma asimétrica del JWT, la entrega y rotación de las API Keys de los módulos y el contrato real de Notificaciones, hoy un mock declarado; ver [ACUERDOS_Y_BRECHAS.md](docs/openapi/ACUERDOS_Y_BRECHAS.md). Los PDF y diagramas anteriores se conservan en [`docs/`](docs/).
+La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), tres vistas por área, el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), trazabilidad y validación reproducible. Quedan pendientes de acuerdo con el ecosistema (no implementados) la firma asimétrica del JWT, la entrega y rotación de las API Keys de los módulos y el contrato real de Notificaciones, hoy un mock declarado; ver [ACUERDOS_Y_BRECHAS.md](doc/openapi/ACUERDOS_Y_BRECHAS.md). Los PDF y diagramas anteriores se conservan en [`doc/`](doc/).
 
 Paquete para entregar: [G02 Usuarios Swagger — 30/10/2026](entregables/G02_Usuarios_Swagger_2026-10-30.zip).
 
@@ -76,8 +76,8 @@ Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`,
 ## Estructura del repositorio
 
 ```
-docs/                     Documento de entrega y diagramas (fuentes .puml e imágenes)
-docs/openapi/             Contrato OpenAPI, vistas, trazabilidad y verificación
+doc/                     Documento de entrega y diagramas (fuentes .puml e imágenes)
+doc/openapi/             Contrato OpenAPI, vistas, trazabilidad y verificación
 entregables/              Paquete Swagger para entregar
 src/main/java/ar/edu/uade/api/deliverygo/usuarios/
   controller/  service/  repository/  domain/  dto/

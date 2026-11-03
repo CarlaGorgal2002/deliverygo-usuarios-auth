@@ -127,7 +127,7 @@ Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos 
 | Secreto de desarrollo | El valor por defecto es sólo local. Un secreto anterior estuvo en el historial de Git: rotar el secreto de cualquier ambiente que lo haya usado | Este equipo |
 | Consola H2 y base en memoria | Habilitadas sólo para desarrollo; deshabilitar y usar base persistente en ambientes compartidos | Este equipo |
 | Códigos técnicos fuera del enum del YAML | `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `NOT_ACCEPTABLE`, `UNSUPPORTED_MEDIA_TYPE` | Acordar el catálogo común |
-| Diagramas | Los `.puml` e imágenes de `docs/Diagramas` no se regeneraron; el diagrama de clases sigue mostrando `LocalDateTime` y no incluye ENT-04. Las secuencias SEC-06 a SEC-10 están en Mermaid en DISENO_CU_EVOLUCION.md | Este equipo |
+| Diagramas | Los `.puml` e imágenes de `doc/Diagramas` no se regeneraron; el diagrama de clases sigue mostrando `LocalDateTime` y no incluye ENT-04. Las secuencias SEC-06 a SEC-10 están en Mermaid en DISENO_CU_EVOLUCION.md | Este equipo |
 
 ## Orden de avance
 

@@ -26,7 +26,7 @@ public class OpenApiConfig {
                                 desactivar usuarios (CU-06), roles (CU-07), recuperar contraseña (CU-08), renovar y validar sesión (CU-09)
                                 y consulta de estado y rol para otros módulos (CU-10).
                                 Rutas bajo /api/v1, JSON UTF-8, errores normalizados y X-Correlation-Id en cada respuesta.
-                                El contrato objetivo completo está en docs/openapi/deliverygo-usuarios.yaml.""")
+                                El contrato objetivo completo está en doc/openapi/deliverygo-usuarios.yaml.""")
                         .contact(new Contact().name("Grupo 02 - Usuarios y Autenticación")))
                 .components(new Components()
                         .addSecuritySchemes(ESQUEMA_BEARER, new SecurityScheme()
