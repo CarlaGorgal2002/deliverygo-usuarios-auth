@@ -13,6 +13,9 @@ public class ModificarDireccionRequest {
     private String codigoPostal;
     private String referencia;
 
+    public ModificarDireccionRequest() {
+    }
+
     public ModificarDireccionRequest(String calle, String numero, String piso, String departamento, String ciudad, String provincia, String codigoPostal, String referencia) {
         this.calle = calle;
         this.numero = numero;

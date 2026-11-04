@@ -64,6 +64,8 @@ public class Direccion {
         this.calle = calle;
     }
 
+    public Long getId() {return id; }
+
     public String getNumero() {
         return numero;
     }

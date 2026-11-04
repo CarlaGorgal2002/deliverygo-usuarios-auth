@@ -11,6 +11,7 @@ public class CrearDireccionRequest {
     private String referencia;
     private Boolean predeterminada;
 
+    public CrearDireccionRequest() {}
     public CrearDireccionRequest(String calle, String numero, String departamento, String piso, String ciudad, String provincia, String codigoPostal, String referencia, Boolean predeterminada) {
         this.calle = calle;
         this.numero = numero;
