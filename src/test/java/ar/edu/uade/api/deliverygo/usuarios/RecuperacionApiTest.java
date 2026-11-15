@@ -210,4 +210,133 @@ class RecuperacionApiTest extends ApiTestSupport {
         assertThat(estados).filteredOn(e -> e == 204).hasSize(1);
         assertThat(estados).filteredOn(e -> e == 400).hasSize(5);
     }
+
+    // CU-08 - RN-13: las solicitudes simultáneas
+    // deben dejar un solo token de recuperación vigente.
+    @Test
+    void solicitudesSimultaneasDeRecuperacionDejanUnSoloTokenVigente() throws Exception {
+
+        Sesion usuario = registrarYLoguear();
+
+        List<Integer> resultados = enParalelo(5, indice ->
+                mvc.perform(conJson(
+                                post(FORGOT),
+                                cuerpo("email", usuario.email())))
+                        .andReturn()
+                        .getResponse()
+                        .getStatus());
+
+        assertThat(resultados)
+                .containsOnly(202)
+                .hasSize(5);
+
+        ArgumentCaptor<String> captor =
+                ArgumentCaptor.forClass(String.class);
+
+        verify(notificaciones, org.mockito.Mockito.times(5))
+                .enviarRecuperacion(
+                        eq(usuario.id()),
+                        any(),
+                        eq(usuario.email()),
+                        captor.capture());
+
+        int tokensVigentes = 0;
+
+        for (String token : captor.getAllValues()) {
+
+            TokenRecuperacion guardado = tokenRepository
+                    .findByTokenHash(huella(token))
+                    .orElseThrow();
+
+            if (guardado.getUsadoEn() == null
+                    && guardado.getExpiraEn().isAfter(
+                    LocalDateTime.now(ZoneOffset.UTC))) {
+
+                tokensVigentes++;
+            }
+        }
+
+        assertThat(tokensVigentes).isEqualTo(1);
+    }
+
+    // CU-08 - RN-13: concurrencia entre la solicitud
+    // de un nuevo token y el restablecimiento de contraseña.
+    @Test
+    void solicitarYRestablecerSimultaneamente() throws Exception {
+
+        for (int ronda = 0; ronda < 5; ronda++) {
+
+            Sesion usuario = registrarYLoguear();
+
+            String tokenAnterior =
+                    pedirYObtenerToken(usuario.email());
+
+            List<Integer> resultados = enParalelo(2, indice -> {
+
+                if (indice == 0) {
+                    return mvc.perform(conJson(
+                                    post(FORGOT),
+                                    cuerpo("email", usuario.email())))
+                            .andReturn()
+                            .getResponse()
+                            .getStatus();
+                }
+
+                return mvc.perform(conJson(
+                                post(RESET),
+                                cuerpo("token", tokenAnterior,
+                                        "password", NUEVA)))
+                        .andReturn()
+                        .getResponse()
+                        .getStatus();
+            });
+
+            assertThat(resultados.get(0)).isEqualTo(202);
+            assertThat(resultados.get(1)).isIn(204, 400);
+
+            if (resultados.get(1) == 204) {
+
+                login(usuario.email(), NUEVA)
+                        .andExpect(status().isOk());
+
+                login(usuario.email(), PASSWORD)
+                        .andExpect(status().isUnauthorized());
+
+            } else {
+
+                login(usuario.email(), PASSWORD)
+                        .andExpect(status().isOk());
+
+                login(usuario.email(), NUEVA)
+                        .andExpect(status().isUnauthorized());
+            }
+
+
+            ArgumentCaptor<String> captor =
+                    ArgumentCaptor.forClass(String.class);
+
+            verify(notificaciones, org.mockito.Mockito.times(2))
+                    .enviarRecuperacion(
+                            eq(usuario.id()),
+                            any(),
+                            eq(usuario.email()),
+                            captor.capture());
+
+            String tokenNuevo =
+                    captor.getAllValues().getLast();
+
+            assertThat(tokenNuevo).isNotEqualTo(tokenAnterior);
+
+            assertThat(tokenRepository
+                    .findByTokenHash(huella(tokenAnterior))
+                    .orElseThrow()
+                    .getUsadoEn()).isNotNull();
+
+            assertThat(tokenRepository
+                    .findByTokenHash(huella(tokenNuevo))
+                    .orElseThrow()
+                    .getUsadoEn()).isNull();
+        }
+    }
+
 }

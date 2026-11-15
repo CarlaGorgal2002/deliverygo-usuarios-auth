@@ -158,4 +158,52 @@ class ModulosApiTest extends ApiTestSupport {
                 cuerpo("nombre", "Ana", "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD)))
                 .andExpect(status().isCreated());
     }
+
+    // CU-10 - RN-15: la consulta sólo devuelve
+    // los tres atributos autorizados por el contrato.
+    @Test
+    void laConsultaDeAccesoNoExponeInformacionAdicional() throws Exception {
+
+        Sesion usuario = registrarYLoguear();
+
+        for (String clave : new String[]{
+                CLAVE_PEDIDOS, CLAVE_CATALOGO}) {
+
+            mvc.perform(get(acceso(usuario.id()))
+                            .header("X-Api-Key", clave))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(3))
+                    .andExpect(jsonPath("$.usuarioId").value(usuario.id()))
+                    .andExpect(jsonPath("$.estado").value("ACTIVO"))
+                    .andExpect(jsonPath("$.rol").value("CLIENTE"));
+        }
+    }
+
+    // CU-07 y CU-10 - RN-15: los módulos
+    // no pueden modificar los roles de usuarios.
+    @Test
+    void unModuloNoPuedeModificarElRolDeUnUsuario() throws Exception {
+
+        Sesion usuario = registrarYLoguear();
+
+        String rutaRol =
+                "/api/v1/users/" + usuario.id() + "/role";
+
+        for (String clave : new String[]{
+                CLAVE_PEDIDOS, CLAVE_CATALOGO}) {
+
+            assertError(mvc.perform(conJson(
+                            put(rutaRol)
+                                    .header("X-Api-Key", clave),
+                            cuerpo("rol", "ADMIN"))),
+                    403, "FORBIDDEN", rutaRol);
+        }
+
+        // Comprobamos que el rol original no fue modificado.
+        mvc.perform(get(acceso(usuario.id()))
+                        .header("X-Api-Key", CLAVE_PEDIDOS))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").value("CLIENTE"));
+    }
+
 }

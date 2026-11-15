@@ -133,4 +133,59 @@ class SesionApiTest extends ApiTestSupport {
         assertError(mvc.perform(post(REFRESH).header("X-Api-Key", CLAVE_PEDIDOS)), 403, "FORBIDDEN", REFRESH);
         assertError(mvc.perform(get(SESSION).header("X-Api-Key", CLAVE_PEDIDOS)), 403, "FORBIDDEN", SESSION);
     }
+
+    // CU-06 y CU-09: verificar el efecto de la
+    // desactivación y reactivación sobre una sesión vigente.
+    @Test
+    void unaSesionRespondeAlEstadoActualDeLaCuenta() throws Exception {
+
+        Sesion admin = crearConRolYLoguear("ADMIN");
+        Sesion usuario = registrarYLoguear();
+
+        String rutaEstado =
+                "/api/v1/users/" + usuario.id() + "/status";
+
+        // La sesión inicialmente es válida.
+        mvc.perform(get(SESSION)
+                        .header("Authorization", usuario.bearer()))
+                .andExpect(status().isOk());
+
+        // El administrador desactiva la cuenta.
+        mvc.perform(conJson(
+                        put(rutaEstado)
+                                .header("Authorization", admin.bearer()),
+                        cuerpo("estado", "INACTIVO")))
+                .andExpect(status().isOk());
+
+        // La cuenta inactiva no puede validar su sesión.
+        assertError(mvc.perform(get(SESSION)
+                        .header("Authorization", usuario.bearer())),
+                403, "USER_INACTIVE", SESSION);
+
+        // Tampoco puede renovar su token.
+        assertError(mvc.perform(post(REFRESH)
+                        .header("Authorization", usuario.bearer())),
+                403, "USER_INACTIVE", REFRESH);
+
+        // El administrador reactiva la cuenta.
+        mvc.perform(conJson(
+                        put(rutaEstado)
+                                .header("Authorization", admin.bearer()),
+                        cuerpo("estado", "ACTIVO")))
+                .andExpect(status().isOk());
+
+        // La sesión vuelve a ser válida si el JWT no venció.
+        mvc.perform(get(SESSION)
+                        .header("Authorization", usuario.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ACTIVO"));
+
+        // El usuario puede renovar su sesión.
+        mvc.perform(post(REFRESH)
+                        .header("Authorization", usuario.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuarioId").value(usuario.id()))
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
 }

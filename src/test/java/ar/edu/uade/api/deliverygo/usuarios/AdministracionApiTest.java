@@ -222,4 +222,87 @@ class AdministracionApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.estado").value("ACTIVO"))
                 .andExpect(jsonPath("$.rol").value("CLIENTE"));
     }
+
+    // CU-06: desactivación concurrente entre administradores.
+    @Test
+    void dosAdministradoresNoPuedenDesactivarseMutuamente() throws Exception {
+
+        for (int ronda = 0; ronda < 5; ronda++) {
+
+            Sesion uno = crearConRolYLoguear("ADMIN");
+            Sesion otro = crearConRolYLoguear("ADMIN");
+
+            List<Integer> resultados = enParalelo(2, indice -> {
+
+                Sesion actor = indice == 0 ? uno : otro;
+                Sesion objetivo = indice == 0 ? otro : uno;
+
+                return mvc.perform(conJson(
+                                put(estado(objetivo.id()))
+                                        .header("Authorization", actor.bearer()),
+                                cuerpo("estado", "INACTIVO")))
+                        .andReturn()
+                        .getResponse()
+                        .getStatus();
+            });
+
+            assertThat(resultados)
+                    .containsExactlyInAnyOrder(200, 403);
+
+            boolean activoUno = usuarioRepository
+                    .findById(uno.id())
+                    .orElseThrow()
+                    .estaActivo();
+
+            boolean activoOtro = usuarioRepository
+                    .findById(otro.id())
+                    .orElseThrow()
+                    .estaActivo();
+
+            assertThat(activoUno ^ activoOtro).isTrue();
+        }
+    }
+
+    // CU-07 - RN-11: un cambio de rol no modifica
+    // los permisos contenidos en un JWT anterior.
+    @Test
+    void unUsuarioAscendidoDebeRenovarSuSesionParaAdministrar() throws Exception {
+
+        Sesion admin = crearConRolYLoguear("ADMIN");
+        Sesion usuario = registrarYLoguear();
+        Sesion objetivo = registrarYLoguear();
+
+        // El administrador asciende al usuario.
+        mvc.perform(conJson(
+                        put(rol(usuario.id()))
+                                .header("Authorization", admin.bearer()),
+                        cuerpo("rol", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").value("ADMIN"));
+
+        // El token anterior todavía tiene el rol CLIENTE.
+        assertError(mvc.perform(conJson(
+                        put(rol(objetivo.id()))
+                                .header("Authorization", usuario.bearer()),
+                        cuerpo("rol", "COMERCIO"))),
+                403, "FORBIDDEN", rol(objetivo.id()));
+
+        // El usuario inicia sesión nuevamente.
+        String nuevoToken = json.readTree(
+                        login(usuario.email(), PASSWORD)
+                                .andExpect(status().isOk())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString())
+                .get("token").asText();
+
+        // Con el nuevo token ya puede administrar usuarios.
+        mvc.perform(conJson(
+                        put(rol(objetivo.id()))
+                                .header("Authorization", "Bearer " + nuevoToken),
+                        cuerpo("rol", "COMERCIO")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").value("COMERCIO"));
+    }
+
 }

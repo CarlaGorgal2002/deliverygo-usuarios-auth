@@ -57,7 +57,7 @@ public class RecuperacionService {
     // SRV-12 (CU-08, paso 1). Devuelve vacío si no hay cuenta o está inactiva: el llamador responde igual (RN-13).
     @Transactional
     public Optional<Emision> generarToken(String emailSolicitado) {
-        Optional<Usuario> encontrado = usuarioRepository.findByEmail(Textos.normalizarEmail(emailSolicitado));
+        Optional<Usuario> encontrado = usuarioRepository.findByEmailForUpdate(Textos.normalizarEmail(emailSolicitado));
         if (encontrado.isEmpty() || !encontrado.get().estaActivo()) {
             return Optional.empty();
         }
@@ -78,26 +78,44 @@ public class RecuperacionService {
     // SRV-13 (CU-08, paso 2)
     @Transactional
     public void restablecerPassword(String token, String passwordNueva) {
-        if (passwordNueva.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES_PASSWORD) {
-            throw new DatoInvalidoException("password", "No puede superar " + MAX_BYTES_PASSWORD + " bytes");
+
+        if (passwordNueva.getBytes(StandardCharsets.UTF_8).length
+                > MAX_BYTES_PASSWORD) {
+
+            throw new DatoInvalidoException(
+                    "password",
+                    "No puede superar " + MAX_BYTES_PASSWORD + " bytes");
         }
 
         String huella = huella(token.trim());
+        Long usuarioId = tokenRepository
+                .findUsuarioIdByTokenHash(huella)
+                .orElseThrow(() ->
+                        new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
+        Usuario usuario = usuarioRepository
+                .findByIdForUpdate(usuarioId)
+                .orElseThrow(() ->
+                        new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
+
         LocalDateTime ahora = ahora();
 
-        TokenRecuperacion guardado = tokenRepository.findByTokenHash(huella)
-                .orElseThrow(() -> new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
-        Usuario usuario = guardado.getUsuario();
-        if (guardado.getUsadoEn() != null || !guardado.getExpiraEn().isAfter(ahora) || !usuario.estaActivo()) {
+        TokenRecuperacion guardado = tokenRepository
+                .findByTokenHash(huella)
+                .orElseThrow(() ->
+                        new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
+
+        if (guardado.getUsadoEn() != null
+                || !guardado.getExpiraEn().isAfter(ahora)
+                || !usuario.estaActivo()) {
+
             throw new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO);
         }
-
-        // Consumo atómico: si dos pedidos llegan juntos con el mismo token, sólo uno obtiene 1.
         if (tokenRepository.consumir(huella, ahora) == 0) {
             throw new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO);
         }
 
         usuario.setPasswordHash(passwordEncoder.encode(passwordNueva));
+
         tokenRepository.invalidarVigentes(usuario.getId(), ahora);
     }
 

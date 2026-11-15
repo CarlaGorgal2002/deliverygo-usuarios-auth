@@ -21,4 +21,11 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from Usuario u where u.id = :id")
     Optional<Usuario> findByIdForUpdate(@Param("id") Long id);
+
+    // RN-13: serializa las solicitudes de recuperación
+    // de contraseña de un mismo usuario.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from Usuario u where u.email = :email")
+    Optional<Usuario> findByEmailForUpdate(@Param("email") String email);
+
 }

@@ -23,4 +23,10 @@ public interface TokenRecuperacionRepository extends JpaRepository<TokenRecupera
     @Modifying(flushAutomatically = true)
     @Query("update TokenRecuperacion t set t.usadoEn = :ahora where t.usuario.id = :usuarioId and t.usadoEn is null")
     int invalidarVigentes(@Param("usuarioId") Long usuarioId, @Param("ahora") LocalDateTime ahora);
+
+    // RN-13: identifica al propietario del token
+    // antes de bloquear la cuenta.
+    @Query("select t.usuario.id from TokenRecuperacion t where t.tokenHash = :hash")
+    Optional<Long> findUsuarioIdByTokenHash(@Param("hash") String hash);
+
 }
