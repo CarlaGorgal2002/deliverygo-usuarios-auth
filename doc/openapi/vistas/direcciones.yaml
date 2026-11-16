@@ -233,7 +233,7 @@ paths:
       description: |-
         Sólo el titular ACTIVO. Crea una dirección activa del usuario indicado en la ruta.
         predeterminada es false cuando se omite, incluso si es la primera dirección. Si es true, desmarca la anterior y marca la nueva
-        en una única transacción, también ante solicitudes concurrentes. El identificador lo asigna el backend.
+        en una única transacción. El identificador lo asigna el backend.
         El alta no es idempotente: repetir el POST puede crear otra dirección.
       operationId: crearDireccion
       x-trazabilidad:
@@ -768,7 +768,7 @@ paths:
       summary: Seleccionar dirección predeterminada
       description: |-
         Sólo el titular ACTIVO. No recibe cuerpo: addressId identifica la dirección que se marca como predeterminada.
-        Desmarca la anterior y marca la elegida dentro de una única transacción, garantizando RN-07 también ante concurrencia.
+        Desmarca la anterior y marca la elegida dentro de una única transacción (RN-07).
         Si ya estaba seleccionada devuelve 200 con la misma dirección; repetir la selección es idempotente.
         Una dirección inexistente, inactiva o ajena produce 404 ADDRESS_NOT_FOUND sin distinguir la causa.
       operationId: seleccionarDireccionPredeterminada

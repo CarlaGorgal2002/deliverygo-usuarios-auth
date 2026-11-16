@@ -66,7 +66,7 @@ Una persona con rol ADMIN o COMERCIO no se convierte en un módulo consumidor. T
 | Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica con API Key | Sí, también cuentas INACTIVAS | 403 | Sí | No (403) | No (403) |
 | Sin credencial, credencial inválida o de otra persona | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 |
 
-**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. Se resolvió con una API Key por módulo, configurada por variable de entorno (`MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA`). Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: no hay claves por defecto. La clave se compara en tiempo constante y se envía en `X-Api-Key`; si la solicitud trae además `Authorization`, manda el JWT, de modo que un usuario no se hace pasar por un módulo. Qué credencial usa cada equipo para llamar a Usuarios sigue siendo un acuerdo entre equipos: el esquema `moduleApiKey` del YAML es la propuesta de este módulo y cada equipo debe recibir su clave por un canal seguro.
+**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. Se resolvió con una API Key por módulo, configurada por variable de entorno (`MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA`). Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: no hay claves por defecto. La clave se envía en `X-Api-Key`; si la solicitud trae además `Authorization`, manda el JWT, de modo que un usuario no se hace pasar por un módulo. Qué credencial usa cada equipo para llamar a Usuarios sigue siendo un acuerdo entre equipos: el esquema `moduleApiKey` del YAML es la propuesta de este módulo y cada equipo debe recibir su clave por un canal seguro.
 
 Una llamada que propague el JWT del usuario conserva los permisos de ese usuario, no los de un módulo. Los módulos autorizados leen el perfil de un usuario INACTIVO con 200 y deciden con sus reglas; el titular inactivo recibe 403. Pedidos lista direcciones activas y consulta API-03 o API-16 para conocer el estado del usuario. Es la distinción especificada en CU-03 y SRV-09.
 
@@ -86,9 +86,9 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 |---|---|---|
 | Login | Recibe `email` y `password`; devuelve `token`, `tipo`, `expiraEn`, `usuarioId`, `nombre` y `rol` | `AuthApiTest` |
 | JWT | `sub` = id, `role`, `iat`, `exp`; claim `UID` eliminado; HS256 | `JwtServiceTest`, `AuthApiTest` |
-| Registro | DTO validado, email normalizado y único (también en concurrencia), rol CLIENTE y estado ACTIVO fijos, contraseña con hash BCrypt | `AuthApiTest` |
+| Registro | DTO validado, email normalizado y único, rol CLIENTE y estado ACTIVO fijos, contraseña con hash BCrypt | `AuthApiTest` |
 | PUT de perfil | Reemplazo completo de campos editables; rechaza password, rol y estado; 409 si el email es de otro usuario | `PerfilApiTest` |
-| Direcciones | API-05 a API-09 implementadas; baja lógica; una sola predeterminada, garantizada con bloqueo pesimista de la fila del usuario | `DireccionesApiTest` (incluye dos pruebas de concurrencia) |
+| Direcciones | API-05 a API-09 implementadas; baja lógica; una sola predeterminada | `DireccionesApiTest` |
 | DTO de dirección | Sin `referencia` en las entradas ni salidas; el atributo se conserva sólo en la entidad | `DireccionesApiTest` |
 | Formato de errores | `ErrorResponse` con `timestamp`, `status`, `code`, `message`, `path`, `correlationId` y `details`; un único `GlobalExceptionHandler` | todas las clases de prueba |
 | Códigos de error | Catálogo del PDF en inglés; inactivo devuelve 403 `USER_INACTIVE` | `AuthApiTest`, `PerfilApiTest` |
@@ -104,13 +104,13 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 | Java y Maven | `java.version` 25 única; groupId `ar.edu.uade.api.deliverygo`; paquete `ar.edu.uade.api.deliverygo.usuarios` | `mvn test` |
 | Secreto JWT | Fuera del repositorio: variable `JWT_SECRET`; se exige un mínimo de 32 bytes | `JwtServiceTest` |
 | CU-06 Desactivar o reactivar | API-10, sólo ADMIN ACTIVO verificado en la base; idempotente; un administrador no modifica su propia cuenta | `AdministracionApiTest` |
-| CU-07 Asignar rol | API-11 con las mismas reglas; dos administradores que se degradan a la vez no se dejan sin ninguno (bloqueo de filas en orden de id) | `AdministracionApiTest` (incluye concurrencia) |
-| CU-08 Recuperar contraseña | API-12 (202 uniforme) y API-13 (token de un solo uso, vencimiento, sólo hash, atómico ante pedidos simultáneos) | `RecuperacionApiTest` (incluye concurrencia) |
+| CU-07 Asignar rol | API-11 con las mismas reglas | `AdministracionApiTest` |
+| CU-08 Recuperar contraseña | API-12 (202 uniforme) y API-13 (token de un solo uso, vencimiento, sólo hash) | `RecuperacionApiTest` |
 | CU-09 Renovar y validar sesión | API-14 renueva con el rol actual; API-15 informa rol y estado vigentes; ambas rechazan cuentas inactivas, inexistentes y tokens vencidos | `SesionApiTest` |
 | CU-10 Estado y rol para módulos | API-16 con API Key; API-03 y API-05 abiertas a módulos según RN-15; los módulos nunca escriben | `ModulosApiTest` |
 | Administrador inicial | Se crea sólo con `ADMIN_EMAIL` y `ADMIN_PASSWORD`; sin ellos no hay ninguno | `AdministradorInicialTest` |
 
-Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos registros con el mismo email; selecciones y altas simultáneas de predeterminada). Para comprobar que esas pruebas detectan el problema, se retiró temporalmente el bloqueo de la fila del usuario y ambas fallaron en tres corridas seguidas; con el bloqueo restituido pasan. Se hizo lo mismo con las dos garantías de los casos de evolución (bloqueo de las filas de los administradores y consumo atómico del token de recuperación): sin ellas fallan las pruebas de concurrencia correspondientes.
+Fuera de alcance: pedidos simultáneos sobre el mismo recurso (concurrencia). No hay bloqueos de filas ni pruebas de concurrencia. Si dos registros con el mismo email llegaran exactamente a la vez, la restricción `UNIQUE` de la base impide el duplicado, pero el segundo recibiría 500 en lugar de 409.
 
 ## Pendientes y riesgos conocidos
 

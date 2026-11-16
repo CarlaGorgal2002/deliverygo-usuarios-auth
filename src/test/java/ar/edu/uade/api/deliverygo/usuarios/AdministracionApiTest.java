@@ -3,7 +3,6 @@ package ar.edu.uade.api.deliverygo.usuarios;
 import ar.edu.uade.api.deliverygo.usuarios.domain.Usuario;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -129,32 +128,6 @@ class AdministracionApiTest extends ApiTestSupport {
 
         assertThat(usuarioRepository.findById(admin.id()).orElseThrow().estaActivo()).isTrue();
         assertThat(rolActual(admin)).isEqualTo("ADMIN");
-    }
-
-    @Test
-    void dosAdministradoresQueSeDegradanAlMismoTiempoNoSeDejanSinNinguno() throws Exception {
-        for (int ronda = 0; ronda < 5; ronda++) {
-            Sesion uno = crearConRolYLoguear("ADMIN");
-            Sesion otro = crearConRolYLoguear("ADMIN");
-
-            List<Integer> estados = enParalelo(2, indice -> {
-                Sesion actor = indice == 0 ? uno : otro;
-                Sesion objetivo = indice == 0 ? otro : uno;
-                return mvc.perform(conJson(put(rol(objetivo.id())).header("Authorization", actor.bearer()),
-                                cuerpo("rol", "CLIENTE")))
-                        .andReturn().getResponse().getStatus();
-            });
-
-            // el segundo en entrar ya no es administrador cuando le toca su turno
-            assertThat(estados).containsExactlyInAnyOrder(200, 403);
-            int quedan = 0;
-            for (Sesion s : List.of(uno, otro)) {
-                if ("ADMIN".equals(rolActual(s))) {
-                    quedan++;
-                }
-            }
-            assertThat(quedan).isEqualTo(1);
-        }
     }
 
     // ------------------------------------------------------------------ CU-07

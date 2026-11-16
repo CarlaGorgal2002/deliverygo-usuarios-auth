@@ -13,7 +13,6 @@ import ar.edu.uade.api.deliverygo.usuarios.exception.UsuarioNoEncontradoExceptio
 import ar.edu.uade.api.deliverygo.usuarios.mapper.UsuarioMapper;
 import ar.edu.uade.api.deliverygo.usuarios.repository.RolRepository;
 import ar.edu.uade.api.deliverygo.usuarios.repository.UsuarioRepository;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,13 +69,7 @@ public class UsuarioService {
                 Textos.recortarONulo(request.telefono()),
                 rol);
 
-        try {
-            return usuarioMapper.toResponse(usuarioRepository.saveAndFlush(usuario));
-        } catch (DataIntegrityViolationException e) {
-            // Los demás límites ya los validó el DTO: lo que queda es la restricción UNIQUE del email,
-            // que gana cuando dos registros simultáneos pasan el existsByEmail a la vez (RN-02).
-            throw new EmailDuplicadoException(MSG_EMAIL_DUPLICADO);
-        }
+        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
     }
 
     // SRV-03 (CU-03)
@@ -102,11 +95,7 @@ public class UsuarioService {
         usuario.setEmail(email);
         usuario.setTelefono(Textos.recortarONulo(request.telefono()));
 
-        try {
-            return usuarioMapper.toResponse(usuarioRepository.saveAndFlush(usuario));
-        } catch (DataIntegrityViolationException e) {
-            throw new EmailDuplicadoException(MSG_EMAIL_DUPLICADO);
-        }
+        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
     }
 
     // SRV-03 para módulos consumidores (CU-03, RN-15). El módulo recibe el estado y decide con sus reglas:

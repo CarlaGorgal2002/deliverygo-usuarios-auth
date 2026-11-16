@@ -60,7 +60,7 @@ paths:
       summary: Registrar usuario
       description: |-
         Crea un usuario con rol CLIENTE, estado ACTIVO y email único. La contraseña se almacena mediante hash irreversible.
-        No se emite JWT: luego debe ejecutarse el login. La unicidad del email también debe garantizarse ante concurrencia.
+        No se emite JWT: luego debe ejecutarse el login.
         La bienvenida INT-01 es no bloqueante: un fallo de Notificaciones no revierte el registro ni cambia el 201.
         INT-01 permanece como mock declarado hasta disponer del contrato del equipo de Notificaciones.
       operationId: registrarUsuario
@@ -428,7 +428,7 @@ paths:
       - Autenticación
       summary: Restablecer contraseña
       description: 'Cambia la contraseña con el token recibido por Notificaciones. El token se consume una sola
-        vez, incluso ante pedidos simultáneos. Token inexistente, vencido, ya usado o de una cuenta inactiva dan
+        vez. Token inexistente, vencido, ya usado o de una cuenta inactiva dan
         el mismo 400 INVALID_RESET_TOKEN (RN-13). La contraseña nueva sigue la política del alta (mínimo 8 caracteres,
         máximo 72 bytes). No inicia sesión: después hay que hacer login. Los JWT ya emitidos siguen vigentes hasta
         vencer (DM-03, DC-10). Operación pública.'

@@ -23,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneOffset;
-import java.util.Optional;
 
 @Service
 public class AuthService {
@@ -40,10 +39,6 @@ public class AuthService {
     private final NotificacionesClient notificacionesClient;
     private final RecuperacionService recuperacionService;
 
-    // Se compara contra este hash cuando el email no existe, para que el login tarde lo mismo
-    // exista o no la cuenta (RN-08).
-    private final String hashDeRelleno;
-
     public AuthService(UsuarioService usuarioService, UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder, JwtService jwtService,
                        NotificacionesClient notificacionesClient, RecuperacionService recuperacionService) {
@@ -53,7 +48,6 @@ public class AuthService {
         this.jwtService = jwtService;
         this.notificacionesClient = notificacionesClient;
         this.recuperacionService = recuperacionService;
-        this.hashDeRelleno = passwordEncoder.encode("relleno-que-no-corresponde-a-ninguna-cuenta");
     }
 
     // SRV-01 (CU-01). No es transaccional: la bienvenida se pide recién cuando el alta ya está confirmada.
@@ -72,16 +66,12 @@ public class AuthService {
     // SRV-02 (CU-02)
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        Optional<Usuario> encontrado = usuarioRepository.findByEmail(Textos.normalizarEmail(request.email()));
-
         // RN-03 y RN-08: email inexistente y contraseña incorrecta dan exactamente el mismo error.
-        String hash = encontrado.map(Usuario::getPasswordHash).orElse(hashDeRelleno);
-        boolean coincide = passwordEncoder.matches(request.password(), hash);
-        if (encontrado.isEmpty() || !coincide) {
+        Usuario usuario = usuarioRepository.findByEmail(Textos.normalizarEmail(request.email()))
+                .orElseThrow(() -> new CredencialesInvalidasException(MSG_CREDENCIALES));
+        if (!passwordEncoder.matches(request.password(), usuario.getPasswordHash())) {
             throw new CredencialesInvalidasException(MSG_CREDENCIALES);
         }
-
-        Usuario usuario = encontrado.get();
 
         // RN-04: el estado se informa sólo después de comprobar la contraseña (RN-08).
         if (!usuario.estaActivo()) {

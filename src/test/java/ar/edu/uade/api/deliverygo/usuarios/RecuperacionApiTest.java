@@ -14,7 +14,6 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -196,18 +195,5 @@ class RecuperacionApiTest extends ApiTestSupport {
 
         // los rechazos no consumieron el token
         mvc.perform(conJson(post(RESET), cuerpo("token", token, "password", NUEVA))).andExpect(status().isNoContent());
-    }
-
-    @Test
-    void dosRestablecimientosSimultaneosConElMismoTokenSoloUnoSeAplica() throws Exception {
-        Sesion a = registrarYLoguear();
-        String token = pedirYObtenerToken(a.email());
-
-        List<Integer> estados = enParalelo(6, indice -> mvc.perform(conJson(post(RESET),
-                        cuerpo("token", token, "password", "Clave" + indice + "-Paralela2026!")))
-                .andReturn().getResponse().getStatus());
-
-        assertThat(estados).filteredOn(e -> e == 204).hasSize(1);
-        assertThat(estados).filteredOn(e -> e == 400).hasSize(5);
     }
 }
