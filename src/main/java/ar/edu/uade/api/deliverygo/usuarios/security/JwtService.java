@@ -22,6 +22,10 @@ public class JwtService {
 
     private static final String CLAIM_ROL = "role";
 
+    // Rol de los tokens de servicio que Usuarios emite sólo para llamar a otros módulos (por ejemplo,
+    // NotificacionesClientHttp). JwtAuthenticationFilter los ignora: no autentican a nadie en Usuarios.
+    public static final String ROL_SERVICIO = "SISTEMA";
+
     private final SecretKey clave;
     private final Duration vigencia;
 

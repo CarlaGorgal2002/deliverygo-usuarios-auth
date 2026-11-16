@@ -59,6 +59,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Los tokens de servicio (role = SISTEMA) sólo sirven para llamar a otros módulos: no autentican a
+        // nadie en Usuarios. La solicitud sigue como no autenticada y una ruta protegida responde 401.
+        if (JwtService.ROL_SERVICIO.equals(usuario.rol())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol()))));
 

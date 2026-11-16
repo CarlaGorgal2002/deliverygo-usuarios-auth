@@ -83,7 +83,7 @@ Cómo llama el cliente HTTP:
 
 | Aspecto | Resolución |
 |---|---|
-| Autenticación | `Authorization: Bearer <JWT>` de servicio emitido en cada llamada: HS256 con el mismo `JWT_SECRET`, `sub` = id del destinatario, `role` = `SISTEMA`, vigencia de 2 minutos |
+| Autenticación | `Authorization: Bearer <JWT>` de servicio emitido en cada llamada: HS256 con el mismo `JWT_SECRET`, `sub` = id del destinatario, `role` = `SISTEMA`, vigencia de 2 minutos. Regla: Usuarios ignora en su propia API los tokens con `role` = `SISTEMA` (`JwtService.ROL_SERVICIO`): `JwtAuthenticationFilter` no autentica a nadie con ellos, aunque el `sub` sea un usuario existente, y la solicitud sigue como no autenticada (401 en rutas protegidas, incluida `POST /api/v1/auth/refresh`). Lo verifica `SesionApiTest` |
 | Plantilla | `GET /api/v1/templates`; se busca por nombre una plantilla con `activa = true` y su id queda en caché. Si no existe, el envío falla con un mensaje que nombra la plantilla faltante |
 | Envío | `POST /api/v1/notifications` con `{ destinatarioId, plantillaId, parametros }`; bienvenida: `{ nombre }`; recuperación: `{ nombre, token }`. Se espera 201 con `{ id, destinatarioId, plantillaId, canal, estado, cantidadIntentos }` |
 | Nombres de plantilla | `NOTIFICACIONES_PLANTILLA_BIENVENIDA` (`USUARIO_BIENVENIDA_EMAIL`) y `NOTIFICACIONES_PLANTILLA_RECUPERACION` (`RECUPERACION_PASSWORD_EMAIL`) |

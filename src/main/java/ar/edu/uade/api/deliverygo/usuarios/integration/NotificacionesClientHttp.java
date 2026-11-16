@@ -38,7 +38,6 @@ public class NotificacionesClientHttp implements NotificacionesClient {
     static final String RUTA_PLANTILLAS = "/api/v1/templates";
     static final String RUTA_NOTIFICACIONES = "/api/v1/notifications";
     static final String CORRELATION_HEADER = "X-Correlation-Id";
-    static final String ROL_SERVICIO = "SISTEMA";
     static final Duration VIGENCIA_TOKEN_SERVICIO = Duration.ofMinutes(2);
 
     private final RestClient restClient;
@@ -125,7 +124,7 @@ public class NotificacionesClientHttp implements NotificacionesClient {
     }
 
     private void cabeceras(HttpHeaders headers, Long destinatarioId) {
-        String token = jwtService.generarToken(destinatarioId, ROL_SERVICIO, VIGENCIA_TOKEN_SERVICIO).token();
+        String token = jwtService.generarToken(destinatarioId, JwtService.ROL_SERVICIO, VIGENCIA_TOKEN_SERVICIO).token();
         headers.setBearerAuth(token);
         String correlationId = MDC.get("correlationId");
         if (correlationId != null) {
