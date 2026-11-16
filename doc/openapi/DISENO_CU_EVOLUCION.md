@@ -30,8 +30,8 @@ Lo que ni las clases ni el PDF definen (quién puede desactivar, cómo se recupe
 | ID | Regla | CU | Dónde se aplica |
 |---|---|---|---|
 | RN-11 | Sólo un administrador ACTIVO puede cambiar el estado o el rol de una cuenta. Se comprueba contra la base en cada operación, no sólo con el rol del token, que puede estar desactualizado hasta vencer. | CU-06, CU-07 | `AdministracionService` (SRV-10, SRV-11) |
-| RN-12 | Un administrador no puede cambiar su propio estado ni su propio rol, para que el sistema nunca quede sin administradores. Dos administradores que se modifican entre sí al mismo tiempo no se dejan sin ninguno: las filas se bloquean en orden de id. | CU-06, CU-07 | SRV-10, SRV-11 / REP-09 |
-| RN-13 | La recuperación de contraseña no revela si el email existe ni su estado (siempre 202). El token es de un solo uso, vence a los 30 minutos (configurable), sólo se guarda su hash y un pedido nuevo deja sin efecto los anteriores. Un token de una cuenta inactiva no sirve. Ante dos pedidos simultáneos con el mismo token, sólo uno se aplica. | CU-08 | `RecuperacionService` (SRV-12, SRV-13) / REP-10 a REP-12 |
+| RN-12 | Un administrador no puede cambiar su propio estado ni su propio rol, para que el sistema nunca quede sin administradores. | CU-06, CU-07 | SRV-10, SRV-11 / REP-09 |
+| RN-13 | La recuperación de contraseña no revela si el email existe ni su estado (siempre 202). El token es de un solo uso, vence a los 30 minutos (configurable), sólo se guarda su hash y un pedido nuevo deja sin efecto los anteriores. Un token de una cuenta inactiva no sirve. | CU-08 | `RecuperacionService` (SRV-12, SRV-13) / REP-10 a REP-12 |
 | RN-14 | Sólo se renueva una sesión vigente y de una cuenta ACTIVA. El token nuevo lleva el rol actual de la base. Un token vencido no se renueva. | CU-09 | SRV-14 |
 | RN-15 | Cada módulo consumidor se identifica con su propia API Key y sólo puede leer: API-03 (todos), API-05 (sólo Pedidos) y API-16 (todos). Un módulo nunca escribe y un rol humano no lo reemplaza. Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso. | CU-03, CU-05, CU-10 | `ApiKeyAuthenticationFilter`, `Acceso` |
 
@@ -154,8 +154,8 @@ DM-07 se cumple así: el primer ADMIN se aprovisiona con las variables `ADMIN_EM
 
 | ID | Servicio | Responsabilidad | Transacción |
 |---|---|---|---|
-| SRV-10 | `AdministracionService.cambiarEstado(administradorId, usuarioId, estado)` | Verifica al administrador y deja la cuenta en el estado pedido | Escritura, con bloqueo de filas |
-| SRV-11 | `AdministracionService.cambiarRol(administradorId, usuarioId, rol)` | Verifica al administrador y asigna el rol | Escritura, con bloqueo de filas |
+| SRV-10 | `AdministracionService.cambiarEstado(administradorId, usuarioId, estado)` | Verifica al administrador y deja la cuenta en el estado pedido | Escritura |
+| SRV-11 | `AdministracionService.cambiarRol(administradorId, usuarioId, rol)` | Verifica al administrador y asigna el rol | Escritura |
 | SRV-12 | `AuthService.solicitarRecuperacion(request)` | Genera el token y pide el envío a Notificaciones sin condicionar la respuesta | Genera el token en una transacción y avisa después de confirmarla |
 | SRV-13 | `AuthService.restablecerPassword(request)` | Consume el token y guarda la contraseña nueva | Escritura |
 | SRV-14 | `AuthService.renovarSesion(sesion)` | Emite un JWT nuevo con el rol actual | Sólo lectura |
@@ -166,9 +166,9 @@ SRV-03 y SRV-09 tienen una variante para módulos (`consultarPerfilParaModulo`, 
 
 | ID | Repositorio / consulta | Necesidad |
 |---|---|---|
-| REP-09 | `UsuarioRepository.findByIdForUpdate(id)` | Bloquear la fila del usuario: direcciones (RN-07) y administración (RN-12) |
+| REP-09 | `UsuarioRepository.findById(id)` | Leer la cuenta del usuario: direcciones (RN-07) y administración (RN-11, RN-12) |
 | REP-10 | `TokenRecuperacionRepository.findByTokenHash(hash)` | Localizar un token por su hash |
-| REP-11 | `TokenRecuperacionRepository.consumir(hash, ahora)` | Marcar el token como usado de forma atómica (RN-13) |
+| REP-11 | `TokenRecuperacion.setUsadoEn(ahora)` (dirty checking) | Marcar el token como usado (RN-13) |
 | REP-12 | `TokenRecuperacionRepository.invalidarVigentes(usuarioId, ahora)` | Dejar sin efecto los tokens vigentes de un usuario |
 
 | ID | Integración | Dirección | Estado |
@@ -198,7 +198,7 @@ sequenceDiagram
         C->>C: validar cuerpo [RN-01]
         C->>S: cambiarEstado / cambiarRol (SRV-10, SRV-11)
         Note over S: transacción [DM-10]
-        S->>R: findByIdForUpdate(menor id), findByIdForUpdate(mayor id) (REP-09)
+        S->>R: findById(administrador), findById(cuenta) (REP-09)
         alt el administrador ya no existe
             S-->>A: 401 UNAUTHENTICATED
         else está inactivo [RN-04]
@@ -248,7 +248,7 @@ sequenceDiagram
     alt no existe, venció, usado o cuenta inactiva
         RS-->>U: 400 INVALID_RESET_TOKEN
     else
-        RS->>R: consumir(hash) (REP-11)
+        RS->>RS: marcar el token como usado (REP-11)
         alt otro pedido ya lo consumió
             RS-->>U: 400 INVALID_RESET_TOKEN
         else

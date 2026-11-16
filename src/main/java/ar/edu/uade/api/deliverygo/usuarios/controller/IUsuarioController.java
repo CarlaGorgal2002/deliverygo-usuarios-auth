@@ -45,13 +45,13 @@ public interface IUsuarioController {
     @Operation(operationId = "modificarPerfil", summary = "Modificar perfil (API-04 / CU-04)",
             description = """
                     Reemplaza nombre, apellido, email y telefono (PUT completo). Omitir telefono, enviarlo null o en blanco lo elimina.
-                    No admite rol, estado ni contraseña. Cambiar el email no cambia el sub del JWT.""")
+                    Rol, estado y contraseña no se modifican por esta vía: si se envían, se ignoran. Cambiar el email no cambia el sub del JWT.""")
     @ApiResponse(responseCode = "200", description = "Perfil actualizado.")
     @ApiResponse(responseCode = "409", description = "EMAIL_ALREADY_REGISTERED: El email pertenece a otro usuario.",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ErroresDeSesion
     @ErroresComunes
-    ResponseEntity<UsuarioResponse> modificarPerfil(@PathVariable @Positive(message = ID_POSITIVO) Long id, @Valid @RequestBody ModificarPerfilRequest request);
+    ResponseEntity<UsuarioResponse> modificarPerfil(@PathVariable @Positive(message = ID_POSITIVO) Long id, @Valid @RequestBody ModificarPerfilRequest request, @Parameter(hidden = true) Authentication authentication);
 
     @Operation(operationId = "cambiarEstadoUsuario", summary = "Desactivar o reactivar usuario (API-10 / CU-06)",
             description = """

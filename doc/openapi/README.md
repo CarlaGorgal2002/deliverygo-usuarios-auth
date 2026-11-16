@@ -58,7 +58,7 @@ Todas las rutas comienzan con `/api/v1`. Son públicos el registro, el login y l
 | API-15 | `GET /auth/session` | 200 + rol y estado vigentes | CU-09 |
 | API-16 | `GET /users/{id}/access` | 200 + estado y rol | CU-10 |
 
-Los dos `PUT` reciben el conjunto completo de campos modificables. La baja de direcciones es lógica. Elegir una predeterminada debe desmarcar la anterior de forma atómica; eliminarla deja al usuario sin predeterminada. Cada operación contiene su trazabilidad en `x-trazabilidad`. Las operaciones de administración, recuperación de contraseña y sesión se explican en [DISENO_CU_EVOLUCION.md](DISENO_CU_EVOLUCION.md).
+Los dos `PUT` reciben el conjunto completo de campos modificables. La baja de direcciones es lógica. Elegir una predeterminada desmarca la anterior en la misma transacción; eliminarla deja al usuario sin predeterminada. Cada operación contiene su trazabilidad en `x-trazabilidad`. Las operaciones de administración, recuperación de contraseña y sesión se explican en [DISENO_CU_EVOLUCION.md](DISENO_CU_EVOLUCION.md).
 
 ## Validación reproducible
 

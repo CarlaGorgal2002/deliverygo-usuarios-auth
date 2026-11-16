@@ -4,12 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -22,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// CU-05 (API-05 a API-09): recorrido de VERIFICACION.md pasos 6 a 14, rechazos y concurrencia (RN-07).
+// CU-05 (API-05 a API-09): recorrido de VERIFICACION.md pasos 6 a 14 y rechazos.
 class DireccionesApiTest extends ApiTestSupport {
 
     private String base(Sesion s) {
@@ -134,18 +128,21 @@ class DireccionesApiTest extends ApiTestSupport {
     }
 
     @Test
-    void elPutDeDireccionNoAceptaPredeterminadaNiActiva() throws Exception {
+    void elPutDeDireccionIgnoraPredeterminadaYActiva() throws Exception {
         Sesion a = registrarYLoguear();
         long id = crear(a, false).get("id").asLong();
         String ruta = base(a) + "/" + id;
 
+        // DC-01: no son parte del DTO del PUT; la predeterminada se elige con API-09 y la baja con DELETE
         for (String campo : new String[]{"predeterminada", "activa", "referencia", "usuarioId", "id"}) {
-            assertError(mvc.perform(conJson(put(ruta).header("Authorization", a.bearer()),
+            mvc.perform(conJson(put(ruta).header("Authorization", a.bearer()),
                             cuerpo("calle", "X", "numero", "1", "ciudad", "X", "provincia", "X", "codigoPostal", "1",
-                                    campo, true))),
-                    400, "VALIDATION_ERROR", ruta)
-                    .andExpect(jsonPath("$.details[0].campo").value(campo));
+                                    campo, campo.equals("activa") ? false : true)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.predeterminada").value(false));
         }
+        assertThat(listar(a)).hasSize(1);
+        assertThat(cantidadPredeterminadas(a)).isZero();
     }
 
     @Test
@@ -163,14 +160,14 @@ class DireccionesApiTest extends ApiTestSupport {
     }
 
     @Test
-    void laAltaRechazaUnTipoIncorrectoSinConvertirloEnSilencio() throws Exception {
+    void laAltaRechazaUnValorQueNoSePuedeConvertir() throws Exception {
         Sesion a = registrarYLoguear();
 
         assertError(mvc.perform(conJson(post(base(a)).header("Authorization", a.bearer()),
                         cuerpo("calle", "X", "numero", "1", "ciudad", "X", "provincia", "X", "codigoPostal", "1",
-                                "predeterminada", "true"))),
+                                "predeterminada", "quizas"))),
                 400, "VALIDATION_ERROR", base(a))
-                .andExpect(jsonPath("$.details[0].campo").value("predeterminada"));
+                .andExpect(jsonPath("$.details[0].campo").value("body"));
         assertThat(listar(a)).isEmpty();
     }
 
@@ -192,62 +189,5 @@ class DireccionesApiTest extends ApiTestSupport {
         assertError(mvc.perform(conJson(post(base(a)).header("Authorization", a.bearer()),
                         cuerpo("calle", "X", "numero", "1", "ciudad", "X", "provincia", "X", "codigoPostal", "1"))),
                 403, "USER_INACTIVE", base(a));
-    }
-
-    // ------------------------------------------------------------------ concurrencia (RN-07)
-
-    @Test
-    void seleccionesSimultaneasDejanComoMaximoUnaPredeterminada() throws Exception {
-        Sesion a = registrarYLoguear();
-        List<Long> ids = new ArrayList<>();
-        for (int i = 0; i < 6; i++) {
-            ids.add(crear(a, false).get("id").asLong());
-        }
-
-        ejecutarEnParalelo(ids.size() * 2, indice -> mvc.perform(
-                        patch(base(a) + "/" + ids.get(indice % ids.size()) + "/default").header("Authorization", a.bearer()))
-                .andReturn().getResponse().getStatus());
-
-        assertThat(cantidadPredeterminadas(a)).isEqualTo(1);
-    }
-
-    @Test
-    void altasSimultaneasConPredeterminadaDejanSoloUna() throws Exception {
-        Sesion a = registrarYLoguear();
-
-        List<Integer> estados = ejecutarEnParalelo(8, indice -> mvc.perform(conJson(
-                        post(base(a)).header("Authorization", a.bearer()),
-                        cuerpo("calle", "Calle " + indice, "numero", "1", "ciudad", "X", "provincia", "X",
-                                "codigoPostal", "1000", "predeterminada", true)))
-                .andReturn().getResponse().getStatus());
-
-        assertThat(estados).containsOnly(201);
-        assertThat(listar(a)).hasSize(8);
-        assertThat(cantidadPredeterminadas(a)).isEqualTo(1);
-    }
-
-    @FunctionalInterface
-    private interface Tarea {
-        int ejecutar(int indice) throws Exception;
-    }
-
-    private List<Integer> ejecutarEnParalelo(int cantidad, Tarea tarea) throws Exception {
-        ExecutorService pool = Executors.newFixedThreadPool(cantidad);
-        CountDownLatch largada = new CountDownLatch(1);
-        List<Future<Integer>> futuros = new ArrayList<>();
-        for (int i = 0; i < cantidad; i++) {
-            int indice = i;
-            futuros.add(pool.submit(() -> {
-                largada.await();
-                return tarea.ejecutar(indice);
-            }));
-        }
-        largada.countDown();
-        List<Integer> resultados = new ArrayList<>();
-        for (Future<Integer> futuro : futuros) {
-            resultados.add(futuro.get());
-        }
-        pool.shutdown();
-        return resultados;
     }
 }

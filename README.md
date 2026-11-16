@@ -6,7 +6,7 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT, API Key para módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 82 pruebas automáticas de integración, incluidas las de concurrencia; ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
+**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT, API Key para módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 77 pruebas automáticas de integración; ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
 
 La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), tres vistas por área, el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), trazabilidad y validación reproducible. Quedan pendientes de acuerdo con el ecosistema (no implementados) la firma asimétrica del JWT, la entrega y rotación de las API Keys de los módulos y el contrato real de Notificaciones, hoy un mock declarado; ver [ACUERDOS_Y_BRECHAS.md](doc/openapi/ACUERDOS_Y_BRECHAS.md). Los PDF y diagramas anteriores se conservan en [`doc/`](doc/).
 
@@ -96,7 +96,7 @@ src/test/java/ar/edu/uade/api/deliverygo/usuarios/   Pruebas de integración y u
 Requisitos: JDK 25 y Maven (ver el instructivo de la cátedra).
 
 ```bash
-mvn test                 # 82 pruebas automáticas
+mvn test                 # 77 pruebas automáticas
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
 ```
 

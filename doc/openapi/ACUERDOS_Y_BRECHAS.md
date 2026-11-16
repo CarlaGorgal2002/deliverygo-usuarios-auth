@@ -16,7 +16,7 @@ Son precisiones de diseño de esta entrega, no nuevas exigencias atribuidas al p
 
 | ID | Decisión | Motivo e impacto |
 |---|---|---|
-| DC-01 | Rechazar propiedades desconocidas en los DTO de entrada con `400 VALIDATION_ERROR` | `additionalProperties: false` hace verificable que registro no acepta rol/id y que perfil no modifica estado/contraseña. El backend debe configurarlo explícitamente. |
+| DC-01 | Ignorar las propiedades que no forman parte del DTO de entrada (comportamiento por defecto de Spring) | Los DTO no tienen rol, estado, id ni contraseña donde no corresponde: si un cliente los envía, se descartan y no cambian nada. Las pruebas lo comprueban en registro, perfil, direcciones, administración y recuperación. |
 | DC-02 | Recortar espacios exteriores y normalizar el email a minúsculas antes de comparar y persistir | Evita duplicados por capitalización. Coincide con la intención del servicio actual. La entrada debe satisfacer el formato email del esquema; el recorte defensivo no amplía los valores admitidos por ese formato. |
 | DC-03 | `PUT` reemplaza todos los datos editables; opcionales omitidos o `null` quedan sin valor | Formaliza el PUT completo de la sección 12.2. `telefono` en blanco también se elimina. En respuestas, telefono/piso/departamento sin valor aparecen como `null`. No se interpreta omisión como «conservar» en PUT. |
 | DC-04 | Serializar fechas con zona horaria y ejemplos UTC, compatibles con `format: date-time` | La primera entrega pide ISO-8601 pero modela `LocalDateTime`. Hay que definir la conversión de almacenamiento a la zona acordada; no agregar `Z` a una hora local sin convertirla. |
@@ -66,7 +66,7 @@ Una persona con rol ADMIN o COMERCIO no se convierte en un módulo consumidor. T
 | Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica con API Key | Sí, también cuentas INACTIVAS | 403 | Sí | No (403) | No (403) |
 | Sin credencial, credencial inválida o de otra persona | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 |
 
-**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. Se resolvió con una API Key por módulo, configurada por variable de entorno (`MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA`). Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: no hay claves por defecto. La clave se compara en tiempo constante y se envía en `X-Api-Key`; si la solicitud trae además `Authorization`, manda el JWT, de modo que un usuario no se hace pasar por un módulo. Qué credencial usa cada equipo para llamar a Usuarios sigue siendo un acuerdo entre equipos: el esquema `moduleApiKey` del YAML es la propuesta de este módulo y cada equipo debe recibir su clave por un canal seguro.
+**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. Se resolvió con una API Key por módulo, configurada por variable de entorno (`MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA`). Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: no hay claves por defecto. La clave se envía en `X-Api-Key`; si la solicitud trae además `Authorization`, manda el JWT, de modo que un usuario no se hace pasar por un módulo. Qué credencial usa cada equipo para llamar a Usuarios sigue siendo un acuerdo entre equipos: el esquema `moduleApiKey` del YAML es la propuesta de este módulo y cada equipo debe recibir su clave por un canal seguro.
 
 Una llamada que propague el JWT del usuario conserva los permisos de ese usuario, no los de un módulo. Los módulos autorizados leen el perfil de un usuario INACTIVO con 200 y deciden con sus reglas; el titular inactivo recibe 403. Pedidos lista direcciones activas y consulta API-03 o API-16 para conocer el estado del usuario. Es la distinción especificada en CU-03 y SRV-09.
 
@@ -86,31 +86,31 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 |---|---|---|
 | Login | Recibe `email` y `password`; devuelve `token`, `tipo`, `expiraEn`, `usuarioId`, `nombre` y `rol` | `AuthApiTest` |
 | JWT | `sub` = id, `role`, `iat`, `exp`; claim `UID` eliminado; HS256 | `JwtServiceTest`, `AuthApiTest` |
-| Registro | DTO validado, email normalizado y único (también en concurrencia), rol CLIENTE y estado ACTIVO fijos, contraseña con hash BCrypt | `AuthApiTest` |
+| Registro | DTO validado, email normalizado y único, rol CLIENTE y estado ACTIVO fijos, contraseña con hash BCrypt | `AuthApiTest` |
 | PUT de perfil | Reemplazo completo de campos editables; rechaza password, rol y estado; 409 si el email es de otro usuario | `PerfilApiTest` |
-| Direcciones | API-05 a API-09 implementadas; baja lógica; una sola predeterminada, garantizada con bloqueo pesimista de la fila del usuario | `DireccionesApiTest` (incluye dos pruebas de concurrencia) |
+| Direcciones | API-05 a API-09 implementadas; baja lógica; una sola predeterminada | `DireccionesApiTest` |
 | DTO de dirección | Sin `referencia` en las entradas ni salidas; el atributo se conserva sólo en la entidad | `DireccionesApiTest` |
 | Formato de errores | `ErrorResponse` con `timestamp`, `status`, `code`, `message`, `path`, `correlationId` y `details`; un único `GlobalExceptionHandler` | todas las clases de prueba |
 | Códigos de error | Catálogo del PDF en inglés; inactivo devuelve 403 `USER_INACTIVE` | `AuthApiTest`, `PerfilApiTest` |
-| Seguridad | Sólo el titular opera sobre su recurso (`@PreAuthorize`); ADMIN y COMERCIO humanos reciben 403 | `PerfilApiTest` |
+| Seguridad | Permisos por rol en `SecurityConfig` (administración sólo ADMIN, CU-10 sólo módulos, sesión sólo personas); el titular de la ruta lo verifica el controller: ADMIN y COMERCIO humanos reciben 403 sobre una cuenta ajena | `PerfilApiTest` |
 | IDs de ruta | `Long` positivo; 400 para texto, cero, negativo, decimal o fuera de rango, después de autenticar | `PerfilApiTest` |
 | Ausencia o falla del token | 401 `UNAUTHENTICATED` con `WWW-Authenticate: Bearer`, en el formato común (entry point y access denied handler) | `PerfilApiTest`, `DireccionesApiTest` |
 | Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; los módulos con API Key sí reciben la cuenta inactiva con 200 | `PerfilApiTest`, `DireccionesApiTest`, `ModulosApiTest` |
 | Fechas | UTC, truncadas a segundos, serializadas con zona | `AuthApiTest` |
-| Validación | Starter de Validation; propiedades desconocidas y tipos incorrectos rechazados con 400 (sin conversión silenciosa) | `AuthApiTest`, `DireccionesApiTest` |
+| Validación | Starter de Validation; propiedades desconocidas ignoradas (DC-01); un JSON mal formado o un valor que no se puede convertir al tipo del campo, 400 | `AuthApiTest`, `DireccionesApiTest` |
 | Correlación | `X-Correlation-Id` validado, generado si falta, devuelto en cabecera, cuerpo y log (MDC); `Cache-Control: no-store`; `Location` en los 201 | `CorrelacionApiTest` |
 | CORS | Orígenes configurables (`CORS_ALLOWED_ORIGINS`); permite PATCH y `X-Correlation-Id`; expone `X-Correlation-Id` y `Location` | `CorrelacionApiTest` |
 | Swagger generado | Interfaces `I*Controller` con anotaciones de springdoc; operaciones públicas sin candado; las 16 operaciones, sus códigos de respuesta y sus esquemas de seguridad coinciden con el YAML | comparación de `/v3/api-docs` con el YAML (ver VERIFICACION.md) |
 | Java y Maven | `java.version` 25 única; groupId `ar.edu.uade.api.deliverygo`; paquete `ar.edu.uade.api.deliverygo.usuarios` | `mvn test` |
 | Secreto JWT | Fuera del repositorio: variable `JWT_SECRET`; se exige un mínimo de 32 bytes | `JwtServiceTest` |
 | CU-06 Desactivar o reactivar | API-10, sólo ADMIN ACTIVO verificado en la base; idempotente; un administrador no modifica su propia cuenta | `AdministracionApiTest` |
-| CU-07 Asignar rol | API-11 con las mismas reglas; dos administradores que se degradan a la vez no se dejan sin ninguno (bloqueo de filas en orden de id) | `AdministracionApiTest` (incluye concurrencia) |
-| CU-08 Recuperar contraseña | API-12 (202 uniforme) y API-13 (token de un solo uso, vencimiento, sólo hash, atómico ante pedidos simultáneos) | `RecuperacionApiTest` (incluye concurrencia) |
+| CU-07 Asignar rol | API-11 con las mismas reglas | `AdministracionApiTest` |
+| CU-08 Recuperar contraseña | API-12 (202 uniforme) y API-13 (token de un solo uso, vencimiento, sólo hash) | `RecuperacionApiTest` |
 | CU-09 Renovar y validar sesión | API-14 renueva con el rol actual; API-15 informa rol y estado vigentes; ambas rechazan cuentas inactivas, inexistentes y tokens vencidos | `SesionApiTest` |
 | CU-10 Estado y rol para módulos | API-16 con API Key; API-03 y API-05 abiertas a módulos según RN-15; los módulos nunca escriben | `ModulosApiTest` |
 | Administrador inicial | Se crea sólo con `ADMIN_EMAIL` y `ADMIN_PASSWORD`; sin ellos no hay ninguno | `AdministradorInicialTest` |
 
-Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos registros con el mismo email; selecciones y altas simultáneas de predeterminada). Para comprobar que esas pruebas detectan el problema, se retiró temporalmente el bloqueo de la fila del usuario y ambas fallaron en tres corridas seguidas; con el bloqueo restituido pasan. Se hizo lo mismo con las dos garantías de los casos de evolución (bloqueo de las filas de los administradores y consumo atómico del token de recuperación): sin ellas fallan las pruebas de concurrencia correspondientes.
+Fuera de alcance: pedidos simultáneos sobre el mismo recurso (concurrencia). No hay bloqueos de filas ni pruebas de concurrencia. Si dos registros con el mismo email llegaran exactamente a la vez, la restricción `UNIQUE` de la base impide el duplicado, pero el segundo recibiría 500 en lugar de 409.
 
 ## Pendientes y riesgos conocidos
 

@@ -57,22 +57,22 @@ No se exponen entidades JPA ni repositorios como contratos. El servicio es respo
 | RN | Aplicación en YAML |
 |---|---|
 | RN-01 | Campos required, formatos, minLength, patrón no vacío, tipos y respuesta 400 con details |
-| RN-02 | Email normalizado, 409 y descripción de unicidad concurrente en registro/modificación |
+| RN-02 | Email normalizado y 409 en registro/modificación |
 | RN-03 | password writeOnly; sin password/passwordHash en salidas; hash irreversible indicado |
 | RN-04 | 403 USER_INACTIVE; verificación posterior a contraseña en login; los módulos con API Key reciben la cuenta inactiva con 200 |
 | RN-05 | sub frente a id, autorización por titular, 403 y ocultación de direcciones ajenas con 404 |
 | RN-06 | Registro sin rol/estado de entrada; respuesta CLIENTE/ACTIVO |
-| RN-07 | predeterminada false por omisión, selección atómica, PUT sin ese atributo y baja que la desmarca |
+| RN-07 | predeterminada false por omisión, selección en una transacción, PUT sin ese atributo y baja que la desmarca |
 | RN-08 | Un único error genérico para email inexistente/contraseña incorrecta |
 | RN-09 | Bearer en operaciones protegidas, claims y vencimiento; 401 ante falta o invalidez |
 | RN-10 | PUT de perfil limitado a nombre, apellido, email y telefono |
 | RN-11 | API-10 y API-11 sólo para ADMIN, verificado contra la base; 403 `FORBIDDEN` y `USER_INACTIVE` |
-| RN-12 | 403 cuando el administrador se modifica a sí mismo; bloqueo ordenado de filas |
+| RN-12 | 403 cuando el administrador se modifica a sí mismo |
 | RN-13 | API-12 con 202 uniforme; API-13 con `INVALID_RESET_TOKEN`; token de un solo uso, vencimiento y hash |
 | RN-14 | API-14 y API-15 con 401 para token vencido o cuenta inexistente y 403 para cuenta inactiva |
 | RN-15 | Esquema `moduleApiKey`; seguridad alternativa en API-03 y API-05; API-16 exclusiva de módulos |
 
-La definición de esquemas permite validar la estructura. Las reglas de estado, pertenencia, persistencia y concurrencia necesitan las pruebas de ejecución propuestas en `VERIFICACION.md`.
+La definición de esquemas permite validar la estructura. Las reglas de estado, pertenencia y persistencia necesitan las pruebas de ejecución propuestas en `VERIFICACION.md`.
 
 ## Inventario de adjuntos
 

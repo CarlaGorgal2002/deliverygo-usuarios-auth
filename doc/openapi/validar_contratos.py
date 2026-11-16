@@ -153,8 +153,9 @@ def check_business_contract(doc):
     register = {**profile, 'password': 'ClaveDemo2026!'}
     address = {'calle': 'Lima', 'numero': 'S/N', 'ciudad': 'CABA', 'provincia': 'CABA', 'codigoPostal': 'C1073AAO'}
     expect('RegistrarUsuarioRequest', register, True)
+    # DC-01: los campos que no forman parte del DTO se ignoran
     for field in ['id', 'rol', 'estado', 'passwordHash']:
-        expect('RegistrarUsuarioRequest', {**register, field: 'ADMIN'}, False)
+        expect('RegistrarUsuarioRequest', {**register, field: 'ADMIN'}, True)
     for field in ['nombre', 'apellido', 'email', 'password']:
         invalid = deepcopy(register)
         del invalid[field]
@@ -171,30 +172,30 @@ def check_business_contract(doc):
     expect('ModificarPerfilRequest', {**profile, 'telefono': None}, True)
     expect('ModificarPerfilRequest', {'nombre': 'Ana'}, False)
     for field in ['rol', 'estado', 'password']:
-        expect('ModificarPerfilRequest', {**profile, field: 'ADMIN'}, False)
+        expect('ModificarPerfilRequest', {**profile, field: 'ADMIN'}, True)
     expect('CrearDireccionRequest', address, True)
     expect('CrearDireccionRequest', {**address, 'predeterminada': True}, True)
     expect('CrearDireccionRequest', {**address, 'predeterminada': 'true'}, False)
     expect('CrearDireccionRequest', {**address, 'predeterminada': None}, False)
-    expect('CrearDireccionRequest', {**address, 'id': 10}, False)
+    expect('CrearDireccionRequest', {**address, 'id': 10}, True)
     expect('ModificarDireccionRequest', address, True)
     expect('ModificarDireccionRequest', {**address, 'piso': None, 'departamento': None}, True)
     for field in ['predeterminada', 'activa', 'usuarioId', 'referencia']:
-        expect('ModificarDireccionRequest', {**address, field: True}, False)
+        expect('ModificarDireccionRequest', {**address, field: True}, True)
     expect('ModificarDireccionRequest', {'calle': 'Lima'}, False)
     # CU-06 a CU-10
     expect('CambiarEstadoRequest', {'estado': 'INACTIVO'}, True)
     expect('CambiarEstadoRequest', {'estado': 'BLOQUEADO'}, False)
     expect('CambiarEstadoRequest', {}, False)
     expect('CambiarEstadoRequest', {'estado': None}, False)
-    expect('CambiarEstadoRequest', {'estado': 'ACTIVO', 'rol': 'ADMIN'}, False)
+    expect('CambiarEstadoRequest', {'estado': 'ACTIVO', 'rol': 'ADMIN'}, True)
     expect('CambiarRolRequest', {'rol': 'COMERCIO'}, True)
     expect('CambiarRolRequest', {'rol': 'SUPERUSUARIO'}, False)
     expect('CambiarRolRequest', {}, False)
-    expect('CambiarRolRequest', {'rol': 'ADMIN', 'estado': 'ACTIVO'}, False)
+    expect('CambiarRolRequest', {'rol': 'ADMIN', 'estado': 'ACTIVO'}, True)
     expect('SolicitarRecuperacionRequest', {'email': 'ana@example.com'}, True)
     expect('SolicitarRecuperacionRequest', {'email': 'sin-arroba'}, False)
-    expect('SolicitarRecuperacionRequest', {'email': 'ana@example.com', 'rol': 'ADMIN'}, False)
+    expect('SolicitarRecuperacionRequest', {'email': 'ana@example.com', 'rol': 'ADMIN'}, True)
     expect('SolicitarRecuperacionRequest', {}, False)
     restore = {'token': 'abc123', 'password': 'NuevaClave2026!'}
     expect('RestablecerPasswordRequest', restore, True)
@@ -202,7 +203,7 @@ def check_business_contract(doc):
     expect('RestablecerPasswordRequest', {'password': 'NuevaClave2026!'}, False)
     expect('RestablecerPasswordRequest', {'token': 'abc123'}, False)
     expect('RestablecerPasswordRequest', {**restore, 'token': '   '}, False)
-    expect('RestablecerPasswordRequest', {**restore, 'email': 'ana@example.com'}, False)
+    expect('RestablecerPasswordRequest', {**restore, 'email': 'ana@example.com'}, True)
     expect('EstadoUsuario', 'BLOQUEADO', False)
     expect('Rol', 'MODULO_PEDIDOS', False)
     # Reglas de frontera verificables sin ejecutar el backend.

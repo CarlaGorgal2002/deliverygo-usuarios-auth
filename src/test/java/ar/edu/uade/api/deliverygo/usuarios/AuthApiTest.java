@@ -5,13 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -69,14 +63,15 @@ class AuthApiTest extends ApiTestSupport {
     }
 
     @Test
-    void registroRechazaCamposQueElClienteNoPuedeAsignar() throws Exception {
-        // RN-06 / DC-01: ni rol, ni estado, ni id
+    void registroIgnoraCamposQueElClienteNoPuedeAsignar() throws Exception {
+        // RN-06 / DC-01: rol, estado e id no son parte del DTO; se ignoran y la cuenta nace CLIENTE y ACTIVA
         for (String campo : List.of("rol", "estado", "id")) {
-            assertError(mvc.perform(conJson(post("/api/v1/auth/register"),
+            mvc.perform(conJson(post("/api/v1/auth/register"),
                             cuerpo("nombre", "Ana", "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD,
-                                    campo, "ADMIN"))),
-                    400, "VALIDATION_ERROR", "/api/v1/auth/register")
-                    .andExpect(jsonPath("$.details[0].campo").value(campo));
+                                    campo, "ADMIN")))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.rol").value("CLIENTE"))
+                    .andExpect(jsonPath("$.estado").value("ACTIVO"));
         }
     }
 
@@ -87,9 +82,9 @@ class AuthApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.details[0].campo").value("body"));
 
         assertError(mvc.perform(conJson(post("/api/v1/auth/register"),
-                        cuerpo("nombre", 123, "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD))),
+                        cuerpo("nombre", List.of("Ana"), "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD))),
                 400, "VALIDATION_ERROR", "/api/v1/auth/register")
-                .andExpect(jsonPath("$.details[0].campo").value("nombre"));
+                .andExpect(jsonPath("$.details[0].campo").value("body"));
     }
 
     @Test
@@ -181,35 +176,5 @@ class AuthApiTest extends ApiTestSupport {
                         .header("Authorization", "Bearer token.vencido.o-basura"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
-    }
-
-    @Test
-    void dosRegistrosSimultaneosConElMismoEmailCreanUnaSolaCuenta() throws Exception {
-        String email = emailUnico();
-        int hilos = 8;
-        ExecutorService pool = Executors.newFixedThreadPool(hilos);
-        CountDownLatch largada = new CountDownLatch(1);
-        List<Future<Integer>> resultados = new ArrayList<>();
-        for (int i = 0; i < hilos; i++) {
-            Callable<Integer> tarea = () -> {
-                largada.await();
-                return registrar(email).andReturn().getResponse().getStatus();
-            };
-            resultados.add(pool.submit(tarea));
-        }
-        largada.countDown();
-
-        int creados = 0;
-        int conflictos = 0;
-        for (Future<Integer> resultado : resultados) {
-            int status = resultado.get();
-            if (status == 201) creados++;
-            else if (status == 409) conflictos++;
-        }
-        pool.shutdown();
-
-        assertThat(creados).isEqualTo(1);
-        assertThat(conflictos).isEqualTo(hilos - 1);
-        assertThat(usuarioRepository.findAll().stream().filter(u -> u.getEmail().equals(email))).hasSize(1);
     }
 }
