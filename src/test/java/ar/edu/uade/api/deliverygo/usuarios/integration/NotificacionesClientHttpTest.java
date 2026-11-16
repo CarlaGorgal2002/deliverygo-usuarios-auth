@@ -64,7 +64,8 @@ class NotificacionesClientHttpTest {
 
     @BeforeEach
     void armarCliente() {
-        // Igual que la app: fail-on-unknown-properties activo, para comprobar @JsonIgnoreProperties en los DTO.
+        // Mapper estricto (fail-on-unknown-properties) a propósito: comprueba que @JsonIgnoreProperties en los DTO
+        // basta para leer las respuestas, cualquiera sea la configuración global de Jackson.
         ObjectMapper estricto = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(BASE)

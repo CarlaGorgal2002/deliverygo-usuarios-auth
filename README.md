@@ -96,7 +96,7 @@ src/test/java/ar/edu/uade/api/deliverygo/usuarios/   Pruebas de integración y u
 Requisitos: JDK 25 y Maven (ver el instructivo de la cátedra).
 
 ```bash
-mvn test                 # 89 pruebas automáticas
+mvn test                 # 91 pruebas automáticas
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
 ```
 

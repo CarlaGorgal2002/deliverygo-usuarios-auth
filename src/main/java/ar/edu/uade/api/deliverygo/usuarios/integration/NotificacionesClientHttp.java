@@ -182,7 +182,8 @@ public class NotificacionesClientHttp implements NotificacionesClient {
     record NotificacionRequest(Long destinatarioId, Long plantillaId, Map<String, String> parametros) {
     }
 
-    // La app usa fail-on-unknown-properties=true: las respuestas ajenas ignoran los campos que no usamos.
+    // Las respuestas de Notificaciones traen campos que no usamos: se ignoran explícitamente, así el cliente no
+    // depende de la configuración global de Jackson.
     @JsonIgnoreProperties(ignoreUnknown = true)
     record PlantillaResponse(Long id, String nombre, Boolean activa, String canal) {
     }
