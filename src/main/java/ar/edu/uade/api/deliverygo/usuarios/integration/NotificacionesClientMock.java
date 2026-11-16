@@ -3,11 +3,13 @@ package ar.edu.uade.api.deliverygo.usuarios.integration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-// MOCK DECLARADO de INT-01 e INT-06: no hay llamada HTTP real porque todavía no existe el contrato de
-// Notificaciones. Cuando exista, se reemplaza por un cliente REST que implemente NotificacionesClient.
+// MOCK DECLARADO de INT-01 e INT-06: no hace ninguna llamada HTTP, sólo escribe en el log. Es el modo por
+// defecto (app.notificaciones.modo=mock). Con app.notificaciones.modo=http se usa NotificacionesClientHttp.
 @Component
+@ConditionalOnProperty(name = "app.notificaciones.modo", havingValue = "mock", matchIfMissing = true)
 public class NotificacionesClientMock implements NotificacionesClient {
 
     private static final Logger log = LoggerFactory.getLogger(NotificacionesClientMock.class);
