@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -98,13 +99,19 @@ public class NotificacionesClientHttp implements NotificacionesClient {
                     respuesta == null ? null : respuesta.id(),
                     respuesta == null ? null : respuesta.estado());
         } catch (RestClientException e) {
+            // Un 4xx puede deberse a un id de plantilla viejo (Notificaciones la recreó): se olvida para que el
+            // próximo envío la vuelva a buscar por nombre.
+            if (e instanceof HttpClientErrorException) {
+                plantillasPorNombre.remove(nombrePlantilla);
+            }
             throw new NotificacionesException(
                     "[" + integracion + "] Notificaciones no aceptó el envío para el usuario " + destinatarioId
                             + ": " + e.getMessage(), e);
         }
     }
 
-    // Busca el id de la plantilla activa con ese nombre. Sólo se guarda en caché cuando se encuentra.
+    // Busca el id de la plantilla activa con ese nombre. Sólo se guarda en caché cuando se encuentra, y se
+    // descarta si Notificaciones rechaza un envío con 4xx (ver enviar).
     private Long resolverPlantilla(String nombre, Long destinatarioId) {
         Long enCache = plantillasPorNombre.get(nombre);
         if (enCache != null) {

@@ -194,6 +194,54 @@ class NotificacionesClientHttpTest {
         servidor.verify();
     }
 
+    @Test
+    void siElEnvioRespondeUn4xxLaPlantillaSeVuelveABuscarEnElProximoEnvio() {
+        // Notificaciones recreó la plantilla: el id 7 ya no existe y la nueva es la 70.
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/templates"))
+                .andRespond(withSuccess(PLANTILLAS, MediaType.APPLICATION_JSON));
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/notifications"))
+                .andExpect(content().json("""
+                        {"plantillaId": 7}
+                        """))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        assertThatThrownBy(() -> cliente.enviarBienvenida(42L, "Ana", "ana@example.com"))
+                .isInstanceOf(NotificacionesException.class)
+                .hasMessageContaining("404");
+        servidor.verify();
+        servidor.reset();
+
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/templates"))
+                .andRespond(withSuccess("""
+                        [{"id": 70, "nombre": "USUARIO_BIENVENIDA_EMAIL", "activa": true, "canal": "EMAIL"}]
+                        """, MediaType.APPLICATION_JSON));
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/notifications"))
+                .andExpect(content().json("""
+                        {"plantillaId": 70}
+                        """))
+                .andRespond(withStatus(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body(NOTIFICACION_CREADA));
+
+        cliente.enviarBienvenida(43L, "Luis", "luis@example.com");
+
+        servidor.verify();
+    }
+
+    @Test
+    void siElEnvioRespondeUn5xxLaPlantillaSigueEnCache() {
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/templates"))
+                .andRespond(withSuccess(PLANTILLAS, MediaType.APPLICATION_JSON));
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/notifications"))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        servidor.expect(ExpectedCount.once(), requestTo(BASE + "/api/v1/notifications"))
+                .andRespond(withStatus(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body(NOTIFICACION_CREADA));
+
+        assertThatThrownBy(() -> cliente.enviarBienvenida(42L, "Ana", "ana@example.com"))
+                .isInstanceOf(NotificacionesException.class);
+        cliente.enviarBienvenida(43L, "Luis", "luis@example.com");
+
+        servidor.verify();
+    }
+
     // El Bearer es un JWT HS256 con el mismo secreto: sub = destinatario, role = SISTEMA, vigencia de 2 minutos.
     private RequestMatcher tokenDeServicioPara(Long destinatarioId) {
         return request -> {
