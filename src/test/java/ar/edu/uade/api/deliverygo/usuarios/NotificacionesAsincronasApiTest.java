@@ -100,11 +100,13 @@ class NotificacionesAsincronasApiTest extends ApiTestSupport {
             servidor.createContext("/api/v1/templates", intercambio -> responder(intercambio, 200, PLANTILLAS));
             servidor.createContext("/api/v1/notifications", intercambio -> {
                 String cuerpo = new String(intercambio.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String correlationId = intercambio.getRequestHeaders().getFirst("X-Correlation-Id");
                 dormir(DEMORA_MS);
-                ENVIOS.add(new Envio(cuerpo, intercambio.getRequestHeaders().getFirst("X-Correlation-Id")));
                 responder(intercambio, 201, """
                         {"id": 1, "estado": "PENDIENTE"}
                         """);
+                // se registra después de responder, para que el test no apague el servidor a mitad de respuesta
+                ENVIOS.add(new Envio(cuerpo, correlationId));
             });
             servidor.start();
             return servidor;
