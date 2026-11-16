@@ -117,7 +117,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new UsuarioNoEncontradoException(MSG_NO_ENCONTRADO));
     }
 
-    // RN-04: sólo un titular ACTIVO opera sobre su perfil; la identidad (RN-05) ya la verificó @PreAuthorize.
+    // RN-04: sólo un titular ACTIVO opera sobre su perfil; la identidad (RN-05) ya la verificó el controller.
     private Usuario buscarTitularActivo(Long usuarioId) {
         Usuario usuario = buscarExistente(usuarioId);
         if (!usuario.estaActivo()) {

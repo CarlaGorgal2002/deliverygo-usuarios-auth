@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,13 +20,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity
 public class SecurityConfig {
+
+    // Roles de las personas (tabla roles). Los módulos consumidores entran con el rol MODULO (API Key).
+    private static final String[] PERSONAS = {"CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN"};
+    private static final String ADMIN = "ADMIN";
+    private static final String MODULO = "MODULO";
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ModulosApiKeys modulos,
                                             ErrorResponseWriter errorWriter) throws Exception {
-        JwtAuthenticationFilter filtroJwt = new JwtAuthenticationFilter(jwtService, errorWriter);
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))   // la consola H2 usa frames
@@ -41,13 +43,31 @@ public class SecurityConfig {
                                 request, response, HttpStatus.FORBIDDEN, "FORBIDDEN",
                                 "No tiene permiso para acceder a este recurso")))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, RutasPublicas.postPublicos()).permitAll()
+                        // Públicas: registro, login y recuperación de contraseña (CU-01, CU-02, CU-08)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
+                                "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
-                        // El resto exige una identidad (JWT o API Key de módulo); qué puede hacer cada una
-                        // (titular, administrador, módulo) lo decide @PreAuthorize en los controllers.
+
+                        // CU-09: renovar y validar la sesión es sólo para personas
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").hasAnyRole(PERSONAS)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/session").hasAnyRole(PERSONAS)
+
+                        // CU-06 y CU-07: sólo ADMIN (el service lo vuelve a verificar contra la base, RN-11)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/status", "/api/v1/users/*/role").hasRole(ADMIN)
+
+                        // CU-10: estado y rol para otros módulos
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/access").hasRole(MODULO)
+
+                        // CU-03 y CU-05: el perfil y las direcciones los leen el titular o un módulo
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/*/addresses")
+                        .hasAnyRole("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN", MODULO)
+
+                        // CU-04 y CU-05: modificar perfil y direcciones, sólo personas (el titular lo controla el controller)
+                        .requestMatchers("/api/v1/users/**").hasAnyRole(PERSONAS)
+
                         .anyRequest().authenticated())
-                .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(new ApiKeyAuthenticationFilter(modulos, errorWriter), JwtAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new ApiKeyAuthenticationFilter(modulos), JwtAuthenticationFilter.class);
         return http.build();
     }
 

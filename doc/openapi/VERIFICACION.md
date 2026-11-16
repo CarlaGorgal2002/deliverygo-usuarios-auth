@@ -12,7 +12,7 @@ Los cuatro archivos YAML (16 operaciones, CU-01 a CU-10) se validaron el **30/10
 - Ningún cuerpo en GET, DELETE ni selección de predeterminada; ninguna respuesta con contenido en 204.
 - Errores de ejemplo con `status` igual al HTTP y `path` de la operación correspondiente.
 - Correlación en respuestas; desafío `WWW-Authenticate` en 401; datos sensibles fuera de los DTO de salida.
-- **70 escenarios de esquemas**, positivos y negativos: campos faltantes, blancos, email inválido, contraseña corta, propiedades prohibidas, opcionales nulos, IDs inválidos, límites de Long, y los DTO de estado, rol, recuperación y restablecimiento de contraseña.
+- **70 escenarios de esquemas**, positivos y negativos: campos faltantes, blancos, email inválido, contraseña corta, propiedades extra (se ignoran, DC-01), opcionales nulos, IDs inválidos, límites de Long, y los DTO de estado, rol, recuperación y restablecimiento de contraseña.
 - Vistas generadas idénticas a la proyección del contrato principal.
 
 El validador cuenta las comprobaciones de ejemplos después de expandir referencias; un componente reutilizado puede verificarse más de una vez. Esa cifra no representa endpoints adicionales ni pruebas HTTP ejecutadas.

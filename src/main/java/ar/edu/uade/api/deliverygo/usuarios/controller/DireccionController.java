@@ -3,10 +3,10 @@ package ar.edu.uade.api.deliverygo.usuarios.controller;
 import ar.edu.uade.api.deliverygo.usuarios.dto.CrearDireccionRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.DireccionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ModificarDireccionRequest;
+import ar.edu.uade.api.deliverygo.usuarios.exception.AccesoProhibidoException;
 import ar.edu.uade.api.deliverygo.usuarios.security.ModuloAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.DireccionService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,10 +19,16 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 
-// RN-05: ver UsuarioController. La titularidad se evalúa antes de consultar la dirección.
+import static ar.edu.uade.api.deliverygo.usuarios.controller.UsuarioController.MSG_PROHIBIDO;
+import static ar.edu.uade.api.deliverygo.usuarios.controller.UsuarioController.verificarTitular;
+
+// RN-05: sólo el titular administra sus direcciones. El único módulo que puede listarlas es Pedidos (RN-15).
+// La titularidad se verifica antes de consultar la dirección.
 @RestController
 @RequestMapping("/api/v1/users/{id}/addresses")
 public class DireccionController implements IDireccionController {
+
+    private static final String MODULO_PEDIDOS = "pedidos";
 
     private final DireccionService direccionService;
 
@@ -32,41 +38,47 @@ public class DireccionController implements IDireccionController {
 
     @Override
     @GetMapping
-    @PreAuthorize("@acceso.titularOModulo(principal, #id, 'pedidos')")
     public ResponseEntity<List<DireccionResponse>> listarDirecciones(Long id, Authentication authentication) {
-        boolean esModulo = authentication.getPrincipal() instanceof ModuloAutenticado;
-        return ResponseEntity.ok(esModulo
-                ? direccionService.listarDireccionesParaModulo(id)
-                : direccionService.listarDirecciones(id));
+        if (authentication.getPrincipal() instanceof ModuloAutenticado modulo) {
+            if (!MODULO_PEDIDOS.equals(modulo.nombre())) {
+                throw new AccesoProhibidoException(MSG_PROHIBIDO);
+            }
+            return ResponseEntity.ok(direccionService.listarDireccionesParaModulo(id));
+        }
+        verificarTitular(authentication, id);
+        return ResponseEntity.ok(direccionService.listarDirecciones(id));
     }
 
     @Override
     @PostMapping
-    @PreAuthorize("@acceso.titular(principal, #id)")
-    public ResponseEntity<DireccionResponse> crearDireccion(Long id, CrearDireccionRequest request) {
+    public ResponseEntity<DireccionResponse> crearDireccion(Long id, CrearDireccionRequest request,
+                                                            Authentication authentication) {
+        verificarTitular(authentication, id);
         DireccionResponse creada = direccionService.crearDireccion(id, request);
         return ResponseEntity.created(URI.create("/api/v1/users/" + id + "/addresses/" + creada.id())).body(creada);
     }
 
     @Override
     @PutMapping("/{addressId}")
-    @PreAuthorize("@acceso.titular(principal, #id)")
-    public ResponseEntity<DireccionResponse> modificarDireccion(Long id, Long addressId, ModificarDireccionRequest request) {
+    public ResponseEntity<DireccionResponse> modificarDireccion(Long id, Long addressId, ModificarDireccionRequest request,
+                                                                Authentication authentication) {
+        verificarTitular(authentication, id);
         return ResponseEntity.ok(direccionService.modificarDireccion(id, addressId, request));
     }
 
     @Override
     @DeleteMapping("/{addressId}")
-    @PreAuthorize("@acceso.titular(principal, #id)")
-    public ResponseEntity<Void> eliminarDireccion(Long id, Long addressId) {
+    public ResponseEntity<Void> eliminarDireccion(Long id, Long addressId, Authentication authentication) {
+        verificarTitular(authentication, id);
         direccionService.eliminarDireccion(id, addressId);
         return ResponseEntity.noContent().build();
     }
 
     @Override
     @PatchMapping("/{addressId}/default")
-    @PreAuthorize("@acceso.titular(principal, #id)")
-    public ResponseEntity<DireccionResponse> seleccionarPredeterminada(Long id, Long addressId) {
+    public ResponseEntity<DireccionResponse> seleccionarPredeterminada(Long id, Long addressId,
+                                                                       Authentication authentication) {
+        verificarTitular(authentication, id);
         return ResponseEntity.ok(direccionService.seleccionarPredeterminada(id, addressId));
     }
 }

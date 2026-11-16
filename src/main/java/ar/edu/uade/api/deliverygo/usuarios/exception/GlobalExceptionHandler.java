@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,7 +37,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private static final String MSG_VALIDACION = "La solicitud contiene datos inválidos";
-    private static final String MSG_PROHIBIDO = "No tiene permiso para acceder a este recurso";
 
     // ---------------------------------------------------------------- reglas de negocio
 
@@ -67,13 +65,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return responder(request, HttpStatus.FORBIDDEN, "USER_INACTIVE", e.getMessage(), null);
     }
 
-    // 403 - RN-05: lo lanza @PreAuthorize cuando el token no pertenece al titular de la ruta
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> manejarAccesoDenegado(AccessDeniedException e, HttpServletRequest request) {
-        return responder(request, HttpStatus.FORBIDDEN, "FORBIDDEN", MSG_PROHIBIDO, null);
-    }
-
-    // 403 - RN-11 y RN-12: se pidió una operación que el solicitante autenticado no puede realizar
+    // 403 - RN-05, RN-11 y RN-12: no es el titular de la ruta, o la operación no le está permitida
     @ExceptionHandler(AccesoProhibidoException.class)
     public ResponseEntity<Object> manejarAccesoProhibido(AccesoProhibidoException e, HttpServletRequest request) {
         return responder(request, HttpStatus.FORBIDDEN, "FORBIDDEN", e.getMessage(), null);

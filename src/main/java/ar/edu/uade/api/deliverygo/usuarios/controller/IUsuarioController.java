@@ -51,7 +51,7 @@ public interface IUsuarioController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ErroresDeSesion
     @ErroresComunes
-    ResponseEntity<UsuarioResponse> modificarPerfil(@PathVariable @Positive(message = ID_POSITIVO) Long id, @Valid @RequestBody ModificarPerfilRequest request);
+    ResponseEntity<UsuarioResponse> modificarPerfil(@PathVariable @Positive(message = ID_POSITIVO) Long id, @Valid @RequestBody ModificarPerfilRequest request, @Parameter(hidden = true) Authentication authentication);
 
     @Operation(operationId = "cambiarEstadoUsuario", summary = "Desactivar o reactivar usuario (API-10 / CU-06)",
             description = """

@@ -10,7 +10,6 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.AuthService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,17 +54,15 @@ public class AuthController implements IAuthController {
         return ResponseEntity.noContent().build();
     }
 
-    // Sólo personas: una API Key de módulo no renueva ni valida sesiones de usuario.
+    // Sólo personas (SecurityConfig): una API Key de módulo no renueva ni valida sesiones de usuario.
     @Override
     @PostMapping("/refresh")
-    @PreAuthorize("@acceso.usuario(principal)")
     public ResponseEntity<LoginResponse> renovarSesion(UsuarioAutenticado actual) {
         return ResponseEntity.ok(authService.renovarSesion(actual));
     }
 
     @Override
     @GetMapping("/session")
-    @PreAuthorize("@acceso.usuario(principal)")
     public ResponseEntity<SesionResponse> validarSesion(UsuarioAutenticado actual) {
         return ResponseEntity.ok(authService.validarSesion(actual));
     }
