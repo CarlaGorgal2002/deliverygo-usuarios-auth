@@ -37,7 +37,7 @@ La matriz detalla reglas por operación: por eso RN-07 aparece en baja y selecci
 
 | Servicio | Repositorios del diseño | Entidades y relaciones | Integración |
 |---|---|---|---|
-| SRV-01 | REP-01, REP-04, REP-03 | ENT-01 Usuario, ENT-02 Rol, REL-02 | INT-01 bienvenida; INT-02 Portal |
+| SRV-01 | REP-01, REP-04, REP-03 | ENT-01 Usuario, ENT-02 Rol, REL-02 | INT-01 bienvenida (cliente HTTP real de Notificaciones; mock declarado por defecto); INT-02 Portal |
 | SRV-02 | REP-01 | ENT-01, ENT-02, REL-02 | INT-02; token para el ecosistema |
 | SRV-03 | REP-02 | ENT-01, ENT-02, REL-02 | INT-02, INT-03, INT-04, INT-05 según autorización |
 | SRV-04 | REP-02, REP-01, REP-03 | ENT-01; rol sólo de lectura | INT-02 |
@@ -46,7 +46,7 @@ La matriz detalla reglas por operación: por eso RN-07 aparece en baja y selecci
 | SRV-08 | REP-02, REP-06, REP-08, REP-07 | ENT-01, ENT-03, REL-01 | INT-02 |
 | SRV-09 | REP-02, REP-05 | ENT-01, ENT-03, REL-01 | INT-02; Pedidos en INT-03 con API Key |
 | SRV-10 y SRV-11 | REP-03, REP-04, REP-09 | ENT-01, ENT-02, REL-02 | INT-02 |
-| SRV-12 y SRV-13 | REP-01, REP-10, REP-11, REP-12 | ENT-01, ENT-04 TokenRecuperacion, REL-03 | INT-02; INT-06 Notificaciones (mock) |
+| SRV-12 y SRV-13 | REP-01, REP-10, REP-11, REP-12 | ENT-01, ENT-04 TokenRecuperacion, REL-03 | INT-02; INT-06 Notificaciones (cliente HTTP real; mock declarado por defecto) |
 | SRV-14 y SRV-15 | REP-02 | ENT-01, ENT-02, REL-02 | INT-02, INT-03, INT-04, INT-05 |
 | SRV-16 | REP-02 | ENT-01, ENT-02, REL-02 | INT-03, INT-04, INT-05 con API Key |
 

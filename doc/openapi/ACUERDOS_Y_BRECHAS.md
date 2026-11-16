@@ -72,11 +72,31 @@ Una llamada que propague el JWT del usuario conserva los permisos de ese usuario
 
 ## Notificaciones y disponibilidad
 
-INT-01 solicita la bienvenida después del alta. La ruta de referencia es `POST /api/v1/notifications`, propiedad del equipo Notificaciones. El DTO definitivo, autenticación, tiempos de espera y propagación de correlación todavía requieren su contrato; por eso esa API no aparece como un endpoint propio de Usuarios.
+INT-01 solicita la bienvenida después del alta e INT-06 solicita el envío del token de recuperación de contraseña (CU-08). Ambas consumen el contrato publicado por Notificaciones (repo `DeliveryGo-Notificaciones`, puerto 8089) tal como está; Usuarios no adapta su API a ese módulo y esas rutas no aparecen como endpoints propios de Usuarios.
 
-INT-06 solicita a Notificaciones el envío del token de recuperación de contraseña (CU-08). Es también un mock declarado y no bloqueante; por defecto sólo registra el id del usuario. Con `MOCK_LOG_RECOVERY_TOKEN=true` escribe además el token en el log, únicamente para demostrar el flujo en local, ya que de otro modo nadie lo recibiría.
+La implementación se elige con `app.notificaciones.modo` (`NOTIFICACIONES_MODO`):
 
-Un fallo de bienvenida no revierte el alta ni transforma el 201 en un error. El cliente se invoca después de confirmar el alta (`NotificacionesClient`, con el mock declarado `NotificacionesClientMock`, que sólo registra el id del usuario en el log, sin email ni nombre). `BienvenidaApiTest` verifica que se solicita una vez por alta confirmada, que no se solicita si el registro falla y que una excepción del cliente no cambia el 201. No hay integración HTTP real: queda sujeta al contrato de Notificaciones.
+- `mock` (por defecto, declarado): `NotificacionesClientMock` sólo escribe en el log el id del usuario, sin email ni nombre. Con `MOCK_LOG_RECOVERY_TOKEN=true` escribe además el token de recuperación, únicamente para demostrar el flujo en local.
+- `http`: `NotificacionesClientHttp` llama a la API real con `RestClient`, con URL base (`NOTIFICACIONES_URL`) y tiempo de espera (`NOTIFICACIONES_TIMEOUT_MS`, 2000 ms por defecto) configurables.
+
+Cómo llama el cliente HTTP:
+
+| Aspecto | Resolución |
+|---|---|
+| Autenticación | `Authorization: Bearer <JWT>` de servicio emitido en cada llamada: HS256 con el mismo `JWT_SECRET`, `sub` = id del destinatario, `role` = `SISTEMA`, vigencia de 2 minutos |
+| Plantilla | `GET /api/v1/templates`; se busca por nombre una plantilla con `activa = true` y su id queda en caché. Si no existe, el envío falla con un mensaje que nombra la plantilla faltante |
+| Envío | `POST /api/v1/notifications` con `{ destinatarioId, plantillaId, parametros }`; bienvenida: `{ nombre }`; recuperación: `{ nombre, token }`. Se espera 201 con `{ id, destinatarioId, plantillaId, canal, estado, cantidadIntentos }` |
+| Nombres de plantilla | `NOTIFICACIONES_PLANTILLA_BIENVENIDA` (`USUARIO_BIENVENIDA_EMAIL`) y `NOTIFICACIONES_PLANTILLA_RECUPERACION` (`RECUPERACION_PASSWORD_EMAIL`) |
+| Correlación | Se propaga el `X-Correlation-Id` de la solicitud en curso (MDC `correlationId`) |
+| Respuestas | Los DTO de respuesta ignoran campos desconocidos, porque la app tiene `fail-on-unknown-properties=true` |
+
+Un fallo de Notificaciones (plantilla inexistente, 4xx/5xx, tiempo de espera o servicio caído) no revierte el alta ni la recuperación, ni cambia la respuesta: `AuthService` atrapa la excepción y la registra. `BienvenidaApiTest` verifica que la bienvenida se solicita una vez por alta confirmada, que no se solicita si el registro falla y que una excepción del cliente no cambia el 201. `NotificacionesClientHttpTest` verifica con `MockRestServiceServer` el cuerpo, el Bearer de servicio, el `X-Correlation-Id`, la plantilla inexistente, el 503, el servicio caído y la caché de plantillas.
+
+**Pendiente del lado de Notificaciones** para que el modo `http` funcione de punta a punta:
+
+1. Crear las plantillas activas `USUARIO_BIENVENIDA_EMAIL` (variable `nombre`) y `RECUPERACION_PASSWORD_EMAIL` (variables `nombre` y `token`).
+2. Usar el mismo `JWT_SECRET` que Usuarios para validar el token de servicio y aceptar el rol `SISTEMA`.
+3. Obtener el contacto del destinatario (email) consultando `GET /api/v1/users/{id}` de Usuarios con su `X-Api-Key` (`MODULE_KEY_NOTIFICACIONES`, de al menos 16 caracteres, entregada por un canal seguro). Usuarios no envía el email en el cuerpo de la notificación.
 
 ## Estado de la implementación frente al contrato
 
@@ -119,7 +139,7 @@ Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos 
 | Firma asimétrica (RS256) y distribución de la clave pública | No implementada; HS256 con secreto compartido | Todos los grupos |
 | API Keys de los módulos | Implementadas; cada equipo debe recibir la suya por un canal seguro, usar HTTPS fuera de laboratorio y acordar la rotación. Si los equipos eligen otro mecanismo (OAuth, JWT de servicio), se reemplaza el filtro | Todos los grupos |
 | Cambio de `sub` (email → id) | Implementado; los consumidores y el Portal deben leer `sub` como id | Portal y módulos consumidores |
-| Contrato real de Notificaciones (INT-01 e INT-06) | Mock declarado que sólo escribe en el log | Notificaciones |
+| Notificaciones (INT-01 e INT-06) | Cliente HTTP real implementado (`NOTIFICACIONES_MODO=http`); el mock declarado sigue siendo el modo por defecto. Falta que Notificaciones cree las plantillas `USUARIO_BIENVENIDA_EMAIL` y `RECUPERACION_PASSWORD_EMAIL`, comparta el `JWT_SECRET` y consulte el contacto con `GET /api/v1/users/{id}` y su `X-Api-Key` | Notificaciones |
 | JWT sin revocación (DC-10) | Un token emitido conserva su rol y sigue siendo válido hasta vencer aunque la cuenta cambie de rol, se desactive o restablezca su contraseña. API-15 y API-16 dan el dato vigente; las operaciones sobre perfil y direcciones rechazan a las cuentas inactivas | Este equipo |
 | Renovación deslizante | Un token robado y vigente puede renovarse mientras la cuenta esté ACTIVA; se corta con CU-06. Un token de renovación persistido lo evitaría (DM-03 lo anticipa) | Este equipo |
 | Recuperación sin límite de pedidos | No hay limitación por cuenta ni por origen; conviene sumarla (por ejemplo, en un gateway) antes de exponer el servicio | Este equipo |
@@ -133,5 +153,5 @@ Las reglas de concurrencia se probaron con ejecuciones simultáneas reales (dos 
 
 1. Compartir el YAML con el Portal y los módulos: DTO de sesión, errores, administración, recuperación de contraseña y API Key; comunicar el cambio de `sub`.
 2. Acordar firma, claves, emisor/audiencia y la forma de entregar y rotar las API Keys; si se elige otro mecanismo para los módulos, reemplazar el filtro.
-3. Reemplazar los mocks de Notificaciones (INT-01 e INT-06) por el contrato real.
+3. Probar de punta a punta INT-01 e INT-06 con `NOTIFICACIONES_MODO=http` cuando Notificaciones tenga sus plantillas y el `JWT_SECRET` compartido; luego evaluar dejar `http` como modo por defecto.
 4. Ante cualquier cambio, actualizar el YAML, regenerar las vistas, correr `validar_contratos.py` y `mvn test`, y contrastar la Swagger generada con el contrato.
