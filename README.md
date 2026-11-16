@@ -112,7 +112,7 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 | `RECOVERY_TOKEN_MINUTES` | Vigencia del token de recuperación de contraseña | `30` |
 | `MOCK_LOG_RECOVERY_TOKEN` | Sólo para demostrar CU-08 en local: el mock de Notificaciones escribe el token en el log | `false`; no activar en ambientes compartidos |
 | `NOTIFICACIONES_MODO` | `mock` (sólo log) o `http` (API real de Notificaciones) | `mock` |
-| `NOTIFICACIONES_URL` y `NOTIFICACIONES_TIMEOUT_MS` | URL base y tiempo de espera del cliente HTTP de Notificaciones | `http://localhost:8089` y `2000` |
+| `NOTIFICACIONES_URL` y `NOTIFICACIONES_TIMEOUT_MS` | URL base y tiempo de espera del cliente HTTP de Notificaciones. Si la URL apunta a este mismo servicio (mismo puerto en localhost), la app no arranca | `http://localhost:8089` y `2000` |
 | `NOTIFICACIONES_PLANTILLA_BIENVENIDA` y `NOTIFICACIONES_PLANTILLA_RECUPERACION` | Nombres de las plantillas en Notificaciones | `USUARIO_BIENVENIDA_EMAIL` y `RECUPERACION_PASSWORD_EMAIL` |
 
 `src/main/resources/application.properties.example` documenta el resto de la configuración. No se deben subir secretos reales al repositorio.

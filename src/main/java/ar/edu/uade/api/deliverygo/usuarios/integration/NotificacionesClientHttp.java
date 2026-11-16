@@ -19,8 +19,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -57,8 +59,9 @@ public class NotificacionesClientHttp implements NotificacionesClient {
                                     @Value("${app.notificaciones.base-url}") String baseUrl,
                                     @Value("${app.notificaciones.timeout-ms}") int timeoutMs,
                                     @Value("${app.notificaciones.plantillas.bienvenida}") String plantillaBienvenida,
-                                    @Value("${app.notificaciones.plantillas.recuperacion}") String plantillaRecuperacion) {
-        this(builder.baseUrl(baseUrl).requestFactory(fabricaConTimeout(timeoutMs)).build(),
+                                    @Value("${app.notificaciones.plantillas.recuperacion}") String plantillaRecuperacion,
+                                    @Value("${server.port:8080}") int puertoPropio) {
+        this(validarQueNoApunteASiMismo(builder, baseUrl, puertoPropio).baseUrl(baseUrl).requestFactory(fabricaConTimeout(timeoutMs)).build(),
                 jwtService, plantillaBienvenida, plantillaRecuperacion);
     }
 
@@ -143,6 +146,30 @@ public class NotificacionesClientHttp implements NotificacionesClient {
         if (correlationId != null) {
             headers.set(CORRELATION_HEADER, correlationId);
         }
+    }
+
+    // Notificaciones usa por defecto el mismo puerto que Usuarios (8089). Si NOTIFICACIONES_URL apunta a este
+    // mismo servicio, Usuarios se llamaría a sí mismo: la app no arranca y el mensaje dice cómo corregirlo.
+    private static RestClient.Builder validarQueNoApunteASiMismo(RestClient.Builder builder, String baseUrl,
+                                                                 int puertoPropio) {
+        if (apuntaASiMismo(baseUrl, puertoPropio)) {
+            throw new IllegalStateException("NOTIFICACIONES_URL (" + baseUrl + ") apunta a este mismo servicio, "
+                    + "que escucha en el puerto " + puertoPropio + ". Levantar Usuarios en otro puerto "
+                    + "(SERVER_PORT, por ejemplo 8080) o indicar la URL real de Notificaciones.");
+        }
+        return builder;
+    }
+
+    static boolean apuntaASiMismo(String baseUrl, int puertoPropio) {
+        if (puertoPropio <= 0) {
+            return false; // puerto aleatorio: no se puede comparar
+        }
+        URI uri = URI.create(baseUrl);
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        boolean local = host.equals("localhost") || host.equals("0.0.0.0") || host.startsWith("127.")
+                || host.equals("[::1]") || host.equals("::1");
+        int puerto = uri.getPort() != -1 ? uri.getPort() : "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+        return local && puerto == puertoPropio;
     }
 
     private static SimpleClientHttpRequestFactory fabricaConTimeout(int timeoutMs) {

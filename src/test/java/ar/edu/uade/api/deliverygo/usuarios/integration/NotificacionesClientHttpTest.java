@@ -242,6 +242,27 @@ class NotificacionesClientHttpTest {
         servidor.verify();
     }
 
+    @Test
+    void detectaUnaUrlQueApuntaAlMismoServicio() {
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://localhost:8089", 8089)).isTrue();
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://127.0.0.1:8089/", 8089)).isTrue();
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://[::1]:8089", 8089)).isTrue();
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://LOCALHOST:80", 80)).isTrue();
+
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://localhost:8089", 8080)).isFalse();
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://notificaciones:8089", 8089)).isFalse();
+        assertThat(NotificacionesClientHttp.apuntaASiMismo("http://localhost:8089", 0)).isFalse();
+    }
+
+    @Test
+    void noArrancaSiLaUrlApuntaAlMismoServicio() {
+        assertThatThrownBy(() -> new NotificacionesClientHttp(RestClient.builder(), jwtService,
+                "http://localhost:8089", 2000, BIENVENIDA, RECUPERACION, 8089))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("NOTIFICACIONES_URL")
+                .hasMessageContaining("SERVER_PORT");
+    }
+
     // El Bearer es un JWT HS256 con el mismo secreto: sub = destinatario, role = SISTEMA, vigencia de 2 minutos.
     private RequestMatcher tokenDeServicioPara(Long destinatarioId) {
         return request -> {
