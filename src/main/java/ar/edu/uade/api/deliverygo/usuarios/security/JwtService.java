@@ -36,6 +36,15 @@ public class JwtService {
     }
 
     public TokenEmitido generarToken(Long usuarioId, String rol) {
+        return generarToken(usuarioId, rol, vigencia);
+    }
+
+    // Permite emitir tokens con otra vigencia, por ejemplo el token de servicio corto que se usa para
+    // llamar a Notificaciones (NotificacionesClientHttp).
+    public TokenEmitido generarToken(Long usuarioId, String rol, Duration vigencia) {
+        if (vigencia == null || vigencia.isNegative() || vigencia.isZero()) {
+            throw new IllegalArgumentException("La vigencia del token debe ser mayor que cero");
+        }
         Instant emision = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         Instant expiracion = emision.plus(vigencia);
 
