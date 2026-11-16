@@ -1,0 +1,25 @@
+# Base de datos PostgreSQL del módulo Usuarios. La API se levanta aparte con `mvn spring-boot:run`.
+#   docker compose up -d     levanta la base (los datos quedan en el volumen postgres-data)
+#   docker compose down      la apaga sin borrar los datos
+#   docker compose down -v   la apaga y borra los datos
+# Las credenciales son de desarrollo local; se pueden cambiar con DB_NAME, DB_USERNAME, DB_PASSWORD y DB_PORT.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: deliverygo-usuarios-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-deliverygo_usuarios}
+      POSTGRES_USER: ${DB_USERNAME:-deliverygo}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-deliverygo}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

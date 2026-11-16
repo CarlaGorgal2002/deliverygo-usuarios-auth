@@ -25,7 +25,7 @@ El validador cuenta las comprobaciones de ejemplos después de expandir referenc
 
 ## Pruebas automáticas del backend
 
-Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2, más pruebas unitarias del JWT. Resultado de la última corrida: **77 pruebas, 0 fallas, 0 errores**.
+Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **77 pruebas, 0 fallas, 0 errores**.
 
 | Clase | Pruebas | Cobertura |
 |---|---|---|
@@ -46,7 +46,7 @@ Dos comprobaciones más con el servidor levantado:
 - **Cotejo con el Swagger generado.** Se comparó `/v3/api-docs` con el YAML: las 16 operaciones, los códigos de respuesta de cada una y los esquemas de seguridad (`bearerAuth` y `moduleApiKey`) coinciden, sin diferencias.
 - **Recorrido real por HTTP.** Con el administrador inicial y las claves de módulo configuradas por variable de entorno: registro con 201 y `Location`, 409 con un `X-Correlation-Id` propio, login, 403 sobre otro usuario, 400 por ID `abc`, alta de dirección con 201 y `Location`; validar y renovar la sesión (200); el administrador asigna COMERCIO (200) y un CLIENTE que intenta lo mismo recibe 403; el token viejo informa el rol nuevo en `/auth/session`; API-16 con la clave de Pedidos (200), sin clave, con clave incorrecta (401), con un JWT de usuario (403) y API-05 con la clave de Catálogo (403) y de Pedidos (200); recuperación de contraseña (202 para cuenta existente e inexistente, restablecimiento 204, segundo uso 400 `INVALID_RESET_TOKEN`, login con la clave nueva 200 y con la vieja 401); el administrador desactiva la cuenta (login `USER_INACTIVE`, token vigente `USER_INACTIVE`, el módulo la sigue viendo con estado INACTIVO), la reactiva (200) y se le prohíbe modificarse a sí mismo (403). Todo dio los resultados esperados.
 
-No cubren: firma asimétrica (no implementada), credencial de módulos consumidores (sin acordar), integración HTTP real con otros grupos, ni la base persistente de ambientes compartidos (las pruebas usan H2 en memoria).
+No cubren: firma asimétrica (no implementada), credencial de módulos consumidores (sin acordar), integración HTTP real con otros grupos, ni PostgreSQL (las pruebas usan H2 en memoria; el recorrido de los diez casos de uso contra PostgreSQL se hizo por HTTP con `docker compose up -d`).
 
 ## Recorrido funcional para la demo
 
