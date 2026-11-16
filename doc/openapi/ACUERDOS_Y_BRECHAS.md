@@ -16,7 +16,7 @@ Son precisiones de diseño de esta entrega, no nuevas exigencias atribuidas al p
 
 | ID | Decisión | Motivo e impacto |
 |---|---|---|
-| DC-01 | Rechazar propiedades desconocidas en los DTO de entrada con `400 VALIDATION_ERROR` | `additionalProperties: false` hace verificable que registro no acepta rol/id y que perfil no modifica estado/contraseña. El backend debe configurarlo explícitamente. |
+| DC-01 | Ignorar las propiedades que no forman parte del DTO de entrada (comportamiento por defecto de Spring) | Los DTO no tienen rol, estado, id ni contraseña donde no corresponde: si un cliente los envía, se descartan y no cambian nada. Las pruebas lo comprueban en registro, perfil, direcciones, administración y recuperación. |
 | DC-02 | Recortar espacios exteriores y normalizar el email a minúsculas antes de comparar y persistir | Evita duplicados por capitalización. Coincide con la intención del servicio actual. La entrada debe satisfacer el formato email del esquema; el recorte defensivo no amplía los valores admitidos por ese formato. |
 | DC-03 | `PUT` reemplaza todos los datos editables; opcionales omitidos o `null` quedan sin valor | Formaliza el PUT completo de la sección 12.2. `telefono` en blanco también se elimina. En respuestas, telefono/piso/departamento sin valor aparecen como `null`. No se interpreta omisión como «conservar» en PUT. |
 | DC-04 | Serializar fechas con zona horaria y ejemplos UTC, compatibles con `format: date-time` | La primera entrega pide ISO-8601 pero modela `LocalDateTime`. Hay que definir la conversión de almacenamiento a la zona acordada; no agregar `Z` a una hora local sin convertirla. |
@@ -97,7 +97,7 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 | Ausencia o falla del token | 401 `UNAUTHENTICATED` con `WWW-Authenticate: Bearer`, en el formato común (entry point y access denied handler) | `PerfilApiTest`, `DireccionesApiTest` |
 | Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; los módulos con API Key sí reciben la cuenta inactiva con 200 | `PerfilApiTest`, `DireccionesApiTest`, `ModulosApiTest` |
 | Fechas | UTC, truncadas a segundos, serializadas con zona | `AuthApiTest` |
-| Validación | Starter de Validation; propiedades desconocidas y tipos incorrectos rechazados con 400 (sin conversión silenciosa) | `AuthApiTest`, `DireccionesApiTest` |
+| Validación | Starter de Validation; propiedades desconocidas ignoradas (DC-01); un JSON mal formado o un valor que no se puede convertir al tipo del campo, 400 | `AuthApiTest`, `DireccionesApiTest` |
 | Correlación | `X-Correlation-Id` validado, generado si falta, devuelto en cabecera, cuerpo y log (MDC); `Cache-Control: no-store`; `Location` en los 201 | `CorrelacionApiTest` |
 | CORS | Orígenes configurables (`CORS_ALLOWED_ORIGINS`); permite PATCH y `X-Correlation-Id`; expone `X-Correlation-Id` y `Location` | `CorrelacionApiTest` |
 | Swagger generado | Interfaces `I*Controller` con anotaciones de springdoc; operaciones públicas sin candado; las 16 operaciones, sus códigos de respuesta y sus esquemas de seguridad coinciden con el YAML | comparación de `/v3/api-docs` con el YAML (ver VERIFICACION.md) |

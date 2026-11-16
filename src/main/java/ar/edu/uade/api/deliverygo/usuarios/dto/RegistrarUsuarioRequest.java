@@ -1,6 +1,5 @@
 package ar.edu.uade.api.deliverygo.usuarios.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -8,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import static ar.edu.uade.api.deliverygo.usuarios.dto.Validaciones.*;
 
-// DTO-01. No admite id, rol, estado ni fechaAlta: el servidor los asigna (RN-06).
+// DTO-01. No incluye id, rol, estado ni fechaAlta: el servidor los asigna y, si llegan, se ignoran (RN-06).
 public record RegistrarUsuarioRequest(
         @Schema(example = "Ana")
         @NotBlank(message = OBLIGATORIO) @Size(max = 80, message = "No puede superar 80 caracteres")
@@ -28,7 +27,6 @@ public record RegistrarUsuarioRequest(
         String telefono,
 
         @Schema(example = "ClaveDemo2026!", accessMode = Schema.AccessMode.WRITE_ONLY, description = "Mínimo 8 caracteres. Nunca se devuelve ni se registra.")
-        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
         @NotBlank(message = OBLIGATORIO) @Size(min = 8, message = PASSWORD_MINIMO)
         String password
 ) {

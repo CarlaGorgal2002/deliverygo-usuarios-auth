@@ -63,14 +63,15 @@ class AuthApiTest extends ApiTestSupport {
     }
 
     @Test
-    void registroRechazaCamposQueElClienteNoPuedeAsignar() throws Exception {
-        // RN-06 / DC-01: ni rol, ni estado, ni id
+    void registroIgnoraCamposQueElClienteNoPuedeAsignar() throws Exception {
+        // RN-06 / DC-01: rol, estado e id no son parte del DTO; se ignoran y la cuenta nace CLIENTE y ACTIVA
         for (String campo : List.of("rol", "estado", "id")) {
-            assertError(mvc.perform(conJson(post("/api/v1/auth/register"),
+            mvc.perform(conJson(post("/api/v1/auth/register"),
                             cuerpo("nombre", "Ana", "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD,
-                                    campo, "ADMIN"))),
-                    400, "VALIDATION_ERROR", "/api/v1/auth/register")
-                    .andExpect(jsonPath("$.details[0].campo").value(campo));
+                                    campo, "ADMIN")))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.rol").value("CLIENTE"))
+                    .andExpect(jsonPath("$.estado").value("ACTIVO"));
         }
     }
 
@@ -81,9 +82,9 @@ class AuthApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.details[0].campo").value("body"));
 
         assertError(mvc.perform(conJson(post("/api/v1/auth/register"),
-                        cuerpo("nombre", 123, "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD))),
+                        cuerpo("nombre", List.of("Ana"), "apellido", "Pérez", "email", emailUnico(), "password", PASSWORD))),
                 400, "VALIDATION_ERROR", "/api/v1/auth/register")
-                .andExpect(jsonPath("$.details[0].campo").value("nombre"));
+                .andExpect(jsonPath("$.details[0].campo").value("body"));
     }
 
     @Test

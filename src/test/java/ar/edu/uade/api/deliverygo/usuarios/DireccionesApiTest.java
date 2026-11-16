@@ -128,18 +128,21 @@ class DireccionesApiTest extends ApiTestSupport {
     }
 
     @Test
-    void elPutDeDireccionNoAceptaPredeterminadaNiActiva() throws Exception {
+    void elPutDeDireccionIgnoraPredeterminadaYActiva() throws Exception {
         Sesion a = registrarYLoguear();
         long id = crear(a, false).get("id").asLong();
         String ruta = base(a) + "/" + id;
 
+        // DC-01: no son parte del DTO del PUT; la predeterminada se elige con API-09 y la baja con DELETE
         for (String campo : new String[]{"predeterminada", "activa", "referencia", "usuarioId", "id"}) {
-            assertError(mvc.perform(conJson(put(ruta).header("Authorization", a.bearer()),
+            mvc.perform(conJson(put(ruta).header("Authorization", a.bearer()),
                             cuerpo("calle", "X", "numero", "1", "ciudad", "X", "provincia", "X", "codigoPostal", "1",
-                                    campo, true))),
-                    400, "VALIDATION_ERROR", ruta)
-                    .andExpect(jsonPath("$.details[0].campo").value(campo));
+                                    campo, campo.equals("activa") ? false : true)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.predeterminada").value(false));
         }
+        assertThat(listar(a)).hasSize(1);
+        assertThat(cantidadPredeterminadas(a)).isZero();
     }
 
     @Test
@@ -157,14 +160,14 @@ class DireccionesApiTest extends ApiTestSupport {
     }
 
     @Test
-    void laAltaRechazaUnTipoIncorrectoSinConvertirloEnSilencio() throws Exception {
+    void laAltaRechazaUnValorQueNoSePuedeConvertir() throws Exception {
         Sesion a = registrarYLoguear();
 
         assertError(mvc.perform(conJson(post(base(a)).header("Authorization", a.bearer()),
                         cuerpo("calle", "X", "numero", "1", "ciudad", "X", "provincia", "X", "codigoPostal", "1",
-                                "predeterminada", "true"))),
+                                "predeterminada", "quizas"))),
                 400, "VALIDATION_ERROR", base(a))
-                .andExpect(jsonPath("$.details[0].campo").value("predeterminada"));
+                .andExpect(jsonPath("$.details[0].campo").value("body"));
         assertThat(listar(a)).isEmpty();
     }
 

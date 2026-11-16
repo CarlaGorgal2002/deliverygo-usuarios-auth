@@ -2,8 +2,6 @@ package ar.edu.uade.api.deliverygo.usuarios.exception;
 
 import ar.edu.uade.api.deliverygo.usuarios.dto.DetalleValidacion;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ErrorResponse;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +29,6 @@ import org.springframework.validation.method.ParameterValidationResult;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 // Único punto donde las excepciones se convierten en DTO-08. Extiende ResponseEntityExceptionHandler
 // para que los errores propios de Spring MVC (405, 415, ruta inexistente...) usen el mismo formato.
@@ -146,23 +143,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return validacion(request, detalles);
     }
 
-    // JSON ilegible, campo desconocido (DC-01) o de tipo incorrecto.
+    // Cuerpo vacío, JSON mal formado o un valor que no se puede convertir al tipo del DTO.
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers,
                                                                   HttpStatusCode status, WebRequest request) {
-        DetalleValidacion detalle;
-        Throwable causa = ex.getCause();
-        if (causa instanceof UnrecognizedPropertyException desconocida) {
-            detalle = new DetalleValidacion(desconocida.getPropertyName(), "Campo no permitido");
-        } else if (causa instanceof MismatchedInputException tipo && !tipo.getPath().isEmpty()) {
-            String campo = tipo.getPath().stream()
-                    .map(r -> r.getFieldName() != null ? r.getFieldName() : "[" + r.getIndex() + "]")
-                    .collect(Collectors.joining("."));
-            detalle = new DetalleValidacion(campo, "Tipo de dato inválido");
-        } else {
-            detalle = new DetalleValidacion("body", "El cuerpo debe ser JSON válido");
-        }
-        return validacion(request, List.of(detalle));
+        return validacion(request, List.of(new DetalleValidacion("body", "El cuerpo debe ser JSON válido")));
     }
 
     // Identificadores no numéricos o fuera del rango de Long (DC-07).

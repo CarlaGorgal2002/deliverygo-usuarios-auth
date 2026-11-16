@@ -29,11 +29,11 @@ Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot
 
 | Clase | Pruebas | Cobertura |
 |---|---|---|
-| `AuthApiTest` | 12 | CU-01 y CU-02: alta, email normalizado y duplicado, validación por campo, campos no permitidos, tipos incorrectos, contraseña de más de 72 bytes, login (mismo 401 para email inexistente y contraseña incorrecta, 403 sólo con la contraseña correcta) y rutas públicas aun con token viejo |
+| `AuthApiTest` | 12 | CU-01 y CU-02: alta, email normalizado y duplicado, validación por campo, campos extra ignorados, JSON ilegible, contraseña de más de 72 bytes, login (mismo 401 para email inexistente y contraseña incorrecta, 403 sólo con la contraseña correcta) y rutas públicas aun con token viejo |
 | `PerfilApiTest` | 11 | CU-03 y CU-04 y las reglas RN-04, RN-05, RN-09: titular, 401 por token ausente, alterado, basura, vencido o de otra clave, 403 cruzado incluidos ADMIN y COMERCIO, IDs inválidos, titular inactivo, usuario inexistente, PUT completo e idempotente, campos protegidos, email de otro usuario, rutas y métodos fuera del contrato |
-| `DireccionesApiTest` | 7 | CU-05: recorrido completo (listar vacío, altas, predeterminada, PUT, baja lógica, repetir baja), dirección ajena como inexistente, PUT sin predeterminada ni activa, límites de campos, tipos incorrectos, 401 y usuario inactivo |
+| `DireccionesApiTest` | 7 | CU-05: recorrido completo (listar vacío, altas, predeterminada, PUT, baja lógica, repetir baja), dirección ajena como inexistente, PUT que ignora predeterminada y activa, límites de campos, valor no convertible, 401 y usuario inactivo |
 | `AdministracionApiTest` | 7 | CU-06 y CU-07 (RN-11, RN-12): desactivar y reactivar (el login y el token vigente de una cuenta inactiva son rechazados), idempotencia, 401/403 para quien no es administrador (CLIENTE, COMERCIO, API Key), el rol del token no alcanza (un administrador degradado o inactivo en la base recibe 403), un administrador no modifica su propia cuenta, asignación de roles con el token viejo conservando el anterior y validación de cuerpos e ids |
-| `RecuperacionApiTest` | 8 | CU-08 (RN-13): 202 idéntico para cuenta existente, inexistente e inactiva y aviso sólo si existe, normalización y validación del email, falla de Notificaciones sin efecto en la respuesta, ruta pública con token viejo y sólo la huella en la base, restablecimiento de un solo uso, un pedido nuevo invalida el anterior, token inexistente, vencido o de cuenta inactiva con el mismo 400 y política de contraseña y campos no permitidos sin consumir el token |
+| `RecuperacionApiTest` | 8 | CU-08 (RN-13): 202 idéntico para cuenta existente, inexistente e inactiva y aviso sólo si existe, normalización y validación del email, falla de Notificaciones sin efecto en la respuesta, ruta pública con token viejo y sólo la huella en la base, restablecimiento de un solo uso, un pedido nuevo invalida el anterior, token inexistente, vencido o de cuenta inactiva con el mismo 400 y política de contraseña sin consumir el token (un campo extra se ignora) |
 | `SesionApiTest` | 7 | CU-09 (RN-14): validar devuelve rol y estado vigentes aunque el token diga otro, renovar emite un token que sirve y trae el rol actual, cuenta inactiva (403) o inexistente (401), sin token, vencido o alterado (401), y una API Key de módulo no renueva ni valida (403) |
 | `ModulosApiTest` | 10 | CU-10 y RN-15: estado y rol sin datos personales, cuenta inactiva con 200, rol vigente, 401 sin clave, con clave incorrecta, vacía o demasiado corta, 403 para un JWT de usuario o ADMIN, el JWT manda sobre la clave, ids inexistentes e inválidos, API-03 con cualquier módulo (también inactivas), API-05 sólo para Pedidos, los módulos nunca escriben (PUT, POST, DELETE, PATCH y administración dan 403) y las rutas públicas no se rompen por una clave inválida |
 | `CorrelacionApiTest` | 5 | Reutilización, generación e invalidez de `X-Correlation-Id`; preflight CORS con PATCH; origen no autorizado |
@@ -84,7 +84,7 @@ Todos los escenarios de esta tabla tienen una prueba automática, con una excepc
 | Escenario | Resultado esperado | Trazabilidad |
 |---|---|---|
 | Registro sin un campo obligatorio o con nombre en blanco | 400 con details por campo | RN-01 |
-| Registro que intenta asignar `rol: ADMIN` | 400; no crea cuenta privilegiada | RN-06, DC-01 |
+| Registro que intenta asignar `rol: ADMIN` | 201 con rol CLIENTE: el campo se ignora | RN-06, DC-01 |
 | Login con email inexistente y con contraseña incorrecta | Mismo 401 y mensaje genérico, sin distinguir causa | RN-08 |
 | Login de cuenta INACTIVA con contraseña incorrecta | 401 genérico; no informa estado | RN-08 |
 | Login de cuenta INACTIVA con contraseña correcta | 403 `USER_INACTIVE` | RN-04 |
@@ -93,10 +93,10 @@ Todos los escenarios de esta tabla tienen una prueba automática, con una excepc
 | Token ADMIN humano sobre perfil de otra persona | 403; ADMIN no equivale a servicio consumidor | RN-05 |
 | Dirección B solicitada bajo ruta de A con token A | 404 `ADDRESS_NOT_FOUND`, igual que una dirección inexistente | RN-05 |
 | PUT de perfil que sólo envía nombre | 400; PUT no es parcial | RN-01, DC-03 |
-| PUT de perfil que incluye password, rol o estado | 400; ningún campo protegido cambia | RN-10, DC-01 |
+| PUT de perfil que incluye password, rol o estado | 200; se ignoran y ningún campo protegido cambia | RN-10, DC-01 |
 | PUT de perfil con email de B | 409; no persiste ningún cambio parcial | RN-02 |
-| PUT de dirección con predeterminada o activa | 400; se usa API-09 para seleccionar | RN-07, DC-01 |
-| JSON ilegible o tipos incorrectos | 400 normalizado, sin stack trace | RN-01 |
+| PUT de dirección con predeterminada o activa | 200; se ignoran (la predeterminada se elige con API-09) | RN-07, DC-01 |
+| JSON ilegible o valor no convertible al tipo del campo | 400 normalizado, sin stack trace | RN-01 |
 | ID cero, negativo, decimal, texto o fuera de Long | 400 tras los controles de autenticación pertinentes | DC-07 |
 | X-Correlation-Id válido | Mismo valor en cabecera de respuesta y errores | DC-06 |
 | X-Correlation-Id ausente | Se genera uno y se informa en respuesta | DC-06 |
@@ -106,7 +106,7 @@ Todos los escenarios de esta tabla tienen una prueba automática, con una excepc
 | Un CLIENTE, COMERCIO o una API Key intenta cambiar estado o rol | 403 `FORBIDDEN`; sin token, 401 | RN-11 |
 | Un ADMIN degradado o desactivado después de iniciar sesión intenta administrar | 403 (el rol del token no alcanza; se verifica la base) | RN-11, DM-13 |
 | Un ADMIN modifica su propia cuenta | 403; la cuenta no cambia | RN-12 |
-| Estado o rol fuera del catálogo, campo extra, cuerpo vacío | 400 `VALIDATION_ERROR` | RN-01, DC-01 |
+| Estado o rol fuera del catálogo, cuerpo vacío | 400 `VALIDATION_ERROR` | RN-01 |
 | Recuperación para un email inexistente, de cuenta inactiva o existente | El mismo 202 y el mismo cuerpo; sólo se avisa a Notificaciones si la cuenta está activa | RN-13, DC-09 |
 | Restablecer con token inexistente, vencido, usado o de cuenta inactiva | 400 `INVALID_RESET_TOKEN`, igual en todos los casos | RN-13 |
 | Pedir un token nuevo | El anterior deja de servir | RN-13 |

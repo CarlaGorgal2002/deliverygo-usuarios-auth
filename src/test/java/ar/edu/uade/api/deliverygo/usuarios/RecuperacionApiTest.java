@@ -94,8 +94,8 @@ class RecuperacionApiTest extends ApiTestSupport {
         assertError(mvc.perform(conJson(post(FORGOT), cuerpo("email", "no-es-un-email"))), 400, "VALIDATION_ERROR", FORGOT)
                 .andExpect(jsonPath("$.details[0].campo").value("email"));
         assertError(mvc.perform(conJson(post(FORGOT), "{}")), 400, "VALIDATION_ERROR", FORGOT);
-        assertError(mvc.perform(conJson(post(FORGOT), cuerpo("email", a.email(), "rol", "ADMIN"))),
-                400, "VALIDATION_ERROR", FORGOT);
+        // DC-01: un campo extra se ignora
+        mvc.perform(conJson(post(FORGOT), cuerpo("email", a.email(), "rol", "ADMIN"))).andExpect(status().isAccepted());
     }
 
     @Test
@@ -190,10 +190,8 @@ class RecuperacionApiTest extends ApiTestSupport {
                 400, "VALIDATION_ERROR", RESET).andExpect(jsonPath("$.details[0].campo").value("password"));
         assertError(mvc.perform(conJson(post(RESET), cuerpo("password", NUEVA))), 400, "VALIDATION_ERROR", RESET)
                 .andExpect(jsonPath("$.details[0].campo").value("token"));
-        assertError(mvc.perform(conJson(post(RESET), cuerpo("token", token, "password", NUEVA, "email", a.email()))),
-                400, "VALIDATION_ERROR", RESET);
-
-        // los rechazos no consumieron el token
-        mvc.perform(conJson(post(RESET), cuerpo("token", token, "password", NUEVA))).andExpect(status().isNoContent());
+        // los rechazos no consumieron el token; un campo extra (DC-01) se ignora
+        mvc.perform(conJson(post(RESET), cuerpo("token", token, "password", NUEVA, "email", a.email())))
+                .andExpect(status().isNoContent());
     }
 }

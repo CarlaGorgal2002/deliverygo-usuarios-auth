@@ -186,10 +186,9 @@ class AdministracionApiTest extends ApiTestSupport {
                 400, "VALIDATION_ERROR", rol(a.id())).andExpect(jsonPath("$.details[0].campo").value("rol"));
         assertError(mvc.perform(conJson(put(rol(a.id())).header("Authorization", admin.bearer()), cuerpo("rol", null))),
                 400, "VALIDATION_ERROR", rol(a.id()));
-        // DC-01: sólo el campo del caso de uso
-        assertError(mvc.perform(conJson(put(estado(a.id())).header("Authorization", admin.bearer()),
-                cuerpo("estado", "INACTIVO", "rol", "ADMIN"))), 400, "VALIDATION_ERROR", estado(a.id()))
-                .andExpect(jsonPath("$.details[0].campo").value("rol"));
+        // DC-01: sólo cuenta el campo del caso de uso; el rol extra se ignora
+        mvc.perform(conJson(put(estado(a.id())).header("Authorization", admin.bearer()),
+                cuerpo("estado", "ACTIVO", "rol", "ADMIN"))).andExpect(status().isOk());
 
         mvc.perform(get("/api/v1/users/" + a.id()).header("Authorization", a.bearer()))
                 .andExpect(jsonPath("$.estado").value("ACTIVO"))

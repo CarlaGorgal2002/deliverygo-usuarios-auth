@@ -19,7 +19,7 @@ info:
     roles humanos privilegiados: un ADMIN no es un módulo. Usuarios emite el JWT; cada servicio valida firma, vencimiento y permisos.
     El objetivo de firma es asimétrico, conforme a la teoría. No se distribuyen claves privadas en el contrato.
 
-    Decisiones que completan ambigüedades de la primera entrega: DC-01 campos desconocidos rechazados;
+    Decisiones que completan ambigüedades de la primera entrega: DC-01 campos desconocidos ignorados;
     DC-02 normalización de email; DC-03 ausencia/null de opcionales y reemplazo PUT;
     DC-04 zona horaria; DC-05 validación de login; DC-06 correlación; DC-07 errores de ruta y usuario inexistente;
     DC-08 credencial de módulo por API Key; DC-09 recuperación de contraseña uniforme y de un solo uso;
@@ -174,7 +174,7 @@ paths:
       security: []
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -329,7 +329,7 @@ paths:
       security: []
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -415,7 +415,7 @@ paths:
       security: []
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -510,7 +510,7 @@ paths:
       security: []
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -1106,7 +1106,7 @@ paths:
                     correlationId: g02-demo-001
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -1289,7 +1289,7 @@ paths:
                     correlationId: g02-demo-001
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -1471,7 +1471,7 @@ paths:
                     correlationId: g02-demo-001
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -1984,7 +1984,7 @@ paths:
                     correlationId: g02-demo-001
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -2182,7 +2182,7 @@ paths:
                     correlationId: g02-demo-001
       requestBody:
         required: true
-        description: Objeto JSON conforme al DTO; campos desconocidos se rechazan con 400 VALIDATION_ERROR (DC-01).
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
         content:
           application/json:
             schema:
@@ -2602,7 +2602,6 @@ components:
   schemas:
     RegistrarUsuarioRequest:
       type: object
-      additionalProperties: false
       description: DTO-01. No admite id, rol, estado, fechaAlta ni passwordHash. El servidor asigna identidad, rol
         CLIENTE y estado ACTIVO.
       required:
@@ -2711,7 +2710,6 @@ components:
       x-dto-id: DTO-02
     LoginRequest:
       type: object
-      additionalProperties: false
       description: DTO-03. Autenticación por email y contraseña; no utiliza username.
       required:
       - email
@@ -2781,7 +2779,6 @@ components:
       x-dto-id: DTO-04
     ModificarPerfilRequest:
       type: object
-      additionalProperties: false
       description: DTO-05. PUT reemplaza todos los datos editables; telefono ausente/null/en blanco borra el anterior.
         No admite rol, estado ni password (RN-10).
       required:
@@ -2820,7 +2817,6 @@ components:
       x-dto-id: DTO-05
     CrearDireccionRequest:
       type: object
-      additionalProperties: false
       description: DTO-06. El id y el usuario propietario se obtienen del servidor y de la ruta. No admite activa,
         usuarioId ni referencia.
       required:
@@ -2953,7 +2949,6 @@ components:
       x-dto-id: DTO-07
     ModificarDireccionRequest:
       type: object
-      additionalProperties: false
       description: DTO-09. PUT reemplaza los datos editables y conserva predeterminada. No admite id, usuarioId,
         activa, predeterminada ni referencia.
       required:
@@ -3107,7 +3102,6 @@ components:
           example: Debe tener un formato de email válido
     CambiarEstadoRequest:
       type: object
-      additionalProperties: false
       description: DTO-10 (CU-06). Sólo el estado deseado; repetir el estado actual es idempotente.
       required:
       - estado
@@ -3117,7 +3111,6 @@ components:
       x-dto-id: DTO-10
     CambiarRolRequest:
       type: object
-      additionalProperties: false
       description: DTO-11 (CU-07). El rol debe pertenecer al catálogo; repetir el rol actual es idempotente.
       required:
       - rol
@@ -3127,7 +3120,6 @@ components:
       x-dto-id: DTO-11
     SolicitarRecuperacionRequest:
       type: object
-      additionalProperties: false
       description: DTO-12 (CU-08). Email de la cuenta. La respuesta no revela si existe (RN-13).
       required:
       - email
@@ -3144,7 +3136,6 @@ components:
       x-dto-id: DTO-12
     RestablecerPasswordRequest:
       type: object
-      additionalProperties: false
       description: DTO-13 (CU-08). Token de un solo uso recibido por Notificaciones y la contraseña nueva, con la
         política del alta.
       required:

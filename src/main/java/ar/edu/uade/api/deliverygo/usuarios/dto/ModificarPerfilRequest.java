@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import static ar.edu.uade.api.deliverygo.usuarios.dto.Validaciones.*;
 
-// DTO-05. El PUT reemplaza todos los datos editables; no admite rol, estado ni contraseña (RN-10).
+// DTO-05. El PUT reemplaza todos los datos editables; no incluye rol, estado ni contraseña: si llegan, se ignoran (RN-10).
 public record ModificarPerfilRequest(
         @Schema(example = "Ana")
         @NotBlank(message = OBLIGATORIO) @Size(max = 80, message = "No puede superar 80 caracteres")

@@ -167,7 +167,7 @@ class PerfilApiTest extends ApiTestSupport {
     }
 
     @Test
-    void elPutNoEsParcialYNoAceptaCamposProtegidos() throws Exception {
+    void elPutNoEsParcialYNoModificaCamposProtegidos() throws Exception {
         Sesion a = registrarYLoguear();
         String ruta = "/api/v1/users/" + a.id();
 
@@ -178,14 +178,14 @@ class PerfilApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.details[?(@.campo=='apellido')]").exists())
                 .andExpect(jsonPath("$.details[?(@.campo=='email')]").exists());
 
-        // RN-10: ni contraseña, ni rol, ni estado
+        // RN-10: contraseña, rol y estado no son parte del DTO; se ignoran y no cambian
         for (String campo : new String[]{"password", "rol", "estado"}) {
-            assertError(mvc.perform(put(ruta).header("Authorization", a.bearer())
+            mvc.perform(put(ruta).header("Authorization", a.bearer())
                             .contentType("application/json")
-                            .content(cuerpo("nombre", "Ana", "apellido", "Pérez", "email", a.email(), campo, "ADMIN"))),
-                    400, "VALIDATION_ERROR", ruta)
-                    .andExpect(jsonPath("$.details[0].campo").value(campo));
+                            .content(cuerpo("nombre", "Ana", "apellido", "Pérez", "email", a.email(), campo, "ADMIN")))
+                    .andExpect(status().isOk());
         }
+        login(a.email(), PASSWORD).andExpect(status().isOk());
         mvc.perform(get(ruta).header("Authorization", a.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rol").value("CLIENTE"))
