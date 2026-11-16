@@ -2,8 +2,6 @@ package ar.edu.uade.api.deliverygo.usuarios.exception;
 
 import ar.edu.uade.api.deliverygo.usuarios.dto.DetalleValidacion;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ErrorResponse;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,7 +28,6 @@ import org.springframework.validation.method.ParameterValidationResult;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 // Único punto donde las excepciones se convierten en DTO-08. Extiende ResponseEntityExceptionHandler
 // para que los errores propios de Spring MVC (405, 415, ruta inexistente...) usen el mismo formato.
@@ -41,7 +37,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private static final String MSG_VALIDACION = "La solicitud contiene datos inválidos";
-    private static final String MSG_PROHIBIDO = "No tiene permiso para acceder a este recurso";
 
     // ---------------------------------------------------------------- reglas de negocio
 
@@ -70,13 +65,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return responder(request, HttpStatus.FORBIDDEN, "USER_INACTIVE", e.getMessage(), null);
     }
 
-    // 403 - RN-05: lo lanza @PreAuthorize cuando el token no pertenece al titular de la ruta
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> manejarAccesoDenegado(AccessDeniedException e, HttpServletRequest request) {
-        return responder(request, HttpStatus.FORBIDDEN, "FORBIDDEN", MSG_PROHIBIDO, null);
-    }
-
-    // 403 - RN-11 y RN-12: se pidió una operación que el solicitante autenticado no puede realizar
+    // 403 - RN-05, RN-11 y RN-12: no es el titular de la ruta, o la operación no le está permitida
     @ExceptionHandler(AccesoProhibidoException.class)
     public ResponseEntity<Object> manejarAccesoProhibido(AccesoProhibidoException e, HttpServletRequest request) {
         return responder(request, HttpStatus.FORBIDDEN, "FORBIDDEN", e.getMessage(), null);
@@ -146,23 +135,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return validacion(request, detalles);
     }
 
-    // JSON ilegible, campo desconocido (DC-01) o de tipo incorrecto.
+    // Cuerpo vacío, JSON mal formado o un valor que no se puede convertir al tipo del DTO.
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers,
                                                                   HttpStatusCode status, WebRequest request) {
-        DetalleValidacion detalle;
-        Throwable causa = ex.getCause();
-        if (causa instanceof UnrecognizedPropertyException desconocida) {
-            detalle = new DetalleValidacion(desconocida.getPropertyName(), "Campo no permitido");
-        } else if (causa instanceof MismatchedInputException tipo && !tipo.getPath().isEmpty()) {
-            String campo = tipo.getPath().stream()
-                    .map(r -> r.getFieldName() != null ? r.getFieldName() : "[" + r.getIndex() + "]")
-                    .collect(Collectors.joining("."));
-            detalle = new DetalleValidacion(campo, "Tipo de dato inválido");
-        } else {
-            detalle = new DetalleValidacion("body", "El cuerpo debe ser JSON válido");
-        }
-        return validacion(request, List.of(detalle));
+        return validacion(request, List.of(new DetalleValidacion("body", "El cuerpo debe ser JSON válido")));
     }
 
     // Identificadores no numéricos o fuera del rango de Long (DC-07).

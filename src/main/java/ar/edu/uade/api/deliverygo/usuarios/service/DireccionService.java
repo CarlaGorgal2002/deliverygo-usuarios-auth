@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-// CU-05. Toda escritura toma primero un lock sobre la fila del usuario: así dos pedidos simultáneos
-// sobre sus direcciones se ejecutan de a uno y nunca quedan dos predeterminadas (RN-07).
+// CU-05. Administración de las direcciones del usuario: alta, modificación, baja lógica y
+// selección de la predeterminada (a lo sumo una, RN-07).
 @Service
 public class DireccionService {
 
@@ -58,7 +58,7 @@ public class DireccionService {
     // SRV-05 (API-06)
     @Transactional
     public DireccionResponse crearDireccion(Long usuarioId, CrearDireccionRequest request) {
-        Usuario usuario = bloquearTitularActivo(usuarioId);
+        Usuario usuario = buscarTitularActivo(usuarioId);
 
         Direccion direccion = new Direccion(usuario,
                 request.calle().trim(),
@@ -80,7 +80,7 @@ public class DireccionService {
     // SRV-06 (API-07). PUT completo de los datos editables; no toca predeterminada.
     @Transactional
     public DireccionResponse modificarDireccion(Long usuarioId, Long direccionId, ModificarDireccionRequest request) {
-        bloquearTitularActivo(usuarioId);
+        buscarTitularActivo(usuarioId);
         Direccion direccion = buscarDireccionActiva(usuarioId, direccionId);
 
         direccion.actualizarDatos(
@@ -97,7 +97,7 @@ public class DireccionService {
     // SRV-07 (API-08). Baja lógica: la fila se conserva inactiva para mantener referencias históricas.
     @Transactional
     public void eliminarDireccion(Long usuarioId, Long direccionId) {
-        bloquearTitularActivo(usuarioId);
+        buscarTitularActivo(usuarioId);
         Direccion direccion = buscarDireccionActiva(usuarioId, direccionId);
 
         // RN-07: si era la predeterminada se desmarca y no se elige otra automáticamente.
@@ -108,7 +108,7 @@ public class DireccionService {
     // SRV-08 (API-09). Idempotente: seleccionar la que ya es predeterminada no cambia nada.
     @Transactional
     public DireccionResponse seleccionarPredeterminada(Long usuarioId, Long direccionId) {
-        bloquearTitularActivo(usuarioId);
+        buscarTitularActivo(usuarioId);
         Direccion direccion = buscarDireccionActiva(usuarioId, direccionId);
 
         if (!direccion.isPredeterminada()) {
@@ -119,8 +119,8 @@ public class DireccionService {
     }
 
     // RN-05: la identidad del solicitante ya se verificó; acá sólo se comprueba RN-04.
-    private Usuario bloquearTitularActivo(Long usuarioId) {
-        return verificarTitularActivo(usuarioRepository.findByIdForUpdate(usuarioId));
+    private Usuario buscarTitularActivo(Long usuarioId) {
+        return verificarTitularActivo(usuarioRepository.findById(usuarioId));
     }
 
     private Usuario verificarTitularActivo(Optional<Usuario> usuario) {

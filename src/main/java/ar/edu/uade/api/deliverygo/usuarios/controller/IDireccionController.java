@@ -51,7 +51,7 @@ public interface IDireccionController {
             headers = @Header(name = "Location", description = "URI de la dirección creada.", schema = @Schema(example = "/api/v1/users/1/addresses/10")))
     @ErroresDeSesion
     @ErroresComunes
-    ResponseEntity<DireccionResponse> crearDireccion(@PathVariable @Positive(message = ID_POSITIVO) Long id, @Valid @RequestBody CrearDireccionRequest request);
+    ResponseEntity<DireccionResponse> crearDireccion(@PathVariable @Positive(message = ID_POSITIVO) Long id, @Valid @RequestBody CrearDireccionRequest request, @Parameter(hidden = true) Authentication authentication);
 
     @Operation(operationId = "modificarDireccion", summary = "Modificar dirección (API-07 / CU-05)",
             description = """
@@ -63,7 +63,7 @@ public interface IDireccionController {
     @ErroresDeSesion
     @ErroresComunes
     ResponseEntity<DireccionResponse> modificarDireccion(@PathVariable @Positive(message = ID_POSITIVO) Long id, @PathVariable @Positive(message = ID_POSITIVO) Long addressId,
-                                                         @Valid @RequestBody ModificarDireccionRequest request);
+                                                         @Valid @RequestBody ModificarDireccionRequest request, @Parameter(hidden = true) Authentication authentication);
 
     @Operation(operationId = "eliminarDireccion", summary = "Eliminar dirección (API-08 / CU-05)",
             description = """
@@ -74,7 +74,7 @@ public interface IDireccionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ErroresDeSesion
     @ErroresComunes
-    ResponseEntity<Void> eliminarDireccion(@PathVariable @Positive(message = ID_POSITIVO) Long id, @PathVariable @Positive(message = ID_POSITIVO) Long addressId);
+    ResponseEntity<Void> eliminarDireccion(@PathVariable @Positive(message = ID_POSITIVO) Long id, @PathVariable @Positive(message = ID_POSITIVO) Long addressId, @Parameter(hidden = true) Authentication authentication);
 
     @Operation(operationId = "seleccionarDireccionPredeterminada", summary = "Seleccionar dirección predeterminada (API-09 / CU-05)",
             description = """
@@ -85,5 +85,5 @@ public interface IDireccionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ErroresDeSesion
     @ErroresComunes
-    ResponseEntity<DireccionResponse> seleccionarPredeterminada(@PathVariable @Positive(message = ID_POSITIVO) Long id, @PathVariable @Positive(message = ID_POSITIVO) Long addressId);
+    ResponseEntity<DireccionResponse> seleccionarPredeterminada(@PathVariable @Positive(message = ID_POSITIVO) Long id, @PathVariable @Positive(message = ID_POSITIVO) Long addressId, @Parameter(hidden = true) Authentication authentication);
 }

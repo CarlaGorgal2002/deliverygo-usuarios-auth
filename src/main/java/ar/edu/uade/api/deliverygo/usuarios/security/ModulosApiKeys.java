@@ -5,9 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -38,31 +35,17 @@ public class ModulosApiKeys {
         });
     }
 
-    // Devuelve el módulo dueño de la clave presentada. Compara huellas SHA-256 con tiempo constante y
-    // recorre todos los módulos, para que la demora no revele cuál clave se parecía.
+    // Devuelve el módulo dueño de la clave presentada, o vacío si ninguna coincide.
     public Optional<String> identificar(String presentada) {
         if (presentada == null || presentada.isBlank()) {
             return Optional.empty();
         }
-        byte[] huellaPresentada = sha256(presentada);
-        String encontrado = null;
         for (Map.Entry<String, String> entrada : apiKeys.entrySet()) {
             String clave = entrada.getValue();
-            if (clave == null || clave.length() < LARGO_MINIMO) {
-                continue;
-            }
-            if (MessageDigest.isEqual(huellaPresentada, sha256(clave))) {
-                encontrado = entrada.getKey();
+            if (clave != null && clave.length() >= LARGO_MINIMO && clave.equals(presentada)) {
+                return Optional.of(entrada.getKey());
             }
         }
-        return Optional.ofNullable(encontrado);
-    }
-
-    private static byte[] sha256(String texto) {
-        try {
-            return MessageDigest.getInstance("SHA-256").digest(texto.getBytes(StandardCharsets.UTF_8));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 no está disponible", e);
-        }
+        return Optional.empty();
     }
 }

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import static ar.edu.uade.api.deliverygo.usuarios.dto.Validaciones.OBLIGATORIO;
 
-// DTO-06. El id lo asigna el servidor y el propietario sale de la ruta; no admite activa ni usuarioId.
+// DTO-06. El id lo asigna el servidor y el propietario sale de la ruta; no incluye activa ni usuarioId (si llegan, se ignoran).
 public record CrearDireccionRequest(
         @Schema(example = "Av. Independencia")
         @NotBlank(message = OBLIGATORIO) @Size(max = 100, message = "No puede superar 100 caracteres")

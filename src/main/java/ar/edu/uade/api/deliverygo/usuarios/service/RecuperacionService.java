@@ -92,11 +92,8 @@ public class RecuperacionService {
             throw new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO);
         }
 
-        // Consumo atómico: si dos pedidos llegan juntos con el mismo token, sólo uno obtiene 1.
-        if (tokenRepository.consumir(huella, ahora) == 0) {
-            throw new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO);
-        }
-
+        // Un solo uso: queda marcado y los cambios se guardan al cerrar la transacción (dirty checking).
+        guardado.setUsadoEn(ahora);
         usuario.setPasswordHash(passwordEncoder.encode(passwordNueva));
         tokenRepository.invalidarVigentes(usuario.getId(), ahora);
     }

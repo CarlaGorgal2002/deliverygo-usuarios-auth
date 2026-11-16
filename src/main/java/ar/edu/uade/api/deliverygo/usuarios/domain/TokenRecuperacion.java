@@ -63,4 +63,8 @@ public class TokenRecuperacion {
     public LocalDateTime getUsadoEn() {
         return usadoEn;
     }
+
+    public void setUsadoEn(LocalDateTime usadoEn) {
+        this.usadoEn = usadoEn;
+    }
 }

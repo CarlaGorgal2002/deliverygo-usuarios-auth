@@ -1,6 +1,5 @@
 package ar.edu.uade.api.deliverygo.usuarios.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -14,7 +13,6 @@ public record RestablecerPasswordRequest(
         String token,
 
         @Schema(example = "NuevaClave2026!", accessMode = Schema.AccessMode.WRITE_ONLY, description = "Mínimo 8 caracteres. Nunca se devuelve ni se registra.")
-        @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
         @NotBlank(message = OBLIGATORIO) @Size(min = 8, message = PASSWORD_MINIMO)
         String password
 ) {

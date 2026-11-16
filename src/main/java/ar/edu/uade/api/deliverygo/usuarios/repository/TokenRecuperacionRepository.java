@@ -13,12 +13,6 @@ public interface TokenRecuperacionRepository extends JpaRepository<TokenRecupera
 
     Optional<TokenRecuperacion> findByTokenHash(String tokenHash);
 
-    // Consumo atómico (RN-13): sólo uno de dos pedidos simultáneos con el mismo token obtiene 1.
-    @Modifying(flushAutomatically = true)
-    @Query("update TokenRecuperacion t set t.usadoEn = :ahora "
-            + "where t.tokenHash = :hash and t.usadoEn is null and t.expiraEn > :ahora")
-    int consumir(@Param("hash") String hash, @Param("ahora") LocalDateTime ahora);
-
     // Deja sin efecto los tokens vigentes de un usuario cuando se pide uno nuevo o se restablece la clave.
     @Modifying(flushAutomatically = true)
     @Query("update TokenRecuperacion t set t.usadoEn = :ahora where t.usuario.id = :usuarioId and t.usadoEn is null")
