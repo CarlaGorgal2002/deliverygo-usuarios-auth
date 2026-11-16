@@ -3,11 +3,9 @@ package ar.edu.uade.api.deliverygo.usuarios.service;
 import ar.edu.uade.api.deliverygo.usuarios.domain.Usuario;
 import ar.edu.uade.api.deliverygo.usuarios.dto.LoginRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.LoginResponse;
-import ar.edu.uade.api.deliverygo.usuarios.dto.RegistrarUsuarioRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.RestablecerPasswordRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SesionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SolicitarRecuperacionRequest;
-import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.exception.CredencialesInvalidasException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.SesionInvalidaException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.UsuarioInactivoException;
@@ -32,35 +30,20 @@ public class AuthService {
     private static final String TIPO_TOKEN = "Bearer";
     private static final String MSG_CREDENCIALES = "Email o contraseña incorrectos";
 
-    private final UsuarioService usuarioService;
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final NotificacionesClient notificacionesClient;
     private final RecuperacionService recuperacionService;
 
-    public AuthService(UsuarioService usuarioService, UsuarioRepository usuarioRepository,
+    public AuthService(UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder, JwtService jwtService,
                        NotificacionesClient notificacionesClient, RecuperacionService recuperacionService) {
-        this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.notificacionesClient = notificacionesClient;
         this.recuperacionService = recuperacionService;
-    }
-
-    // SRV-01 (CU-01). No es transaccional: la bienvenida se pide recién cuando el alta ya está confirmada.
-    public UsuarioResponse registrar(RegistrarUsuarioRequest request) {
-        UsuarioResponse usuario = usuarioService.registrarUsuario(request);
-
-        // INT-01 no bloqueante: si falla, el registro se mantiene y el cliente igual recibe el 201.
-        try {
-            notificacionesClient.enviarBienvenida(usuario.id(), usuario.nombre(), usuario.email());
-        } catch (RuntimeException e) {
-            log.warn("INT-01: no se pudo solicitar la bienvenida del usuario {}", usuario.id(), e);
-        }
-        return usuario;
     }
 
     // SRV-02 (CU-02)

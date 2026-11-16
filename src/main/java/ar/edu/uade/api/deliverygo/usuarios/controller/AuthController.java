@@ -9,6 +9,7 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.SolicitarRecuperacionRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.AuthService;
+import ar.edu.uade.api.deliverygo.usuarios.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,15 +23,17 @@ import java.net.URI;
 public class AuthController implements IAuthController {
 
     private final AuthService authService;
+    private final UsuarioService usuarioService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UsuarioService usuarioService) {
         this.authService = authService;
+        this.usuarioService = usuarioService;
     }
 
     @Override
     @PostMapping("/register")
     public ResponseEntity<UsuarioResponse> registrar(RegistrarUsuarioRequest request) {
-        UsuarioResponse usuario = authService.registrar(request);
+        UsuarioResponse usuario = usuarioService.registrarUsuario(request);
         return ResponseEntity.created(URI.create("/api/v1/users/" + usuario.id())).body(usuario);
     }
 

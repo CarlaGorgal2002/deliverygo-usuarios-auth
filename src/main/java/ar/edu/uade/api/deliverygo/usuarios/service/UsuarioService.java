@@ -10,9 +10,12 @@ import ar.edu.uade.api.deliverygo.usuarios.exception.DatoInvalidoException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.EmailDuplicadoException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.UsuarioInactivoException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.UsuarioNoEncontradoException;
+import ar.edu.uade.api.deliverygo.usuarios.integration.NotificacionesClient;
 import ar.edu.uade.api.deliverygo.usuarios.mapper.UsuarioMapper;
 import ar.edu.uade.api.deliverygo.usuarios.repository.RolRepository;
 import ar.edu.uade.api.deliverygo.usuarios.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 public class UsuarioService {
+
+    private static final Logger log = LoggerFactory.getLogger(UsuarioService.class);
 
     // RN-06: el registro público siempre crea CLIENTE; otros roles se aprovisionan aparte (CU-07).
     static final String ROL_INICIAL = "CLIENTE";
@@ -35,16 +40,19 @@ public class UsuarioService {
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final UsuarioMapper usuarioMapper;
+    private final NotificacionesClient notificacionesClient;
 
     public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository,
-                          PasswordEncoder passwordEncoder, UsuarioMapper usuarioMapper) {
+                          PasswordEncoder passwordEncoder, UsuarioMapper usuarioMapper,
+                          NotificacionesClient notificacionesClient) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
         this.usuarioMapper = usuarioMapper;
+        this.notificacionesClient = notificacionesClient;
     }
 
-    // SRV-01 (CU-01)
+    // SRV-01 (CU-01). Da de alta al usuario y pide la bienvenida (INT-01).
     @Transactional
     public UsuarioResponse registrarUsuario(RegistrarUsuarioRequest request) {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > MAX_BYTES_PASSWORD) {
@@ -68,8 +76,15 @@ public class UsuarioService {
                 passwordEncoder.encode(request.password()),
                 Textos.recortarONulo(request.telefono()),
                 rol);
+        UsuarioResponse creado = usuarioMapper.toResponse(usuarioRepository.save(usuario));
 
-        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
+        // INT-01 no bloqueante: si falla, el registro se mantiene y el cliente igual recibe el 201.
+        try {
+            notificacionesClient.enviarBienvenida(creado.id(), creado.nombre(), creado.email());
+        } catch (RuntimeException e) {
+            log.warn("INT-01: no se pudo solicitar la bienvenida del usuario {}", creado.id(), e);
+        }
+        return creado;
     }
 
     // SRV-03 (CU-03)
