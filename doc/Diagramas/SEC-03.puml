@@ -1,36 +1,31 @@
 @startuml SEC-03
-skinparam dpi 170
-title SEC-03 Consultar perfil (CU-03)
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title SEC-03 Consultar perfil (CU-03 / API-03)
 autonumber
-actor "Cliente via Portal\no modulo consumidor" as Cliente
-participant "JwtAuthFilter" as Sec
-participant "UsuarioController" as Ctrl
-participant "UsuarioService" as Srv
-participant "UsuarioRepository" as RepU
-database "BD Usuarios" as BD
-Cliente -> Sec : GET /api/v1/users/{id} (API-03)\nAuthorization: Bearer
-Sec -> Sec : validar sesion [RN-09]\ne identidad [RN-05] (DM-08)
-alt sesion ausente, invalida o vencida
-  Sec --> Cliente : 401 ErrorResponse (DTO-08)
-else no es el titular ni un modulo autorizado
-  Sec --> Cliente : 403 ErrorResponse (DTO-08)
-else solicitud autorizada
-  Sec -> Ctrl : solicitud autenticada
-  Ctrl -> Srv : consultarPerfil(id) (SRV-03)
-  Srv -> RepU : findById(id) (REP-02)
-  RepU -> BD : SELECT usuario WHERE id
-  BD --> RepU : Optional<Usuario>
-  RepU --> Srv : Optional<Usuario>
-  alt usuario inexistente
-    Srv --> Ctrl : RecursoNoEncontradoException
-    Ctrl --> Cliente : 404 ErrorResponse (DTO-08)
-  else titular INACTIVO [RN-04]
-    Srv --> Ctrl : UsuarioInactivoException
-    Ctrl --> Cliente : 422 ErrorResponse (DTO-08)
-  else usuario encontrado
-    Srv --> Ctrl : Usuario
-    Ctrl -> Ctrl : UsuarioMapper: Usuario a UsuarioResponse\n(sin passwordHash)
-    Ctrl --> Cliente : 200 UsuarioResponse (DTO-02)\nincluye rol y estado
-  end
+actor "Portal o módulo" as A
+participant "Filtros de seguridad" as F
+participant UsuarioController as C
+participant UsuarioService as S
+participant UsuarioRepository as R
+A -> F : GET /api/v1/users/{id}\nBearer de persona o X-Api-Key de módulo
+F -> F : validar credencial [RN-09, RN-15]
+F -> C : solicitud autenticada
+C -> C : titular de la ruta o módulo autorizado [RN-05]
+alt persona titular
+ C -> S : consultarPerfil(id) [SRV-03]
+ S -> R : findById(id)
+ S -> S : exigir ACTIVO [RN-04]
+else módulo consumidor
+ C -> S : consultarPerfilParaModulo(id)
+ S -> R : findById(id)
+ note right of S : Incluye cuentas INACTIVAS;\nel consumidor decide con sus reglas.
 end
+S -> S : UsuarioMapper.toResponse(usuario)
+S --> C : UsuarioResponse (DTO-02)
+C --> A : 200 perfil, estado y rol; sin hash
+note over A,R : 401 credencial inválida; 403 no titular o titular inactivo;\n400 id inválido; 404 usuario inexistente autorizado.
 @enduml

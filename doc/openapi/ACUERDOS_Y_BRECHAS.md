@@ -93,11 +93,7 @@ Cómo llama el cliente HTTP:
 
 Un fallo de Notificaciones (plantilla inexistente, 4xx/5xx, tiempo de espera o servicio caído) no revierte el alta ni la recuperación, ni cambia la respuesta: en modo `http` la falla ocurre en segundo plano y la registra `AsyncConfig`; si el envío no llega a encolarse, `UsuarioService` o `AuthService` atrapan la excepción y la registran. `NotificacionesAsincronasApiTest` verifica, contra una Notificaciones lenta, que la recuperación y el registro responden sin esperarla y que el envío igual llega con el `X-Correlation-Id` original. `BienvenidaApiTest` verifica que la bienvenida se solicita una vez por alta confirmada, que no se solicita si el registro falla y que una excepción del cliente no cambia el 201. `NotificacionesClientHttpTest` verifica con `MockRestServiceServer` el cuerpo, el Bearer de servicio, el `X-Correlation-Id`, la plantilla inexistente, el 503, el servicio caído y la caché de plantillas.
 
-**Pendiente del lado de Notificaciones** para que el modo `http` funcione de punta a punta:
-
-1. Crear las plantillas activas `USUARIO_BIENVENIDA_EMAIL` (variable `nombre`) y `RECUPERACION_PASSWORD_EMAIL` (variables `nombre` y `token`).
-2. Usar el mismo `JWT_SECRET` que Usuarios para validar el token de servicio y aceptar el rol `SISTEMA`.
-3. Obtener el contacto del destinatario (email) consultando `GET /api/v1/users/{id}` de Usuarios con su `X-Api-Key` (`MODULE_KEY_NOTIFICACIONES`, de al menos 16 caracteres, entregada por un canal seguro). Usuarios no envía el email en el cuerpo de la notificación.
+**Verificación real del 16/11/2026.** Las plantillas ya existen en el commit revisado de Notificaciones. Se detectaron y corrigieron en una copia local el rechazo de `SISTEMA` y la deserialización del contacto. Con el [parche y la configuración documentados](../integracion/README.md), los flujos INT-01, INT-05 e INT-06 pasaron por HTTP. El parche todavía debe incorporarlo el equipo externo; no se presenta como publicado. El canal EMAIL del módulo sigue siendo simulado.
 
 ## Estado de la implementación frente al contrato
 
@@ -108,7 +104,7 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 | Login | Recibe `email` y `password`; devuelve `token`, `tipo`, `expiraEn`, `usuarioId`, `nombre` y `rol` | `AuthApiTest` |
 | JWT | `sub` = id, `role`, `iat`, `exp`; claim `UID` eliminado; HS256 | `JwtServiceTest`, `AuthApiTest` |
 | Registro | DTO validado, email normalizado y único, rol CLIENTE y estado ACTIVO fijos, contraseña con hash BCrypt | `AuthApiTest` |
-| PUT de perfil | Reemplazo completo de campos editables; rechaza password, rol y estado; 409 si el email es de otro usuario | `PerfilApiTest` |
+| PUT de perfil | Reemplazo completo de campos editables; ignora password, rol y estado; 409 si el email es de otro usuario | `PerfilApiTest` |
 | Direcciones | API-05 a API-09 implementadas; baja lógica; una sola predeterminada | `DireccionesApiTest` |
 | DTO de dirección | Sin `referencia` en las entradas ni salidas; el atributo se conserva sólo en la entidad | `DireccionesApiTest` |
 | Formato de errores | `ErrorResponse` con `timestamp`, `status`, `code`, `message`, `path`, `correlationId` y `details`; un único `GlobalExceptionHandler` | todas las clases de prueba |
@@ -156,3 +152,9 @@ Fuera de alcance: pedidos simultáneos sobre el mismo recurso (concurrencia). No
 2. Acordar firma, claves, emisor/audiencia y la forma de entregar y rotar las API Keys; si se elige otro mecanismo para los módulos, reemplazar el filtro.
 3. Probar de punta a punta INT-01 e INT-06 con `NOTIFICACIONES_MODO=http` cuando Notificaciones tenga sus plantillas y el `JWT_SECRET` compartido; luego evaluar dejar `http` como modo por defecto.
 4. Ante cualquier cambio, actualizar el YAML, regenerar las vistas, correr `validar_contratos.py` y `mvn test`, y contrastar la Swagger generada con el contrato.
+
+## Consistencia ante solicitudes simultáneas
+
+RN-07 y RN-13 se protegen con un bloqueo JPA de la fila del usuario dentro de cada transacción de escritura. Las lecturas comunes no toman ese bloqueo. En recuperación se bloquea siempre el usuario antes de leer/modificar tokens; generar uno nuevo invalida los anteriores y restablecer sólo puede consumir el vigente una vez. `ConcurrenciaApiTest` ejecuta seis solicitudes simultáneas para cada una de las tres reglas.
+
+El inventario de consumidores y sus incompatibilidades actuales está en [Integración](../integracion/README.md). No deben confundirse contratos disponibles y pruebas internas con integraciones efectivamente ejecutadas por los otros equipos.

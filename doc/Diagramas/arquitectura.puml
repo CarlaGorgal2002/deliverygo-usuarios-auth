@@ -1,28 +1,33 @@
 @startuml arquitectura
-skinparam dpi 170
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title Arquitectura implementada del módulo Usuarios
 skinparam componentStyle rectangle
-skinparam defaultFontSize 12
-actor "Portal Web (INT-02)" as Portal
-node "Pedidos, Logistica, Catalogo,\nPagos, Analitica, Notificaciones\n(INT-03 a INT-05)" as Mods
-package "Modulo Usuarios y Autenticacion (ar.edu.uade.api.deliverygo.usuarios)" {
-  [security + config\nJwtAuthFilter, JwtProvider,\nSecurityConfig] as Sec
-  [controller\nUsuarioController, AuthController,\nDireccionController] as Ctrl
-  [service\nUsuarioService, AuthService,\nDireccionService] as Srv
-  [repository\nUsuarioRepository, RolRepository,\nDireccionRepository] as Rep
-  [integration\nNotificacionesClient] as Int
-  [dto + mapper] as Dto
-  [domain\nUsuario, Rol, Direccion] as Model
+actor "Portal Web" as Portal
+component "Módulos consumidores" as Mods
+package "Usuarios y Autenticación - Spring Boot" {
+ [Seguridad\nJwtAuthenticationFilter\nApiKeyAuthenticationFilter\nApiRequestFilter / SecurityConfig] as Sec
+ [Controllers\nAuth / Usuario / Direccion] as Ctrl
+ [Services\nUsuario / Auth / Direccion\nAdministracion / Recuperacion] as Srv
+ [DTO y Mapper] as Dto
+ [Repositories JPA\nUsuario / Rol / Direccion\nTokenRecuperacion] as Rep
+ [Domain\nUsuario / Rol / Direccion\nTokenRecuperacion] as Dom
+ [NotificacionesClient\nHTTP o mock declarado] as Int
 }
-database "BD Usuarios\n(propia, DM-11)" as BD
-node "Notificaciones\n(INT-01)" as Notif
-Portal --> Sec : HTTP/JSON
-Mods --> Sec : HTTP/JSON
+database "PostgreSQL 16\nBD propia" as BD
+component "Notificaciones\nservicio externo" as Notif
+Portal --> Sec : HTTP/JSON + Bearer JWT
+Mods --> Sec : HTTP/JSON + X-Api-Key
 Sec --> Ctrl
 Ctrl --> Srv
-Ctrl ..> Dto
-Srv --> Rep
-Srv --> Int
-Rep --> Model
+Srv ..> Dto : devuelve DTO
+Srv --> Rep : transacciones
+Rep ..> Dom
 Rep --> BD
-Int --> Notif : HTTP/JSON (mock en Etapa 2)
+Srv --> Int : después de persistir\nbienvenida / recuperación
+Int --> Notif : INT-01 / INT-06\nHTTP en segundo plano
+note bottom of BD : H2 sólo en pruebas automáticas.
 @enduml

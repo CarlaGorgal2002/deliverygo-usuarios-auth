@@ -6,11 +6,13 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT, API Key para módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 92 pruebas automáticas de integración; ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
+**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT, API Key para módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 95 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
 
-La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), tres vistas por área, el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), trazabilidad y validación reproducible. Quedan pendientes de acuerdo con el ecosistema (no implementados) la firma asimétrica del JWT, la entrega y rotación de las API Keys de los módulos y el contrato real de Notificaciones, hoy un mock declarado; ver [ACUERDOS_Y_BRECHAS.md](doc/openapi/ACUERDOS_Y_BRECHAS.md). Los PDF y diagramas anteriores se conservan en [`doc/`](doc/).
+La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), tres vistas por área, el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), trazabilidad y validación reproducible. La integración HTTP de bienvenida y recuperación se probó con Notificaciones aplicando el parche incluido para ese módulo; Catálogo se probó con JWT emitidos por Usuarios. Los resultados y bloqueos de los demás consumidores están en [Integración](doc/integracion/README.md). La firma asimétrica y la distribución de credenciales siguen requiriendo acuerdo entre equipos. La [entrega actual](doc/ENTREGA_FINAL.md) reúne trazabilidad, evidencia y diagramas; el PDF de la primera entrega se conserva como antecedente.
 
-Paquete para entregar: [G02 Usuarios Swagger — 30/10/2026](entregables/G02_Usuarios_Swagger_2026-10-30.zip).
+Entrega actual: [cierre del módulo — 16/11/2026](doc/ENTREGA_FINAL.md). El [paquete Swagger del 30/10/2026](entregables/G02_Usuarios_Swagger_2026-10-30.zip) es histórico y no incluye los cambios de noviembre.
+
+Las escrituras de direcciones y recuperación bloquean la fila del usuario durante su transacción: solicitudes simultáneas no dejan varias predeterminadas ni consumen dos veces el mismo token. Se verifica con tres pruebas de concurrencia.
 
 ## Tecnologías
 
@@ -68,17 +70,19 @@ Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`,
 |---|---|---|---|
 | INT-01 | Notificaciones (bienvenida) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
 | INT-06 | Notificaciones (recuperación de contraseña) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
-| INT-02 | Portal Web | Entrante | Real |
-| INT-03 | Pedidos y Logística | Entrante | Real, con API Key de módulo |
-| INT-04 | Catálogo | Entrante | Real, con API Key de módulo |
-| INT-05 | Notificaciones, Pagos, Opiniones y Analítica | Entrante | Real, con API Key de módulo |
+| INT-02 | Portal Web | Entrante | API disponible; prueba desde el Portal final pendiente |
+| INT-03 | Pedidos y Logística | Entrante | API Key implementada; consumidores publicados todavía usan mocks de Usuarios |
+| INT-04 | Catálogo | Entrante | JWT de Usuarios validado en Catálogo; API Key disponible para consultas |
+| INT-05 | Notificaciones, Pagos, Opiniones y Analítica | Entrante | Notificaciones probado con el parche; otros consumidores requieren ajustes |
 
 ## Estructura del repositorio
 
 ```
 doc/                     Documento de entrega y diagramas (fuentes .puml e imágenes)
 doc/openapi/             Contrato OpenAPI, vistas, trazabilidad y verificación
-entregables/              Paquete Swagger para entregar
+doc/postman/             Colecciones, environment local y evidencia sin credenciales
+doc/integracion/         Guía entre módulos, hallazgos y parche para Notificaciones
+entregables/              Paquete Swagger histórico de primera entrega
 src/main/java/ar/edu/uade/api/deliverygo/usuarios/
   controller/  service/  repository/  domain/  dto/
   mapper/  exception/  config/  security/  integration/
@@ -98,10 +102,10 @@ Requisitos: JDK 25, Maven (ver el instructivo de la cátedra) y Docker para la b
 ```bash
 docker compose up -d     # levanta PostgreSQL en localhost:5432 (los datos persisten en un volumen)
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
-mvn test                 # 92 pruebas automáticas; usan H2 en memoria, no necesitan Docker
+mvn test                 # 95 pruebas automáticas; usan H2 en memoria, no necesitan Docker
 ```
 
-`docker compose down` apaga la base sin perder los datos; `docker compose down -v` también los borra. Al arrancar, Hibernate crea las tablas que falten (`ddl-auto=update`) y la aplicación carga los roles y el administrador inicial sólo si no existen.
+`docker compose down` apaga la base sin perder los datos; `docker compose down -v` también los borra. Al arrancar, Hibernate crea las tablas que falten (`ddl-auto=update`) y la aplicación carga los roles y, si se configuró, el administrador inicial sólo si no existen. Cambiar `ADMIN_PASSWORD` no cambia la contraseña de una cuenta ya creada.
 
 Configuración por variables de entorno (todas opcionales en desarrollo):
 
@@ -127,20 +131,28 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 - INT-01 (bienvenida) e INT-06 (recuperación de contraseña) con Notificaciones usan por defecto un mock declarado que sólo escribe en el log; con `NOTIFICACIONES_MODO=http` llaman a la API real. Su falla nunca revierte el registro ni cambia la respuesta.
 - Para probar la administración y los módulos en local, definir antes de arrancar, por ejemplo: `ADMIN_EMAIL=admin@deliverygo.test`, `ADMIN_PASSWORD=<una contraseña propia>` y `MODULE_KEY_PEDIDOS=<una clave de 16 caracteres o más>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) y la API Key (`moduleApiKey`). Las claves y contraseñas no se suben al repositorio.
 
-### Usuarios y Notificaciones juntos
+## Datos de prueba
 
-Para probar INT-01 e INT-06 contra el módulo real ([DeliveryGo-Notificaciones](https://github.com/FrancoPedreira/DeliveryGo-Notificaciones)), Usuarios corre en el puerto 8080 y Notificaciones en el 8089. Los dos deben compartir el mismo `JWT_SECRET`.
+Importar [la colección de Postman y el environment local](doc/postman/README.md). Los siguientes valores son públicos y exclusivos de desarrollo local; coinciden con `Local.postman_environment.json`.
 
-```bash
-# Terminal 1: Notificaciones en http://localhost:8089 (según su README), con el mismo JWT_SECRET
-# y MODULE_KEY_NOTIFICACIONES configurada para consultar GET /api/v1/users/{id} en Usuarios.
+En PowerShell, antes de iniciar Usuarios:
 
-# Terminal 2: Usuarios en http://localhost:8080
-export JWT_SECRET='<secreto compartido de 32 caracteres o más>'
-export MODULE_KEY_NOTIFICACIONES='<clave de 16 caracteres o más, la misma que usa Notificaciones>'
-export NOTIFICACIONES_MODO=http
-export NOTIFICACIONES_URL=http://localhost:8089
-SERVER_PORT=8080 mvn spring-boot:run
+```powershell
+$env:ADMIN_EMAIL = 'admin@deliverygo.test'
+$env:ADMIN_PASSWORD = 'AdminDemo2026!'
+$env:MODULE_KEY_PEDIDOS = 'pedidos-demo-local-2026'
+$env:MODULE_KEY_CATALOGO = 'catalogo-demo-local-2026'
+$env:MODULE_KEY_NOTIFICACIONES = 'notificaciones-demo-local-2026'
+# Opcional, sólo para ver el token de recuperación en el log del mock local:
+$env:MOCK_LOG_RECOVERY_TOKEN = 'true'
+docker compose up -d
+mvn spring-boot:run
 ```
 
-Notificaciones debe tener activas las plantillas `USUARIO_BIENVENIDA_EMAIL` y `RECUPERACION_PASSWORD_EMAIL`. Con eso, `POST /api/v1/auth/register` dispara la bienvenida y `POST /api/v1/auth/password/forgot` la recuperación; el log de Usuarios muestra el id de la notificación creada y su estado. Si Notificaciones no está disponible, el registro y la recuperación responden igual y el error queda en el log.
+La colección crea sus propios usuarios con emails únicos, contraseña `ClaveDemo2026!` y contraseña nueva `NuevaClaveDemo2026!`. No usa IDs fijos. Cubre validaciones, acceso cruzado, administración, direcciones, sesión y permisos de módulos. El restablecimiento exitoso se prueba con el token recibido o automáticamente mediante la colección de integración con Notificaciones.
+
+### Usuarios y otros módulos juntos
+
+Ver [la guía de integración](doc/integracion/README.md): incluye comandos PowerShell para Usuarios en **8080**, Notificaciones en **8089** y Catálogo en **8082**, con el mismo secreto JWT. También incluye el parche necesario para el commit revisado de Notificaciones y las incompatibilidades de los otros consumidores.
+
+Las pruebas de Notificaciones usan HTTP real entre los servicios y envío de correo **simulado** del módulo externo. El modo por defecto de Usuarios continúa siendo `mock`; el modo HTTP se activa con `NOTIFICACIONES_MODO=http`. No hay que cambiar los endpoints ni las entidades de Usuarios para ejecutar la demo.

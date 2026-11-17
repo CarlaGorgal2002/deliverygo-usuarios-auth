@@ -1,0 +1,557 @@
+{
+  "info": {
+    "name": "DeliveryGo Usuarios y Notificaciones - integración HTTP",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Requiere ambos servicios reales en modo HTTP, JWT_SECRET compartido, API Key y emisor simulado sin fallas. Ejecutar con --delay-request 250. La lectura del token en historial es exclusiva de la demo local del envío simulado, usando la sesión del destinatario."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.variables.set('correlationId', pm.variables.replaceIn('{{$guid}}'));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Correlación de extremo a extremo', () => pm.expect(pm.response.headers.get('X-Correlation-Id')).to.eql(pm.variables.get('correlationId')));",
+          "if (pm.response.code >= 400) {",
+          " const error = pm.response.json();",
+          " pm.test('Error normalizado', () => {",
+          "  ['timestamp','status','code','message','path','correlationId'].forEach(k => pm.expect(error).to.have.property(k));",
+          "  pm.expect(error.status).to.eql(pm.response.code);",
+          "  pm.expect(error.correlationId).to.eql(pm.variables.get('correlationId'));",
+          " });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Login ADMIN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const suffix = pm.variables.replaceIn('{{$guid}}');",
+              "pm.collectionVariables.set('email', 'demo-' + suffix + '@deliverygo.test');",
+              "pm.collectionVariables.set('emailB', 'otro-' + suffix + '@deliverygo.test');",
+              "['token','adminToken','userId','userBId','addressId','addressBId','recoveryToken','pollCount'].forEach(k => pm.collectionVariables.unset(k));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Verificar plantillas reales",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{notificacionesUrl}}/api/v1/templates"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "",
+              "['USUARIO_BIENVENIDA_EMAIL','RECUPERACION_PASSWORD_EMAIL'].forEach(nombre => {",
+              " const p = data.find(p => p.nombre === nombre && p.activa);",
+              " pm.test('Plantilla activa ' + nombre, () => pm.expect(p).to.exist);",
+              " if (p) pm.collectionVariables.set(nombre, p.id);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Registrar destinatario real",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Perez\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"telefono\": \"+54 11 5555 0101\",\n  \"rol\": \"ADMIN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const data = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('userId', data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Login destinatario",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 INT-01 Esperar bienvenida",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{notificacionesUrl}}/api/v1/users/{{userId}}/notifications?size=100"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "",
+              "const notification = data.content.find(n => n.plantillaId === Number(pm.collectionVariables.get('USUARIO_BIENVENIDA_EMAIL')));",
+              "const count = Number(pm.collectionVariables.get('pollCount') || 0) + 1;",
+              "if (!notification && count < 20) {",
+              " pm.collectionVariables.set('pollCount', count);",
+              " pm.execution.setNextRequest(pm.info.requestName);",
+              "} else {",
+              " pm.collectionVariables.unset('pollCount');",
+              " pm.test('Notificación real recibida', () => pm.expect(notification).to.exist);",
+              " if (notification) {",
+              "  pm.test('Envío simulado aceptado', () => pm.expect(notification.estado).to.eql('ENVIADA'));",
+              "  pm.test('Destinatario correcto', () => pm.expect(notification.destinatarioId).to.eql(Number(pm.collectionVariables.get('userId'))));",
+              "  ",
+              " }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 INT-05 Consultar destinatario con API Key",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "X-Api-Key",
+            "value": "{{notificacionesKey}}"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/users/{{userId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"ACTIVO\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 INT-06 Solicitar recuperacion",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/password/forgot",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 202\", () => pm.response.to.have.status(202));",
+              "pm.test(\"Sin cuerpo\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 INT-06 Esperar mensaje y obtener token",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{notificacionesUrl}}/api/v1/users/{{userId}}/notifications?size=100"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "",
+              "const notification = data.content.find(n => n.plantillaId === Number(pm.collectionVariables.get('RECUPERACION_PASSWORD_EMAIL')));",
+              "const count = Number(pm.collectionVariables.get('pollCount') || 0) + 1;",
+              "if (!notification && count < 20) {",
+              " pm.collectionVariables.set('pollCount', count);",
+              " pm.execution.setNextRequest(pm.info.requestName);",
+              "} else {",
+              " pm.collectionVariables.unset('pollCount');",
+              " pm.test('Notificación real recibida', () => pm.expect(notification).to.exist);",
+              " if (notification) {",
+              "  pm.test('Envío simulado aceptado', () => pm.expect(notification.estado).to.eql('ENVIADA'));",
+              "  pm.test('Destinatario correcto', () => pm.expect(notification.destinatarioId).to.eql(Number(pm.collectionVariables.get('userId'))));",
+              "  const match = (notification.mensaje || '').match(/[A-Za-z0-9_-]{43}/); pm.test('Token recibido por Notificaciones', () => pm.expect(match).not.to.eql(null)); if (match) pm.variables.set('recoveryToken', match[0]);",
+              " }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "46 CU-08 Restablecer con token recibido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/password/reset",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{recoveryToken}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));",
+              "pm.test(\"Sin cuerpo\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "47 CU-08 Token de un solo uso",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/password/reset",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{recoveryToken}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "const data = pm.response.json();",
+              "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(data.code).to.eql(\"INVALID_RESET_TOKEN\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "48 CU-08 Login con nueva password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "49 CU-08 Password anterior rechazada",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Correlation-Id",
+            "value": "{{correlationId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+              "const data = pm.response.json();",
+              "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(data.code).to.eql(\"INVALID_CREDENTIALS\"));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

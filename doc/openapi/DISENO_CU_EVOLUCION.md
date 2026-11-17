@@ -21,7 +21,7 @@ Lo que ni las clases ni el PDF definen (quién puede desactivar, cómo se recupe
 |---|---|---|---|---|
 | CU-06 | Desactivar o reactivar usuario | Portal / Administración | API-10 | Implementado y probado |
 | CU-07 | Asignar o modificar rol | Portal / Administración | API-11 | Implementado y probado |
-| CU-08 | Recuperar o restablecer contraseña | Notificaciones | API-12, API-13 | Implementado y probado; Notificaciones es un mock declarado |
+| CU-08 | Recuperar o restablecer contraseña | Notificaciones | API-12, API-13 | Implementado y probado; cliente HTTP y mock configurable (ver guía de integración) |
 | CU-09 | Renovar o validar sesión/token | Todos los consumidores | API-14, API-15 | Implementado y probado |
 | CU-10 | Consultar estado y rol para otro módulo | Pedidos, Catálogo, Logística | API-16 | Implementado y probado |
 
@@ -30,10 +30,10 @@ Lo que ni las clases ni el PDF definen (quién puede desactivar, cómo se recupe
 | ID | Regla | CU | Dónde se aplica |
 |---|---|---|---|
 | RN-11 | Sólo un administrador ACTIVO puede cambiar el estado o el rol de una cuenta. Se comprueba contra la base en cada operación, no sólo con el rol del token, que puede estar desactualizado hasta vencer. | CU-06, CU-07 | `AdministracionService` (SRV-10, SRV-11) |
-| RN-12 | Un administrador no puede cambiar su propio estado ni su propio rol, para que el sistema nunca quede sin administradores. | CU-06, CU-07 | SRV-10, SRV-11 / REP-09 |
+| RN-12 | Un administrador no puede cambiar su propio estado ni su propio rol, para evitar la baja o degradación accidental de la propia cuenta. | CU-06, CU-07 | SRV-10, SRV-11 / REP-09 |
 | RN-13 | La recuperación de contraseña no revela si el email existe ni su estado (siempre 202). El token es de un solo uso, vence a los 30 minutos (configurable), sólo se guarda su hash y un pedido nuevo deja sin efecto los anteriores. Un token de una cuenta inactiva no sirve. | CU-08 | `RecuperacionService` (SRV-12, SRV-13) / REP-10 a REP-12 |
 | RN-14 | Sólo se renueva una sesión vigente y de una cuenta ACTIVA. El token nuevo lleva el rol actual de la base. Un token vencido no se renueva. | CU-09 | SRV-14 |
-| RN-15 | Cada módulo consumidor se identifica con su propia API Key y sólo puede leer: API-03 (todos), API-05 (sólo Pedidos) y API-16 (todos). Un módulo nunca escribe y un rol humano no lo reemplaza. Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso. | CU-03, CU-05, CU-10 | `ApiKeyAuthenticationFilter`, `Acceso` |
+| RN-15 | Cada módulo consumidor se identifica con su propia API Key y sólo puede leer: API-03 (todos), API-05 (sólo Pedidos) y API-16 (todos). Un módulo nunca escribe y un rol humano no lo reemplaza. Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso. | CU-03, CU-05, CU-10 | `ApiKeyAuthenticationFilter`, `SecurityConfig`, `UsuarioController` |
 
 RN-05 (cada usuario opera sólo sobre sus datos; cada módulo, sólo sobre los contratos autorizados) y RN-04 (sólo un usuario ACTIVO opera) siguen vigentes; RN-11 a RN-15 las completan.
 
@@ -173,146 +173,19 @@ SRV-03 y SRV-09 tienen una variante para módulos (`consultarPerfilParaModulo`, 
 
 | ID | Integración | Dirección | Estado |
 |---|---|---|---|
-| INT-06 | Usuarios hacia Notificaciones (recuperación de contraseña) | Saliente | Mock declarado hasta contar con el contrato real. Por defecto escribe sólo el id del usuario en el log; con `MOCK_LOG_RECOVERY_TOKEN=true` también el token, únicamente para demostrarlo en local. |
+| INT-06 | Usuarios hacia Notificaciones (recuperación de contraseña) | Saliente | Cliente HTTP implementado y probado con el parche de Notificaciones; mock declarado por defecto. Con `MOCK_LOG_RECOVERY_TOKEN=true` el mock escribe el token únicamente para la demo local. |
 
 ## Secuencias
 
-SEC-06 a SEC-10 se describen con diagramas Mermaid (se ven en GitHub); no se generaron imágenes ni fuentes PlantUML.
+Las fuentes PlantUML y los PNG de los diez CU están en [el índice de diagramas](../Diagramas/README.md). Sustituyen las secuencias preliminares de esta sección y corresponden al código actual.
 
-### SEC-06 y SEC-07: administrar una cuenta (CU-06, CU-07)
-
-```mermaid
-sequenceDiagram
-    actor A as Administrador (Portal)
-    participant F as Filtros de seguridad
-    participant C as UsuarioController
-    participant S as AdministracionService
-    participant R as UsuarioRepository
-    A->>F: PUT /users/{id}/status o /role + Bearer JWT [RN-09]
-    alt token faltante, inválido o vencido
-        F-->>A: 401 UNAUTHENTICATED
-    else el rol del token no es ADMIN
-        F-->>A: 403 FORBIDDEN
-    else
-        F->>C: solicitud autenticada
-        C->>C: validar cuerpo [RN-01]
-        C->>S: cambiarEstado / cambiarRol (SRV-10, SRV-11)
-        Note over S: transacción [DM-10]
-        S->>R: findById(administrador), findById(cuenta) (REP-09)
-        alt el administrador ya no existe
-            S-->>A: 401 UNAUTHENTICATED
-        else está inactivo [RN-04]
-            S-->>A: 403 USER_INACTIVE
-        else ya no es ADMIN en la base [RN-11]
-            S-->>A: 403 FORBIDDEN
-        else es su propia cuenta [RN-12]
-            S-->>A: 403 FORBIDDEN
-        else la cuenta no existe
-            S-->>A: 404 USER_NOT_FOUND
-        else
-            S->>R: save(usuario con estado o rol nuevo)
-            S-->>A: 200 UsuarioResponse (DTO-02)
-        end
-    end
-```
-
-### SEC-08: recuperar contraseña (CU-08)
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario (Portal)
-    participant C as AuthController
-    participant S as AuthService
-    participant RS as RecuperacionService
-    participant R as Repositorios
-    participant N as NotificacionesClient
-    U->>C: POST /auth/password/forgot {email}
-    C->>S: solicitarRecuperacion (SRV-12)
-    S->>RS: generarToken(email)
-    Note over RS: transacción
-    RS->>R: findByEmail(email) (REP-01)
-    opt la cuenta existe y está ACTIVA
-        RS->>R: invalidarVigentes (REP-12) y save(hash del token) (ENT-04)
-    end
-    RS-->>S: token, o vacío
-    opt hay token
-        S-)N: enviarRecuperacion(usuarioId, nombre, email, token) [INT-06, no bloqueante]
-    end
-    S-->>U: 202 (igual con o sin cuenta) [RN-13]
-    U->>C: POST /auth/password/reset {token, password}
-    C->>C: validar formato y política [RN-01]
-    C->>S: restablecerPassword (SRV-13)
-    S->>RS: restablecerPassword(token, password)
-    Note over RS: transacción
-    RS->>R: findByTokenHash(hash) (REP-10)
-    alt no existe, venció, usado o cuenta inactiva
-        RS-->>U: 400 INVALID_RESET_TOKEN
-    else
-        RS->>RS: marcar el token como usado (REP-11)
-        alt otro pedido ya lo consumió
-            RS-->>U: 400 INVALID_RESET_TOKEN
-        else
-            RS->>R: guardar hash de la contraseña [RN-03] e invalidarVigentes (REP-12)
-            RS-->>U: 204
-        end
-    end
-```
-
-### SEC-09: renovar y validar la sesión (CU-09)
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario o consumidor
-    participant F as JwtAuthenticationFilter
-    participant C as AuthController
-    participant S as AuthService
-    participant R as UsuarioRepository
-    U->>F: POST /auth/refresh o GET /auth/session + Bearer JWT
-    alt token faltante, inválido o vencido [RN-09]
-        F-->>U: 401 UNAUTHENTICATED
-    else es una API Key de módulo
-        F-->>U: 403 FORBIDDEN
-    else
-        F->>C: solicitud autenticada
-        C->>S: renovarSesion o validarSesion (SRV-14, SRV-15)
-        S->>R: findById(sub) (REP-02)
-        alt la cuenta no existe
-            S-->>U: 401 UNAUTHENTICATED
-        else está inactiva [RN-04, RN-14]
-            S-->>U: 403 USER_INACTIVE
-        else renovar
-            S-->>U: 200 LoginResponse con el rol actual (DTO-04)
-        else validar
-            S-->>U: 200 SesionResponse (DTO-14)
-        end
-    end
-```
-
-### SEC-10: consulta de estado y rol para un módulo (CU-10)
-
-```mermaid
-sequenceDiagram
-    actor M as Módulo consumidor
-    participant F as ApiKeyAuthenticationFilter
-    participant C as UsuarioController
-    participant S as UsuarioService
-    participant R as UsuarioRepository
-    M->>F: GET /users/{id}/access + X-Api-Key
-    alt clave faltante, inválida o desconfigurada [RN-15]
-        F-->>M: 401 UNAUTHENTICATED
-    else la credencial es un JWT de usuario
-        F-->>M: 403 FORBIDDEN
-    else
-        F->>C: módulo autenticado
-        C->>S: consultarAcceso (SRV-16)
-        S->>R: findById(id) (REP-02)
-        alt no existe
-            S-->>M: 404 USER_NOT_FOUND
-        else
-            S-->>M: 200 AccesoUsuarioResponse, también si está INACTIVA (DTO-15)
-        end
-    end
-```
+| Secuencia | Caso | Imagen | Fuente editable |
+|---|---|---|---|
+| SEC-06 | Desactivar/reactivar | [PNG](../Diagramas/SEC-06.png) | [PlantUML](../Diagramas/SEC-06.puml) |
+| SEC-07 | Asignar rol | [PNG](../Diagramas/SEC-07.png) | [PlantUML](../Diagramas/SEC-07.puml) |
+| SEC-08 | Recuperación | [PNG](../Diagramas/SEC-08.png) | [PlantUML](../Diagramas/SEC-08.puml) |
+| SEC-09 | Sesión | [PNG](../Diagramas/SEC-09.png) | [PlantUML](../Diagramas/SEC-09.puml) |
+| SEC-10 | Consulta de módulo | [PNG](../Diagramas/SEC-10.png) | [PlantUML](../Diagramas/SEC-10.puml) |
 
 ## Matriz de trazabilidad
 

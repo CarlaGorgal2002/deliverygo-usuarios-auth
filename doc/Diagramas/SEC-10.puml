@@ -1,0 +1,23 @@
+@startuml SEC-10
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title SEC-10 Consultar estado y rol para módulos (CU-10 / API-16)
+autonumber
+actor "Módulo consumidor" as M
+participant ApiKeyAuthenticationFilter as F
+participant UsuarioController as C
+participant UsuarioService as S
+participant UsuarioRepository as R
+M -> F : GET /api/v1/users/{id}/access\nX-Api-Key
+F -> F : identificar módulo por clave configurada [RN-15]
+F -> C : ModuloAutenticado, rol MODULO
+C -> S : consultarAcceso(id) [SRV-16]
+S -> R : findById(id)
+R --> S : Usuario con rol
+S --> C : AccesoUsuarioResponse (DTO-15)
+C --> M : 200 usuarioId, estado y rol (incluso INACTIVO)
+note over M,R : 401 clave inválida/ausente; 403 JWT de persona;\n400 id inválido; 404 usuario inexistente. Sin datos personales.\nSi hay Bearer y API Key, manda el Bearer.
+@enduml

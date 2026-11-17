@@ -1,0 +1,24 @@
+@startuml SEC-07
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title SEC-07 Cambiar rol (CU-07 / API-11)
+autonumber
+actor Administrador as A
+participant "Seguridad + UsuarioController" as C
+participant AdministracionService as S
+participant "UsuarioRepository / RolRepository" as R
+A -> C : PUT /api/v1/users/{id}/role + Bearer\nrol solicitado
+C -> C : exigir rol ADMIN y validar DTO
+C -> S : cambiarRol(administradorId, id, request) [SRV-11]
+S -> R : findById(administradorId)
+S -> S : exigir ADMIN ACTIVO en base [RN-11, RN-12]\nrechazar modificación de sí mismo
+S -> R : findById(id)
+S -> S : validar y asignar rol permitido
+S -> R : persistir en una transacción
+S --> C : UsuarioResponse
+C --> A : 200 estado y rol actuales
+note over A,R : 400 valor inválido; 401 sin sesión; 403 sin permiso/inactivo; 404 inexistente.\nRepetir el mismo valor es idempotente. El JWT anterior no se reescribe.
+@enduml

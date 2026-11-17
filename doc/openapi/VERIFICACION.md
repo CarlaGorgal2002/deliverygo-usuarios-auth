@@ -25,7 +25,7 @@ El validador cuenta las comprobaciones de ejemplos después de expandir referenc
 
 ## Pruebas automáticas del backend
 
-Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **92 pruebas, 0 fallas, 0 errores**.
+Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **95 pruebas, 0 fallas, 0 errores** (16/11/2026).
 
 | Clase | Pruebas | Cobertura |
 |---|---|---|
@@ -34,25 +34,31 @@ Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot
 | `DireccionesApiTest` | 7 | CU-05: recorrido completo (listar vacío, altas, predeterminada, PUT, baja lógica, repetir baja), dirección ajena como inexistente, PUT que ignora predeterminada y activa, límites de campos, valor no convertible, 401 y usuario inactivo |
 | `AdministracionApiTest` | 7 | CU-06 y CU-07 (RN-11, RN-12): desactivar y reactivar (el login y el token vigente de una cuenta inactiva son rechazados), idempotencia, 401/403 para quien no es administrador (CLIENTE, COMERCIO, API Key), el rol del token no alcanza (un administrador degradado o inactivo en la base recibe 403), un administrador no modifica su propia cuenta, asignación de roles con el token viejo conservando el anterior y validación de cuerpos e ids |
 | `RecuperacionApiTest` | 8 | CU-08 (RN-13): 202 idéntico para cuenta existente, inexistente e inactiva y aviso sólo si existe, normalización y validación del email, falla de Notificaciones sin efecto en la respuesta, ruta pública con token viejo y sólo la huella en la base, restablecimiento de un solo uso, un pedido nuevo invalida el anterior, token inexistente, vencido o de cuenta inactiva con el mismo 400 y política de contraseña sin consumir el token (un campo extra se ignora) |
-| `SesionApiTest` | 7 | CU-09 (RN-14): validar devuelve rol y estado vigentes aunque el token diga otro, renovar emite un token que sirve y trae el rol actual, cuenta inactiva (403) o inexistente (401), sin token, vencido o alterado (401), y una API Key de módulo no renueva ni valida (403) |
+| `SesionApiTest` | 8 | CU-09 (RN-14): validar devuelve rol y estado vigentes aunque el token diga otro, renovar emite un token que sirve y trae el rol actual, cuenta inactiva (403) o inexistente (401), sin token, vencido o alterado (401), y una API Key de módulo no renueva ni valida (403) |
 | `ModulosApiTest` | 10 | CU-10 y RN-15: estado y rol sin datos personales, cuenta inactiva con 200, rol vigente, 401 sin clave, con clave incorrecta, vacía o demasiado corta, 403 para un JWT de usuario o ADMIN, el JWT manda sobre la clave, ids inexistentes e inválidos, API-03 con cualquier módulo (también inactivas), API-05 sólo para Pedidos, los módulos nunca escriben (PUT, POST, DELETE, PATCH y administración dan 403) y las rutas públicas no se rompen por una clave inválida |
 | `CorrelacionApiTest` | 5 | Reutilización, generación e invalidez de `X-Correlation-Id`; preflight CORS con PATCH; origen no autorizado |
 | `BienvenidaApiTest` | 4 | INT-01: se solicita después del commit del alta (otra transacción ya ve al usuario, como la consulta de Notificaciones), no se solicita si el alta falla, una falla del cliente no cambia el 201 |
 | `JwtServiceTest` | 6 | Emisión y lectura de `sub`=id y `role`; rechazo de otra clave, vencido, sin firma y `sub` no numérico; clave mínima de 32 bytes |
 | `AdministradorInicialTest` | 1 | DM-07: el administrador configurado por `ADMIN_EMAIL` y `ADMIN_PASSWORD` inicia sesión con rol ADMIN (con su propia base en memoria) |
 
+| `NotificacionesClientHttpTest` | 11 | Cuerpo HTTP, autenticación de servicio, correlación, plantillas, caché, errores y configuración de URL |
+| `NotificacionesAsincronasApiTest` | 2 | Registro y recuperación no esperan al servicio lento; se conserva la correlación |
+| `ConcurrenciaApiTest` | 3 | Seis operaciones simultáneas: una sola dirección predeterminada, un solo consumo del token y sólo el último token de recuperación vigente |
+
+La revisión del 16/11 reprodujo dos errores antes de corregirlos: seis restablecimientos consumieron el mismo token y las altas simultáneas dejaron cuatro direcciones predeterminadas. La corrección usa `@Lock(PESSIMISTIC_WRITE)` en la fila del usuario dentro de `@Transactional`. Recuperación obtiene primero el id del titular, lo bloquea y recién entonces lee el token; así no reutiliza una lectura anterior al commit de otra solicitud. Generar tokens y cambiar direcciones usan el mismo orden de bloqueo. No se agregó una base ni un servicio externo.
+
 Dos comprobaciones más con el servidor levantado:
 
 - **Cotejo con el Swagger generado.** Se comparó `/v3/api-docs` con el YAML: las 16 operaciones, los códigos de respuesta de cada una y los esquemas de seguridad (`bearerAuth` y `moduleApiKey`) coinciden, sin diferencias.
 - **Recorrido real por HTTP.** Con el administrador inicial y las claves de módulo configuradas por variable de entorno: registro con 201 y `Location`, 409 con un `X-Correlation-Id` propio, login, 403 sobre otro usuario, 400 por ID `abc`, alta de dirección con 201 y `Location`; validar y renovar la sesión (200); el administrador asigna COMERCIO (200) y un CLIENTE que intenta lo mismo recibe 403; el token viejo informa el rol nuevo en `/auth/session`; API-16 con la clave de Pedidos (200), sin clave, con clave incorrecta (401), con un JWT de usuario (403) y API-05 con la clave de Catálogo (403) y de Pedidos (200); recuperación de contraseña (202 para cuenta existente e inexistente, restablecimiento 204, segundo uso 400 `INVALID_RESET_TOKEN`, login con la clave nueva 200 y con la vieja 401); el administrador desactiva la cuenta (login `USER_INACTIVE`, token vigente `USER_INACTIVE`, el módulo la sigue viendo con estado INACTIVO), la reactiva (200) y se le prohíbe modificarse a sí mismo (403). Todo dio los resultados esperados.
 
-No cubren: firma asimétrica (no implementada), credencial de módulos consumidores (sin acordar), integración HTTP real con otros grupos, ni PostgreSQL (las pruebas usan H2 en memoria; el recorrido de los diez casos de uso contra PostgreSQL se hizo por HTTP con `docker compose up -d`).
+La suite Maven usa H2. La verificación HTTP del 16/11 se ejecutó sobre PostgreSQL 16: 45 solicitudes y 155 comprobaciones en la colección de Usuarios, 12 solicitudes y 40 comprobaciones de Notificaciones con el parche local, y 7 solicitudes y 8 comprobaciones con Catálogo sin modificarlo. Ver [evidencia](../postman/evidencia/) y [alcance exacto de las integraciones](../integracion/README.md). No demuestra firma asimétrica, distribución/rotación de secretos ni el ciclo de compra de todo el ecosistema.
 
 ## Recorrido funcional para la demo
 
 Los 20 pasos están cubiertos por `AuthApiTest`, `PerfilApiTest`, `DireccionesApiTest`, `AdministracionApiTest`, `RecuperacionApiTest`, `SesionApiTest` y `ModulosApiTest` (para CU-05, principalmente `recorridoCompletoDelCasoDeUso`) y pueden repetirse a mano desde Swagger UI.
 
-Preparar dos usuarios ficticios A y B; obtener sus IDs de las respuestas de registro. Eliminar dependencias de IDs fijos en los scripts de prueba. Para probar un usuario INACTIVO mientras CU-06 no existe, preparar el estado con una fixture controlada del entorno de pruebas, no con un endpoint inventado.
+Preparar dos usuarios ficticios A y B; obtener sus IDs de las respuestas de registro. Eliminar dependencias de IDs fijos en los scripts de prueba. El estado INACTIVO se prepara con CU-06 desde una sesión ADMIN, como hace la colección de Postman.
 
 | Paso | Operación | Resultado esperado |
 |---|---|---|
@@ -132,6 +138,18 @@ La credencial de módulo se resolvió con una API Key por módulo (DC-08, RN-15)
 | Un módulo consulta estado y rol de un usuario (API-16) | 200 sin datos personales, también si está INACTIVO |
 | Servicio propaga el JWT de A para acceder a B | 403; propagar el token no amplía permisos |
 
-Lo que sigue sin probarse porque depende de otros equipos: que cada módulo reciba, guarde y use su clave, la rotación de claves, el acuerdo de firma asimétrica y el contrato real de Notificaciones (INT-01 e INT-06).
+Notificaciones ya se probó en ambos sentidos con el parche incluido. Siguen pendientes los otros consumidores indicados en [Integración](../integracion/README.md), la distribución y rotación de claves y el acuerdo de firma asimétrica.
 
 Para cada escenario ejecutado a mano registrar fecha, commit, preparación, request, respuesta HTTP y comprobación de persistencia cuando corresponda.
+
+## Repetir las comprobaciones de la entrega actual
+
+```powershell
+mvn test
+python doc/openapi/validar_contratos.py
+python doc/openapi/comparar_servidor.py http://localhost:8080
+```
+
+Los dos comandos Python requieren `doc/openapi/requirements.txt`; el último requiere Usuarios en ejecución. Las colecciones y los comandos Postman están en [doc/postman](../postman/README.md). Los archivos `evidencia/*-2026-11-16.json` sólo contienen datos de ejecución, estados y conteos, sin credenciales.
+
+También se verificaron las correcciones mediante solicitudes HTTP simultáneas contra PostgreSQL 16: seis altas persistieron seis direcciones y una sola predeterminada; seis restablecimientos con el mismo token devolvieron un 204 y cinco 400 `INVALID_RESET_TOKEN`. La recuperación se obtuvo del mensaje simulado de Notificaciones con la sesión del propio destinatario. Ver [el resultado](../postman/evidencia/concurrencia-postgres-2026-11-16.json). Esta comprobación complementa los tres escenarios de `ConcurrenciaApiTest`, que se ejecutan con H2 en la suite Maven.

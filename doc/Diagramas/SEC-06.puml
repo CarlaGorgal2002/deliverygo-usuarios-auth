@@ -1,0 +1,24 @@
+@startuml SEC-06
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title SEC-06 Cambiar estado (CU-06 / API-10)
+autonumber
+actor Administrador as A
+participant "Seguridad + UsuarioController" as C
+participant AdministracionService as S
+participant "UsuarioRepository / RolRepository" as R
+A -> C : PUT /api/v1/users/{id}/status + Bearer\nestado solicitado
+C -> C : exigir rol ADMIN y validar DTO
+C -> S : cambiarEstado(administradorId, id, request) [SRV-10]
+S -> R : findById(administradorId)
+S -> S : exigir ADMIN ACTIVO en base [RN-11, RN-12]\nrechazar modificación de sí mismo
+S -> R : findById(id)
+S -> S : validar y asignar estado permitido
+S -> R : persistir en una transacción
+S --> C : UsuarioResponse
+C --> A : 200 estado y rol actuales
+note over A,R : 400 valor inválido; 401 sin sesión; 403 sin permiso/inactivo; 404 inexistente.\nRepetir el mismo valor es idempotente. El JWT anterior no se reescribe.
+@enduml

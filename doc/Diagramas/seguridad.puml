@@ -1,0 +1,28 @@
+@startuml seguridad
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title Seguridad e integración implementadas
+left to right direction
+actor Persona
+rectangle "Portal React\ncliente externo" as Web
+rectangle "Usuarios\nemite JWT HS256\nsub=id, role, iat, exp" as U #DBEAFE
+rectangle "Otros backends\nvalidan firma, vencimiento y rol" as M
+rectangle "Notificaciones\naceptar SISTEMA en templates GET\ny notifications POST" as N
+Persona --> Web : credenciales
+Web --> U : login / refresh
+U --> Web : JWT de persona
+Web --> M : Authorization: Bearer JWT
+M --> U : X-Api-Key propia\nconsulta perfil / estado / rol
+U --> N : JWT de servicio de 2 minutos\nrole=SISTEMA, sub=destinatario
+N --> U : X-Api-Key\nGET /users/{id}
+note bottom of U
+ Usuarios no acepta SISTEMA en su API.
+ El JWT de servicio no es una sesión de persona.
+ HS256 sigue el laboratorio y la integración actual.
+ Firma asimétrica: acuerdo pendiente del ecosistema.
+end note
+note bottom of N : Ver parche y evidencia en doc/integracion/.\nLa imagen representa el flujo esperado tras aplicarlo.
+@enduml

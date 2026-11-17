@@ -1,0 +1,28 @@
+@startuml SEC-09
+skinparam dpi 135
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+title SEC-09 Validar o renovar sesión (CU-09 / API-14 y API-15)
+autonumber
+actor Portal
+participant "JwtAuthenticationFilter + AuthController" as C
+participant AuthService as S
+participant UsuarioRepository as R
+participant JwtService as J
+Portal -> C : GET /auth/session o POST /auth/refresh\nBearer vigente
+C -> C : validar firma y exp; exigir rol de persona [RN-14]
+C -> S : validarSesion(actual) o renovarSesion(actual)
+S -> R : findById(actual.id)
+S -> S : exigir cuenta existente y ACTIVA
+alt GET session [SRV-15]
+ S --> C : SesionResponse con rol y estado de la base
+else POST refresh [SRV-14]
+ S -> J : generarToken(id, rol vigente)
+ J --> S : token nuevo + vencimiento
+ S --> C : LoginResponse
+end
+C --> Portal : 200
+note over Portal,J : 401 token inválido/vencido o cuenta inexistente; 403 cuenta inactiva.\nAPI Key no renueva sesiones. No se invalida el JWT anterior.
+@enduml

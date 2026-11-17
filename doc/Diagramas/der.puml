@@ -2,7 +2,7 @@
 skinparam dpi 170
 hide circle
 skinparam linetype ortho
-entity "usuario" as usuario {
+entity "usuarios" as usuario {
   * id : BIGINT <<PK>>
   --
   * nombre : VARCHAR(80)
@@ -14,13 +14,13 @@ entity "usuario" as usuario {
   * fecha_alta : TIMESTAMP
   * rol_id : BIGINT <<FK>>
 }
-entity "rol" as rol {
+entity "roles" as rol {
   * id : BIGINT <<PK>>
   --
   * nombre : VARCHAR(30) <<UNIQUE>>
   descripcion : VARCHAR(120)
 }
-entity "direccion" as direccion {
+entity "direcciones" as direccion {
   * id : BIGINT <<PK>>
   --
   * usuario_id : BIGINT <<FK>>
@@ -37,4 +37,14 @@ entity "direccion" as direccion {
 }
 rol ||--o{ usuario : "REL-02"
 usuario ||--o{ direccion : "REL-01"
+entity "tokens_recuperacion" as tokens {
+  * id : BIGINT <<PK>>
+  --
+  * usuario_id : BIGINT <<FK>>
+  * token_hash : VARCHAR(64) <<UNIQUE>>
+  * creado_en : TIMESTAMP
+  * expira_en : TIMESTAMP
+  usado_en : TIMESTAMP
+}
+usuario ||--o{ tokens : "REL-03"
 @enduml

@@ -70,7 +70,7 @@ python -m venv target/openapi-venv
 .\target\openapi-venv\Scripts\python.exe doc/openapi/validar_contratos.py
 ```
 
-Si `python` apunta a otra instalación en Windows, se puede crear el entorno con `py -3.14 -m venv target/openapi-venv`. La verificación de esta entrega se ejecutó con Python 3.14.
+Si `python` apunta a otra instalación en Windows, se puede crear el entorno con `py -3.14 -m venv target/openapi-venv`. La validación inicial usó Python 3.14 y se repitió el 16/11/2026 con Python 3.12.
 
 Después de modificar el archivo principal:
 
@@ -85,8 +85,10 @@ Para verificar sólo la sincronización de las vistas sin reescribirlas:
 .\target\openapi-venv\Scripts\python.exe doc/openapi/exportar_vistas.py --check
 ```
 
-## Próximo paso de implementación
+## Integración con los equipos
 
-Coordinar con los demás grupos lo que no depende de este módulo: algoritmo y distribución de claves del JWT (hoy HS256 con secreto compartido; la firma asimétrica es una propuesta), la entrega y rotación de las API Keys de cada módulo y el contrato real de Notificaciones (hoy un mock declarado para la bienvenida y la recuperación de contraseña). Los claims actuales son `sub` = id del usuario, `role`, `iat` y `exp`; los consumidores no deben leer `sub` como email, y el rol de un token emitido puede quedar desactualizado hasta que venza: el vigente se consulta con API-15 o API-16.
+Coordinar con los demás grupos lo que no depende de este módulo: algoritmo y distribución de claves del JWT (hoy HS256 con secreto compartido; la firma asimétrica es una propuesta), la entrega y rotación de las API Keys de cada módulo y la adopción de las correcciones de Notificaciones y los demás consumidores ([guía y evidencia](../integracion/README.md)). Los claims actuales son `sub` = id del usuario, `role`, `iat` y `exp`; los consumidores no deben leer `sub` como email, y el rol de un token emitido puede quedar desactualizado hasta que venza: el vigente se consulta con API-15 o API-16.
 
 No debe reemplazarse este archivo por una exportación automática de Springdoc: se perderían ejemplos, trazabilidad y restricciones ya diseñadas. Ante un cambio de comportamiento, actualizar el YAML, regenerar las vistas y volver a correr `validar_contratos.py` y `mvn test`.
+
+Para cotejar las operaciones, respuestas y seguridad con Springdoc en vivo: `python doc/openapi/comparar_servidor.py http://localhost:8080`.

@@ -38,4 +38,13 @@ class Direccion <<ENT-03>> {
 Direccion "0..*" --> "1" Usuario : REL-01 pertenece a
 Usuario "0..*" --> "1" Rol : REL-02 tiene
 Usuario ..> EstadoUsuario
+class TokenRecuperacion <<ENT-04>> {
+  - id : Long
+  - tokenHash : String {unique}
+  - creadoEn : LocalDateTime
+  - expiraEn : LocalDateTime
+  - usadoEn : LocalDateTime
+}
+TokenRecuperacion "0..*" --> "1" Usuario : REL-03 pertenece a
+note bottom of TokenRecuperacion : Sólo hash SHA-256; nunca el token original.\nFechas almacenadas en UTC.
 @enduml
