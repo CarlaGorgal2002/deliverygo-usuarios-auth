@@ -8,6 +8,10 @@ spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=
 spring.jpa.hibernate.ddl-auto=create-drop
+# Consola web de H2 en /h2-console (JDBC URL jdbc:h2:mem:deliverygo_usuarios, usuario sa, sin contraseña). Sólo desarrollo.
+spring.h2.console.enabled=${H2_CONSOLE_ENABLED:true}
+# Usuario de prueba (rol CLIENTE) que se crea al arrancar: cliente@deliverygo.test / ClienteDemo2026!. Sólo demos locales.
+app.demo-user.enabled=${DEMO_USER_ENABLED:true}
 spring.jpa.show-sql=false
 spring.jpa.properties.hibernate.format_sql=true
 spring.jpa.open-in-view=false
