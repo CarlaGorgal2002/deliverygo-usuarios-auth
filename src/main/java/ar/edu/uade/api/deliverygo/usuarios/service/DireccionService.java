@@ -120,7 +120,9 @@ public class DireccionService {
 
     // RN-05: la identidad del solicitante ya se verificó; acá sólo se comprueba RN-04.
     private Usuario buscarTitularActivo(Long usuarioId) {
-        return verificarTitularActivo(usuarioRepository.findById(usuarioId));
+        // RN-07: serializar las escrituras del mismo titular evita dos predeterminadas simultáneas.
+        // Las lecturas no pasan por este método y siguen sin tomar un bloqueo de escritura.
+        return verificarTitularActivo(usuarioRepository.buscarPorIdParaActualizar(usuarioId));
     }
 
     private Usuario verificarTitularActivo(Optional<Usuario> usuario) {

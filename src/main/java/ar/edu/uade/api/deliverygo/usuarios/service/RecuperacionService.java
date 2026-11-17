@@ -57,7 +57,7 @@ public class RecuperacionService {
     // SRV-12 (CU-08, paso 1). Devuelve vacío si no hay cuenta o está inactiva: el llamador responde igual (RN-13).
     @Transactional
     public Optional<Emision> generarToken(String emailSolicitado) {
-        Optional<Usuario> encontrado = usuarioRepository.findByEmail(Textos.normalizarEmail(emailSolicitado));
+        Optional<Usuario> encontrado = usuarioRepository.buscarPorEmailParaActualizar(Textos.normalizarEmail(emailSolicitado));
         if (encontrado.isEmpty() || !encontrado.get().estaActivo()) {
             return Optional.empty();
         }
@@ -83,11 +83,15 @@ public class RecuperacionService {
         }
 
         String huella = huella(token.trim());
+        Long usuarioId = tokenRepository.buscarUsuarioIdPorTokenHash(huella)
+                .orElseThrow(() -> new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
+        // Mismo orden que generarToken: primero usuario, después tokens. Si llegan dos solicitudes,
+        // la segunda espera el commit y recién entonces lee si el token ya fue usado (RN-13).
+        Usuario usuario = usuarioRepository.buscarPorIdParaActualizar(usuarioId)
+                .orElseThrow(() -> new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
         LocalDateTime ahora = ahora();
-
         TokenRecuperacion guardado = tokenRepository.findByTokenHash(huella)
                 .orElseThrow(() -> new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
-        Usuario usuario = guardado.getUsuario();
         if (guardado.getUsadoEn() != null || !guardado.getExpiraEn().isAfter(ahora) || !usuario.estaActivo()) {
             throw new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO);
         }
