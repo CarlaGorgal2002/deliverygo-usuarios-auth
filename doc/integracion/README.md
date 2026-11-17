@@ -1,6 +1,6 @@
 # Integración de Usuarios con el ecosistema
 
-Revisión y pruebas del **16/11/2026**. Usuarios expone sus 16 operaciones sobre PostgreSQL. Se probaron por HTTP la integración de JWT con Catálogo y los flujos de bienvenida y recuperación con Notificaciones. Para Notificaciones fue necesario aplicar el parche local incluido; ese resultado no implica que su repositorio remoto ya tenga la corrección.
+Revisión y pruebas del **16/11/2026**. Usuarios expone sus 17 operaciones sobre PostgreSQL. Se probaron por HTTP la integración de JWT con Catálogo y los flujos de bienvenida y recuperación con Notificaciones. Para Notificaciones fue necesario aplicar el parche local incluido; ese resultado no implica que su repositorio remoto ya tenga la corrección.
 
 ## Contrato que deben consumir los equipos
 
@@ -12,12 +12,12 @@ Base local de esta demo: `http://localhost:8080/api/v1`. El puerto habitual de U
 | Perfil | `GET /users/{id}`; campos `id`, `nombre`, `apellido`, `email`, `telefono`, `rol`, `estado`, `fechaAlta` |
 | Direcciones | `GET /users/{id}/addresses`; lista separada del perfil, exclusiva de Pedidos entre los módulos |
 | Estado y rol | `GET /users/{id}/access`; `usuarioId`, `estado`, `rol` |
-| Credencial de módulo | `X-Api-Key` propia; no enviar además un Bearer, porque el Bearer tiene prioridad |
+| Credencial de módulo | JWT con rol `MODULO`: el módulo lo pide una vez con `POST /auth/module-token` (`{"modulo","clave"}`) y lo envía como `Authorization: Bearer`; lo vuelve a pedir al vencer (8 horas por defecto). `X-Api-Key` ya no autentica |
 | Estado | Texto `ACTIVO` / `INACTIVO`; no se publica un booleano `activo` |
 | JWT de persona | HS256, `sub` = id convertido a texto, `role` sin prefijo `ROLE_`, `iat` y `exp` en segundos |
 | JWT de servicio saliente | `role=SISTEMA`, `sub` = destinatario, duración 2 minutos; Usuarios no lo acepta como sesión |
 
-Todos los módulos pueden leer perfil y acceso con su clave; sólo Pedidos puede listar direcciones. Ningún módulo escribe por API Key. Una cuenta inactiva se devuelve a los módulos con 200 para que decidan según sus reglas. El perfil no incluye contraseñas, hashes ni direcciones embebidas.
+Todos los módulos pueden leer perfil y acceso con su JWT de módulo; sólo Pedidos puede listar direcciones. Ningún módulo escribe. Una cuenta inactiva se devuelve a los módulos con 200 para que decidan según sus reglas. El perfil no incluye contraseñas, hashes ni direcciones embebidas.
 
 El Swagger agregado de laboratorio incluido en el material de clase contiene sólo una parte de Usuarios. Para integrar, usar [el contrato completo](../openapi/deliverygo-usuarios.yaml) o `/v3/api-docs` del servicio actual. No convertir UUID a Long mediante hashes o recortes: las referencias externas deben conservar el identificador real del recurso.
 
@@ -72,7 +72,7 @@ Son credenciales públicas de ejemplo para local. El administrador se crea sólo
 
 Ejecutar la colección [DeliveryGo Integración Notificaciones](../postman/DeliveryGo-Integracion-Notificaciones.postman_collection.json) con `baseUrl=http://localhost:8080` y `notificacionesUrl=http://localhost:8089`. Ver los comandos en [Postman](../postman/README.md).
 
-La colección comprueba bienvenida, consulta de perfil con API Key, solicitud de recuperación, obtención del mensaje simulado con la sesión del destinatario, restablecimiento, uso único, login nuevo y rechazo de la contraseña anterior. Resultado: **12 solicitudes, 40 comprobaciones, sin fallas**. La llamada de Notificaciones a Usuarios usa la API Key real y el mismo `X-Correlation-Id`; no consulta la base de Usuarios.
+La colección comprueba bienvenida, consulta de perfil con la credencial de módulo, solicitud de recuperación, obtención del mensaje simulado con la sesión del destinatario, restablecimiento, uso único, login nuevo y rechazo de la contraseña anterior. Resultado: **12 solicitudes, 40 comprobaciones, sin fallas**. La llamada de Notificaciones a Usuarios se corrió el 16/11 con el mecanismo anterior (`X-Api-Key`, ya reemplazado por el JWT de módulo): la colección se actualizó y hay que repetirla con Notificaciones levantado (la parte de Usuarios del recorrido se repitió el 17/11 con newman sin fallas). Usa el mismo `X-Correlation-Id`; no consulta la base de Usuarios.
 
 El envío EMAIL sigue siendo simulado por el módulo externo, como prevé la guía funcional. El historial de ese commit no restringe la lectura al destinatario; el parche no cambia esa política del otro equipo. Por eso esta demo usa exclusivamente datos ficticios. Antes de usar recuperación con información real, Notificaciones debe restringir el historial y evitar exponer tokens a otras personas.
 
@@ -96,19 +96,19 @@ Estas filas son hallazgos del código publicado, no integraciones completas apro
 | Proyecto y commit | Hallazgo | Trabajo necesario del consumidor |
 |---|---|---|
 | [Pedidos](https://github.com/santi28/uade-deliverygo-ms-orders/tree/d33c6755fc77256d1a932aed029716bddb62953f) | `UsuariosClientMock` sigue activo incluso en perfil `integracion`; no existe cliente HTTP. `UsuarioDto` y las referencias de dirección usan UUID. Su comentario afirma que Usuarios no publica perfil/direcciones, pero ya existen. | Implementar cliente HTTP con clave de Pedidos, consultar perfil y direcciones por separado y usar Long para referencias externas de Usuarios. Los IDs propios de pedidos pueden seguir siendo UUID. |
-| [Pagos](https://github.com/JulianaGomez15/Aplicaciones_Interactivas_-_E3_-_Modulo_de_Pagos/tree/dc617e84f25be8ad93cca9dd95b2307cecf50916) | `UsuariosClientRest` existe, pero recibe UUID y su DTO busca `codigoUsuario`, mientras Usuarios devuelve `id`. El cliente común propaga Bearer. | Adaptar la referencia de usuario a Long y `id`; usar `X-Api-Key` de Pagos para lectura entre servicios. Revisar también sus referencias provenientes de Pedidos. |
+| [Pagos](https://github.com/JulianaGomez15/Aplicaciones_Interactivas_-_E3_-_Modulo_de_Pagos/tree/dc617e84f25be8ad93cca9dd95b2307cecf50916) | `UsuariosClientRest` existe, pero recibe UUID y su DTO busca `codigoUsuario`, mientras Usuarios devuelve `id`. El cliente común propaga Bearer. | Adaptar la referencia de usuario a Long y `id`; pedir el JWT de módulo de Pagos (`POST /auth/module-token`) para la lectura entre servicios. Revisar también sus referencias provenientes de Pedidos. |
 | [Logística](https://github.com/Nicosantillan96/tpo-deliverygo-repartidores-logistica/tree/e65ada23cbdba928017004439ea2e74b33be7237) | Referencia Long compatible, pero sólo tiene `UsuariosClientMock`. | Añadir implementación HTTP que lea `/users/{id}` o `/users/{id}/access`, traduzca `estado` y se identifique con la clave de Logística. |
-| [Opiniones y Analítica, develop](https://github.com/emigsm/tpo-deliverygo-g4-ops-analitica/tree/1c043ded5ef7d78179f13dd784314d94ca3286e7) | `UsuariosHttpClient` usa Long, `/users/{id}` y `X-Api-Key`, pero el mock no se desactiva con `integracion`; pasa lo mismo con Comercio. El DTO parcial de usuario no declara ignorar campos adicionales. | Separar perfiles de mocks/HTTP, configurar URLs y clave, y verificar deserialización del perfil completo. El README todavía describe ausencia de HTTP y autenticación temporal. |
+| [Opiniones y Analítica, develop](https://github.com/emigsm/tpo-deliverygo-g4-ops-analitica/tree/1c043ded5ef7d78179f13dd784314d94ca3286e7) | `UsuariosHttpClient` usa Long y `/users/{id}` con `X-Api-Key` (hay que cambiarlo por el Bearer del token de módulo), pero el mock no se desactiva con `integracion`; pasa lo mismo con Comercio. El DTO parcial de usuario no declara ignorar campos adicionales. | Separar perfiles de mocks/HTTP, configurar URLs y clave de módulo, y verificar deserialización del perfil completo. El README todavía describe ausencia de HTTP y autenticación temporal. |
 | Portal Web | No hay repositorio final del Portal entre los enlaces recibidos; el ZIP React es un laboratorio de referencia. | Probar registro/login y llamadas protegidas desde su aplicación, con el origen agregado en `CORS_ALLOWED_ORIGINS`. |
 
 Usuarios ya permite configurar una clave distinta para cada módulo. Entregar esas claves y acordar URLs es una coordinación entre equipos. Cambiar el tipo de ID de este servicio o inventar aliases para los UUID de otros equipos rompería el contrato aprobado.
 
 ## Evidencia y límites
 
-- Usuarios: 95 pruebas automáticas; 45 solicitudes Postman sobre PostgreSQL y 155 comprobaciones.
+- Usuarios: pruebas automáticas con `mvn test` (ver [VERIFICACION.md](../openapi/VERIFICACION.md)); 45 solicitudes Postman sobre PostgreSQL y 155 comprobaciones.
 - Notificaciones: 103 pruebas de su proyecto con el parche; recorrido HTTP completo con 40 comprobaciones.
 - Catálogo: recorrido con JWT real y 8 comprobaciones.
-- OpenAPI: las 16 operaciones, respuestas y esquemas de seguridad coinciden con Springdoc en ejecución.
+- OpenAPI: las 16 operaciones iniciales coincidían con Springdoc en ejecución; la API-17 (token de módulo) se agregó el 17/11 y su contrato está probado con `ModulosApiTest`.
 - [Resúmenes de Postman](../postman/evidencia/) sin JWT, contraseñas ni cuerpos de solicitudes.
 
 La consigna pide demostrar integraciones reales en el ecosistema. Los cruces efectivamente probados acá son Usuarios → Notificaciones, Notificaciones → Usuarios y validación del JWT de Usuarios en Catálogo; no equivalen a haber completado el ciclo de compra. Pedidos, Pagos, Logística, Analítica y Portal requieren los ajustes y la prueba conjunta indicados arriba. La firma asimétrica también sigue pendiente de acuerdo común: la integración actual usa HS256, igual que el laboratorio y los consumidores revisados.

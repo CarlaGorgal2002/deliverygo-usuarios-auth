@@ -1,28 +1,29 @@
-# Contrato principal editable. Las vistas por área se generan desde este archivo.
+# Contrato OpenAPI del módulo Usuarios y Autenticación (Grupo 02). Se contrasta con la Swagger UI del servicio.
 openapi: 3.0.3
 info:
   title: DeliveryGo - Usuarios y Autenticación - Grupo 02
   version: 1.1.0
   description: |-
     Contrato de los diez casos de uso del módulo: los cinco CORE (CU-01 a CU-05, API-01 a API-09) y los cinco de evolución
-    (CU-06 a CU-10, API-10 a API-16), con dieciséis operaciones.
+    (CU-06 a CU-10, API-10 a API-17), con diecisiete operaciones.
     Basado en G02_Usuarios_PrimeraEntrega_v1.5.pdf, consigna, guía funcional, teoría, publicaciones y clases, hasta el material adjunto.
     Grupo académico 02; módulo Usuarios, identificado como Equipo 1 en la guía general.
 
-    Contrato de entrega del 30/10/2026, versión 1.1.0. El backend del repositorio implementa las dieciséis operaciones y las verifican
+    Contrato de entrega del 30/10/2026, versión 1.1.0. El backend del repositorio implementa las diecisiete operaciones y las verifican
     las pruebas de integración (VERIFICACION.md). El diseño de CU-06 a CU-10 está en DISENO_CU_EVOLUCION.md.
     Los acuerdos pendientes con otros módulos se describen en ACUERDOS_Y_BRECHAS.md.
 
     Convenciones: rutas /api/v1; JSON UTF-8; IDs Long positivos; DTO separados de entidades; fechas ISO-8601 con zona;
     errores normalizados; PUT completo; baja lógica con 204 sin cuerpo. Datos de ejemplo ficticios.
-    Hay dos credenciales: el JWT de usuario (Bearer) y la API Key de módulo consumidor (X-Api-Key, sólo lectura). Ninguna se sustituye por
-    roles humanos privilegiados: un ADMIN no es un módulo. Usuarios emite el JWT; cada servicio valida firma, vencimiento y permisos.
+    Hay una sola forma de autenticarse en las rutas protegidas: el JWT Bearer que emite Usuarios, de una persona (rol CLIENTE, COMERCIO,
+    REPARTIDOR o ADMIN) o de un módulo consumidor (rol MODULO, sólo lectura, pedido con API-17). Un ADMIN no es un módulo.
+    Usuarios emite el JWT; cada servicio valida firma, vencimiento y rol.
     El objetivo de firma es asimétrico, conforme a la teoría. No se distribuyen claves privadas en el contrato.
 
     Decisiones que completan ambigüedades de la primera entrega: DC-01 campos desconocidos ignorados;
     DC-02 normalización de email; DC-03 ausencia/null de opcionales y reemplazo PUT;
     DC-04 zona horaria; DC-05 validación de login; DC-06 correlación; DC-07 errores de ruta y usuario inexistente;
-    DC-08 credencial de módulo por API Key; DC-09 recuperación de contraseña uniforme y de un solo uso;
+    DC-08 token de módulo (rol MODULO) emitido por Usuarios con la clave del módulo; DC-09 recuperación de contraseña uniforme y de un solo uso;
     DC-10 rol y estado vigentes consultables, con JWT sin estado y sin revocación.
     Se documentan como decisiones del equipo, no como nuevas instrucciones del profesor.
   contact:
@@ -47,7 +48,8 @@ servers:
       description: Puerto del módulo Usuarios.
 tags:
 - name: Autenticación
-  description: CU-01, CU-02, CU-08 y CU-09. Registro, emisión y renovación de JWT, y recuperación de contraseña.
+  description: CU-01, CU-02, CU-08, CU-09 y CU-10. Registro, emisión y renovación de JWT (de personas y de módulos), y
+    recuperación de contraseña.
 - name: Usuarios
   description: CU-03, CU-04, CU-06, CU-07 y CU-10. Perfil propio, administración de estado y rol, y consulta de
     estado y rol para otros módulos.
@@ -340,6 +342,127 @@ paths:
                   email: ana.perez@example.com
                   password: ClaveDemo2026!
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
+  /api/v1/auth/module-token:
+    post:
+      tags:
+      - Autenticación
+      summary: Emitir token de módulo
+      description: |-
+        Un módulo consumidor (Pedidos, Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica) presenta su nombre y la clave que le
+        entregó el equipo de Usuarios (RN-15) y recibe un JWT con role MODULO, firmado por Usuarios, igual que el de las personas.
+        Ese JWT viaja como Authorization: Bearer en las consultas de lectura (API-03, API-05 sólo Pedidos, y API-16); cada módulo vuelve a
+        pedirlo cuando vence. Módulo desconocido, clave incorrecta, clave de otro módulo y clave no configurada (vacía o de menos de 16
+        caracteres) dan el mismo 401 INVALID_CREDENTIALS. El token de un módulo no renueva ni valida sesiones de personas.
+        Esta operación es pública aun si el cliente conserva un token viejo.
+      operationId: emitirTokenModulo
+      x-trazabilidad:
+        api: API-17
+        caso-de-uso: CU-10
+        reglas:
+        - RN-15
+        secuencia: SEC-10
+        servicio: SRV-17
+      parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: 'Emitir token de módulo: operación completada.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenModuloResponse'
+              examples:
+                token:
+                  value:
+                    token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwZWRpZG9zIiwicm9sZSI6Ik1PRFVMTyIsImlhdCI6MTc5MzM3MjQwMCwiZXhwIjoxNzkzNDAxMjAwfQ.FIRMA_DE_EJEMPLO_NO_VALIDA
+                    tipo: Bearer
+                    expiraEn: '2026-10-31T00:00:00Z'
+                    modulo: pedidos
+                    rol: MODULO
+        '400':
+          description: 'VALIDATION_ERROR: La solicitud contiene datos inválidos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 400
+                    code: VALIDATION_ERROR
+                    message: La solicitud contiene datos inválidos
+                    path: /api/v1/auth/module-token
+                    correlationId: g02-demo-001
+                    details:
+                    - campo: modulo
+                      mensaje: Es obligatorio
+        '401':
+          description: 'INVALID_CREDENTIALS: Módulo o clave incorrectos.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            WWW-Authenticate:
+              $ref: '#/components/headers/Authenticate'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INVALID_CREDENTIALS:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 401
+                    code: INVALID_CREDENTIALS
+                    message: Módulo o clave incorrectos
+                    path: /api/v1/auth/module-token
+                    correlationId: g02-demo-001
+        '500':
+          description: 'INTERNAL_ERROR: Ocurrió un error interno.'
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  value:
+                    timestamp: '2026-10-30T15:00:00Z'
+                    status: 500
+                    code: INTERNAL_ERROR
+                    message: Ocurrió un error interno
+                    path: /api/v1/auth/module-token
+                    correlationId: g02-demo-001
+      security: []
+      requestBody:
+        required: true
+        description: Objeto JSON conforme al DTO; los campos que no forman parte del DTO se ignoran (DC-01).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenModuloRequest'
+            examples:
+              credencial:
+                value:
+                  modulo: pedidos
+                  clave: pedidos-demo-local-2026
+      x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
   /api/v1/auth/password/forgot:
     post:
       tags:
@@ -527,7 +650,7 @@ paths:
       - Autenticación
       summary: Renovar sesión
       description: 'Con un JWT todavía vigente emite uno nuevo con el rol actual de la base (RN-14). Un token vencido
-        no se renueva: hay que iniciar sesión de nuevo. La cuenta debe seguir ACTIVA. No admite API Key de módulo.
+        no se renueva: hay que iniciar sesión de nuevo. La cuenta debe seguir ACTIVA. No admite el token de un módulo.
         Es una renovación deslizante sin token de renovación persistido (DM-15): mientras el usuario siga activo
         y renueve antes de vencer, la sesión continúa.'
       operationId: renovarSesion
@@ -587,7 +710,7 @@ paths:
                     correlationId: g02-demo-001
         '403':
           description: 'USER_INACTIVE: La cuenta está inactiva. FORBIDDEN: La credencial no es de una persona (por
-            ejemplo, una API Key de módulo).'
+            ejemplo, el token de un módulo).'
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
@@ -698,7 +821,7 @@ paths:
                     correlationId: g02-demo-001
         '403':
           description: 'USER_INACTIVE: La cuenta está inactiva. FORBIDDEN: La credencial no es de una persona (por
-            ejemplo, una API Key de módulo).'
+            ejemplo, el token de un módulo).'
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
@@ -753,7 +876,7 @@ paths:
       summary: Consultar perfil
       description: |-
         Con JWT: el titular consulta su propio perfil; sub debe coincidir con id y la cuenta debe estar ACTIVA.
-        Con X-Api-Key: cualquier módulo consumidor con credencial consulta el perfil de un usuario y recibe 200 también si la cuenta está INACTIVA, para decidir con sus propias reglas (RN-15). Un JWT de otra persona, aunque sea ADMIN, recibe 403.
+        Con el JWT de un módulo (API-17): cualquier módulo consumidor consulta el perfil de un usuario y recibe 200 también si la cuenta está INACTIVA, para decidir con sus propias reglas (RN-15). Un JWT de otra persona, aunque sea ADMIN, recibe 403.
         No devuelve contraseña ni hash, y las direcciones se obtienen en API-05.
       operationId: consultarPerfil
       x-trazabilidad:
@@ -914,13 +1037,10 @@ paths:
         - Notificaciones
         - Pagos
         - Opiniones y Analítica
-        estado: Habilitada con API Key de módulo (RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
+        estado: Habilitada con el JWT de módulo (API-17, RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
         regla: Sólo lectura. Recibe el estado aunque la cuenta esté INACTIVA. Un rol humano distinto de CLIENTE
           no identifica a un módulo.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
-      security:
-      - bearerAuth: []
-      - moduleApiKey: []
     put:
       tags:
       - Usuarios
@@ -1487,7 +1607,7 @@ paths:
       - Usuarios
       summary: Consultar estado y rol para otro módulo
       description: 'Consulta liviana para módulos consumidores: devuelve sólo estado y rol vigentes, sin datos personales.
-        Se autentica con la API Key del módulo (X-Api-Key, RN-15); un JWT de usuario, aunque sea ADMIN, recibe 403.
+        Se autentica con el JWT de módulo (rol MODULO, API-17, RN-15); un JWT de persona, aunque sea ADMIN, recibe 403.
         Una cuenta INACTIVA se devuelve con 200 para que el módulo decida con sus propias reglas.'
       operationId: consultarAccesoUsuario
       x-trazabilidad:
@@ -1548,7 +1668,7 @@ paths:
                     - campo: id
                       mensaje: Debe ser un entero positivo
         '401':
-          description: 'UNAUTHENTICATED: La API Key falta o es inválida.'
+          description: 'UNAUTHENTICATED: El token del módulo falta, es inválido o está vencido.'
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
@@ -1629,8 +1749,6 @@ paths:
                     message: Ocurrió un error interno
                     path: /api/v1/users/1/access
                     correlationId: g02-demo-001
-      security:
-      - moduleApiKey: []
       x-integracion-modulos:
         consumidores:
         - Pedidos
@@ -1639,8 +1757,8 @@ paths:
         - Notificaciones
         - Pagos
         - Opiniones y Analítica
-        estado: Habilitada con API Key de módulo (RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
-        regla: Sólo lectura. La clave identifica al módulo; no hay un rol humano que lo reemplace.
+        estado: Habilitada con el JWT de módulo (API-17, RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
+        regla: Sólo lectura. El sub del token identifica al módulo; no hay un rol humano que lo reemplace.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
   /api/v1/users/{id}/addresses:
     get:
@@ -1649,7 +1767,7 @@ paths:
       summary: Listar direcciones activas
       description: |-
         Con JWT: el titular ACTIVO consulta sus direcciones. Devuelve un array sin paginación; si no tiene direcciones activas devuelve 200 y [].
-        Con X-Api-Key: sólo el módulo Pedidos puede listar las direcciones activas de un usuario, también si la cuenta está INACTIVA (CU-05 A5: 404 si el usuario no existe); debe consultar API-03 o API-16 para conocer el estado. Los demás módulos reciben 403.
+        Con el JWT de módulo: sólo el módulo Pedidos puede listar las direcciones activas de un usuario, también si la cuenta está INACTIVA (CU-05 A5: 404 si el usuario no existe); debe consultar API-03 o API-16 para conocer el estado. Los demás módulos reciben 403.
         No incluye direcciones dadas de baja. Puede haber cero o una predeterminada, nunca más de una.
       operationId: listarDirecciones
       x-trazabilidad:
@@ -1809,12 +1927,9 @@ paths:
       x-integracion-modulos:
         consumidores:
         - Pedidos
-        estado: Habilitada con API Key de módulo, sólo para Pedidos (RN-05, RN-15, DC-08).
+        estado: Habilitada con el JWT de módulo, sólo para Pedidos (RN-05, RN-15, DC-08).
         regla: Sólo lectura y autorización explícita por operación.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
-      security:
-      - bearerAuth: []
-      - moduleApiKey: []
     post:
       tags:
       - Direcciones
@@ -2527,18 +2642,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT de usuario emitido por POST /api/v1/auth/login (o renovado con /api/v1/auth/refresh). En
-        Swagger UI pegar sólo el token. sub contiene el id del usuario como texto; role su rol; exp el vencimiento.
-        Validar firma, vencimiento, titularidad y estado en backend. No es una credencial de módulo.
-    moduleApiKey:
-      type: apiKey
-      in: header
-      name: X-Api-Key
-      description: 'Credencial propia de un módulo consumidor (Pedidos, Logística, Catálogo, Notificaciones, Pagos,
-        Opiniones y Analítica), entregada por el equipo de Usuarios y enviada servidor a servidor. Sólo permite
-        leer: API-03, API-05 (únicamente Pedidos) y API-16. Se configura por variable de entorno; una clave vacía
-        o de menos de 16 caracteres deja al módulo sin acceso. Si la solicitud trae también Authorization, manda
-        el JWT. No es una credencial de usuario.'
+      description: JWT emitido por Usuarios. De una persona, por POST /api/v1/auth/login (o renovado con
+        /api/v1/auth/refresh); de un módulo consumidor, por POST /api/v1/auth/module-token. En Swagger UI pegar sólo el
+        token. sub contiene el id del usuario como texto (o el nombre del módulo); role su rol (o MODULO); exp el
+        vencimiento. Validar firma, vencimiento, rol, titularidad y estado en backend.
   parameters:
     CorrelationId:
       name: X-Correlation-Id
@@ -2777,6 +2884,65 @@ components:
         rol:
           $ref: '#/components/schemas/Rol'
       x-dto-id: DTO-04
+    TokenModuloRequest:
+      type: object
+      description: DTO-16. Credencial con la que un módulo consumidor pide su token a Usuarios (RN-15).
+      required:
+      - modulo
+      - clave
+      properties:
+        modulo:
+          type: string
+          minLength: 1
+          pattern: \S
+          description: Nombre del módulo (sin distinguir mayúsculas). pedidos, logistica, catalogo, notificaciones,
+            pagos u opiniones-analitica.
+          example: pedidos
+        clave:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 1
+          pattern: \S
+          description: Clave que el equipo de Usuarios entregó al módulo. Se compara sin normalizar.
+          example: pedidos-demo-local-2026
+      x-dto-id: DTO-16
+    TokenModuloResponse:
+      type: object
+      additionalProperties: false
+      description: DTO-17. JWT con rol MODULO para las consultas de lectura de los módulos consumidores. El token de
+        ejemplo no es utilizable.
+      required:
+      - token
+      - tipo
+      - expiraEn
+      - modulo
+      - rol
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: JWT firmado. sub es el nombre del módulo y role es MODULO.
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwZWRpZG9zIiwicm9sZSI6Ik1PRFVMTyIsImlhdCI6MTc5MzM3MjQwMCwiZXhwIjoxNzkzNDAxMjAwfQ.FIRMA_DE_EJEMPLO_NO_VALIDA
+        tipo:
+          type: string
+          enum:
+          - Bearer
+          example: Bearer
+        expiraEn:
+          type: string
+          format: date-time
+          description: Vencimiento absoluto del JWT. Debe corresponder al claim exp.
+          example: '2026-10-31T00:00:00Z'
+        modulo:
+          type: string
+          example: pedidos
+        rol:
+          type: string
+          enum:
+          - MODULO
+          example: MODULO
+      x-dto-id: DTO-17
     ModificarPerfilRequest:
       type: object
       description: DTO-05. PUT reemplaza todos los datos editables; telefono ausente/null/en blanco borra el anterior.
@@ -2817,8 +2983,8 @@ components:
       x-dto-id: DTO-05
     CrearDireccionRequest:
       type: object
-      description: DTO-06. El id y el usuario propietario se obtienen del servidor y de la ruta. No admite activa,
-        usuarioId ni referencia.
+      description: DTO-06. El id y el usuario propietario se obtienen del servidor y de la ruta. No admite activa
+        ni usuarioId.
       required:
       - calle
       - numero
@@ -2950,7 +3116,7 @@ components:
     ModificarDireccionRequest:
       type: object
       description: DTO-09. PUT reemplaza los datos editables y conserva predeterminada. No admite id, usuarioId,
-        activa, predeterminada ni referencia.
+        activa ni predeterminada.
       required:
       - calle
       - numero
