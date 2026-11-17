@@ -34,10 +34,6 @@ public class Direccion {
     @Column(nullable = false, length = 10)
     private String codigoPostal;
 
-    // Previsto en el DER; todavía no forma parte del contrato CORE ni de los DTO.
-    @Column(length = 150)
-    private String referencia;
-
     @Column(nullable = false)
     private boolean predeterminada;
 
@@ -98,10 +94,6 @@ public class Direccion {
 
     public String getCodigoPostal() {
         return codigoPostal;
-    }
-
-    public String getReferencia() {
-        return referencia;
     }
 
     public boolean isPredeterminada() {

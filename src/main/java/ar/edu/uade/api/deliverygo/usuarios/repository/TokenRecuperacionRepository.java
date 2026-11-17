@@ -13,10 +13,6 @@ public interface TokenRecuperacionRepository extends JpaRepository<TokenRecupera
 
     Optional<TokenRecuperacion> findByTokenHash(String tokenHash);
 
-    // Sólo obtiene el id: el token se carga después de bloquear a su usuario, para leer su uso vigente.
-    @Query("select t.usuario.id from TokenRecuperacion t where t.tokenHash = :tokenHash")
-    Optional<Long> buscarUsuarioIdPorTokenHash(@Param("tokenHash") String tokenHash);
-
     // Deja sin efecto los tokens vigentes de un usuario cuando se pide uno nuevo o se restablece la clave.
     @Modifying(flushAutomatically = true)
     @Query("update TokenRecuperacion t set t.usadoEn = :ahora where t.usuario.id = :usuarioId and t.usadoEn is null")

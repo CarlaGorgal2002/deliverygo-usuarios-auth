@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -51,6 +52,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(EmailDuplicadoException.class)
     public ResponseEntity<Object> manejarEmailDuplicado(EmailDuplicadoException e, HttpServletRequest request) {
         return responder(request, HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED", e.getMessage(), null);
+    }
+
+    // 409 - segunda barrera de RN-02 (DM-11): si dos solicitudes pasan el control del service a la vez, la restricción
+    // única de la base rechaza la segunda. Es la única restricción única que alcanza un dato del cliente (el email).
+    // El detalle de la base se registra pero nunca se devuelve (clase 5: mapeo de errores de persistencia a HTTP).
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> manejarIntegridad(DataIntegrityViolationException e, HttpServletRequest request) {
+        log.warn("Violación de integridad en {}: {}", request.getRequestURI(), e.getMostSpecificCause().getMessage());
+        return responder(request, HttpStatus.CONFLICT, "EMAIL_ALREADY_REGISTERED", "El email ya está registrado", null);
     }
 
     // 401 - RN-08: mismo error para email inexistente y contraseña incorrecta

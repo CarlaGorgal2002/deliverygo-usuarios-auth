@@ -19,8 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 
@@ -54,14 +52,17 @@ public class UsuarioService {
         this.notificacionesClient = notificacionesClient;
     }
 
-    // SRV-01 (CU-01). Da de alta al usuario y, una vez confirmado, pide la bienvenida (INT-01).
-    @Transactional
+    // SRV-01 (CU-01). Da de alta al usuario y, una vez guardado, pide la bienvenida (INT-01).
+    // No lleva @Transactional a propósito: el alta es una única escritura y save() ya es transaccional, de modo
+    // que el usuario queda confirmado en la base antes de llamar a Notificaciones. Notificaciones verifica al
+    // destinatario con GET /users/{id}; si la llamada saliera dentro de la transacción todavía no lo vería.
     public UsuarioResponse registrarUsuario(RegistrarUsuarioRequest request) {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > MAX_BYTES_PASSWORD) {
             throw new DatoInvalidoException("password", "No puede superar " + MAX_BYTES_PASSWORD + " bytes");
         }
 
-        // RN-02 / DC-02
+        // RN-02 / DC-02. Si dos altas simultáneas pasan este control, la restricción única de la base
+        // rechaza la segunda y el GlobalExceptionHandler la informa como 409 (DM-11).
         String email = Textos.normalizarEmail(request.email());
         if (usuarioRepository.existsByEmail(email)) {
             throw new EmailDuplicadoException(MSG_EMAIL_DUPLICADO);
@@ -80,18 +81,12 @@ public class UsuarioService {
                 rol);
         UsuarioResponse creado = usuarioMapper.toResponse(usuarioRepository.save(usuario));
 
-        // INT-01 recién después del commit: Notificaciones verifica al destinatario con GET /users/{id} y, si la
-        // pedimos antes, todavía no lo vería. Si el alta se revierte, no se pide ninguna bienvenida.
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                pedirBienvenida(creado);
-            }
-        });
+        pedirBienvenida(creado);
         return creado;
     }
 
-    // INT-01 no bloqueante: si falla, el registro se mantiene y el cliente igual recibe el 201.
+    // INT-01 no bloqueante: si falla (timeout, 5xx, módulo caído), el registro se mantiene y el cliente igual
+    // recibe el 201. El cliente HTTP ya define un timeout corto, así que una demora no cuelga el alta.
     private void pedirBienvenida(UsuarioResponse creado) {
         try {
             notificacionesClient.enviarBienvenida(creado.id(), creado.nombre(), creado.email());
