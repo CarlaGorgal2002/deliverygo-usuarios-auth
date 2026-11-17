@@ -66,8 +66,8 @@ Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`,
 
 | ID | Módulo | Dirección | Estado |
 |---|---|---|---|
-| INT-01 | Notificaciones (bienvenida) | Saliente | Mock declarado hasta contar con el contrato real |
-| INT-06 | Notificaciones (recuperación de contraseña) | Saliente | Mock declarado hasta contar con el contrato real |
+| INT-01 | Notificaciones (bienvenida) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
+| INT-06 | Notificaciones (recuperación de contraseña) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
 | INT-02 | Portal Web | Entrante | Real |
 | INT-03 | Pedidos y Logística | Entrante | Real, con API Key de módulo |
 | INT-04 | Catálogo | Entrante | Real, con API Key de módulo |
@@ -96,7 +96,7 @@ src/test/java/ar/edu/uade/api/deliverygo/usuarios/   Pruebas de integración y u
 Requisitos: JDK 25 y Maven (ver el instructivo de la cátedra).
 
 ```bash
-mvn test                 # 77 pruebas automáticas
+mvn test                 # 91 pruebas automáticas
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
 ```
 
@@ -111,10 +111,31 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 | `MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA` | API Key de cada módulo consumidor, de al menos 16 caracteres (CU-10) | Vacías: el módulo no tiene acceso |
 | `RECOVERY_TOKEN_MINUTES` | Vigencia del token de recuperación de contraseña | `30` |
 | `MOCK_LOG_RECOVERY_TOKEN` | Sólo para demostrar CU-08 en local: el mock de Notificaciones escribe el token en el log | `false`; no activar en ambientes compartidos |
+| `NOTIFICACIONES_MODO` | `mock` (sólo log) o `http` (API real de Notificaciones) | `mock` |
+| `NOTIFICACIONES_URL` y `NOTIFICACIONES_TIMEOUT_MS` | URL base y tiempo de espera del cliente HTTP de Notificaciones. Si la URL apunta a este mismo servicio (mismo puerto en localhost), la app no arranca | `http://localhost:8089` y `2000` |
+| `NOTIFICACIONES_PLANTILLA_BIENVENIDA` y `NOTIFICACIONES_PLANTILLA_RECUPERACION` | Nombres de las plantillas en Notificaciones | `USUARIO_BIENVENIDA_EMAIL` y `RECUPERACION_PASSWORD_EMAIL` |
 
 `src/main/resources/application.properties.example` documenta el resto de la configuración. No se deben subir secretos reales al repositorio.
 
 - Swagger UI: `http://localhost:8089/swagger-ui.html` (JSON en `/v3/api-docs`).
 - Consola H2 de desarrollo: `http://localhost:8089/h2-console` (URL `jdbc:h2:mem:deliverygo-usuarios`, usuario `sa`, sin contraseña). La base se vacía al reiniciar; al arrancar se crean los roles CLIENTE, COMERCIO, REPARTIDOR y ADMIN.
-- INT-01 (bienvenida) e INT-06 (recuperación de contraseña) con Notificaciones están resueltas con un mock declarado que sólo escribe en el log; su falla nunca revierte el registro ni cambia la respuesta.
+- INT-01 (bienvenida) e INT-06 (recuperación de contraseña) con Notificaciones usan por defecto un mock declarado que sólo escribe en el log; con `NOTIFICACIONES_MODO=http` llaman a la API real. Su falla nunca revierte el registro ni cambia la respuesta.
 - Para probar la administración y los módulos en local, definir antes de arrancar, por ejemplo: `ADMIN_EMAIL=admin@deliverygo.test`, `ADMIN_PASSWORD=<una contraseña propia>` y `MODULE_KEY_PEDIDOS=<una clave de 16 caracteres o más>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) y la API Key (`moduleApiKey`). Las claves y contraseñas no se suben al repositorio.
+
+### Usuarios y Notificaciones juntos
+
+Para probar INT-01 e INT-06 contra el módulo real ([DeliveryGo-Notificaciones](https://github.com/FrancoPedreira/DeliveryGo-Notificaciones)), Usuarios corre en el puerto 8080 y Notificaciones en el 8089. Los dos deben compartir el mismo `JWT_SECRET`.
+
+```bash
+# Terminal 1: Notificaciones en http://localhost:8089 (según su README), con el mismo JWT_SECRET
+# y MODULE_KEY_NOTIFICACIONES configurada para consultar GET /api/v1/users/{id} en Usuarios.
+
+# Terminal 2: Usuarios en http://localhost:8080
+export JWT_SECRET='<secreto compartido de 32 caracteres o más>'
+export MODULE_KEY_NOTIFICACIONES='<clave de 16 caracteres o más, la misma que usa Notificaciones>'
+export NOTIFICACIONES_MODO=http
+export NOTIFICACIONES_URL=http://localhost:8089
+SERVER_PORT=8080 mvn spring-boot:run
+```
+
+Notificaciones debe tener activas las plantillas `USUARIO_BIENVENIDA_EMAIL` y `RECUPERACION_PASSWORD_EMAIL`. Con eso, `POST /api/v1/auth/register` dispara la bienvenida y `POST /api/v1/auth/password/forgot` la recuperación; el log de Usuarios muestra el id de la notificación creada y su estado. Si Notificaciones no está disponible, el registro y la recuperación responden igual y el error queda en el log.
