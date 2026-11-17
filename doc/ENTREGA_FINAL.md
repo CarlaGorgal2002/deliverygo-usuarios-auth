@@ -13,6 +13,7 @@ El alcance propio está implementado y probado. La integración completa del eco
 - [Postman](postman/README.md): colección de Usuarios, environment local y colecciones entre servicios.
 - [Diagramas](Diagramas/README.md): contexto, arquitectura, clases, DER, seguridad y diez secuencias (PlantUML y PNG).
 - [Backlog](BACKLOG.md): estado de los diez casos de uso.
+- [Acta de decisiones técnicas](ACTA_DECISIONES.md): decisiones DM y DC en un solo lugar, con los cambios del cierre.
 - [Integraciones](integracion/README.md): comandos, versiones revisadas, parche de Notificaciones y bloqueos externos.
 - [Verificación](openapi/VERIFICACION.md): resultados, cobertura, pasos de la demo y límites de las pruebas.
 - [Decisiones](openapi/ACUERDOS_Y_BRECHAS.md) y [diseño de evolución](openapi/DISENO_CU_EVOLUCION.md): justificación y trazabilidad.

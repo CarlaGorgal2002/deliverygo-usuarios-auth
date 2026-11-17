@@ -82,6 +82,7 @@ doc/                     Documento de entrega y diagramas (fuentes .puml e imág
 doc/openapi/             Contrato OpenAPI, trazabilidad y verificación
 doc/postman/             Colecciones, environment local y evidencia sin credenciales
 doc/BACKLOG.md          Backlog de los diez casos de uso y su estado
+doc/ACTA_DECISIONES.md  Acta de decisiones técnicas (DM y DC) y cambios del cierre
 Dockerfile, compose.backend.yaml, docker-compose.yml   Imagen del backend y base PostgreSQL
 doc/integracion/         Guía entre módulos, hallazgos y parche para Notificaciones
 entregables/              Paquete Swagger histórico de primera entrega
