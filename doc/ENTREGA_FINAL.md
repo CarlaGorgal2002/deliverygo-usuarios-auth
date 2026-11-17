@@ -4,7 +4,7 @@
 
 El módulo implementa los diez casos de uso y las diecisiete operaciones REST del contrato. Incluye persistencia PostgreSQL con Docker Compose (también el backend en contenedor, clase 13), JWT, permisos por titular y rol, JWT de módulos emitido por Usuarios (con `X-Api-Key` como alternativa), validaciones y errores comunes. Esta entrega rehace los diagramas con las capas y participantes que pide la plantilla, agrega las colecciones de Postman y el backlog, y deja el código dentro de lo visto en la cátedra.
 
-El alcance propio está implementado y probado. La integración completa del ecosistema requiere además que los otros equipos incorporen las correcciones y acuerdos documentados. En particular, Notificaciones fue probado con un parche local incluido en esta entrega; no se afirma que ese parche ya esté publicado en su repositorio.
+El alcance propio está implementado y probado. La integración completa del ecosistema requiere además que los otros equipos incorporen las correcciones y acuerdos documentados. En particular, Notificaciones fue probado con un parche local incluido en esta entrega; no se afirma que ese parche ya esté publicado en su repositorio. El cambio de credencial de los módulos (JWT de módulo y `X-Api-Key`) está comunicado a los equipos en [integración](integracion/README.md) y registrado para el docente en el [acta de decisiones](ACTA_DECISIONES.md).
 
 ## Material para entregar y ejecutar
 

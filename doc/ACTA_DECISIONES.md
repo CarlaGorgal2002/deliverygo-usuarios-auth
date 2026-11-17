@@ -55,7 +55,19 @@ Módulo Usuarios y Autenticación · Grupo 02. Este documento reúne y ordena la
 | Los módulos pueden pedir un JWT de módulo (API-17) y usarlo como Bearer, además de seguir mandando `X-Api-Key` (DM-16, DC-08) | El TPO fija la convención "Autenticación: Bearer JWT" y la guía de seguridad de la cátedra (`Seguridad.jpg`) muestra que Usuarios emite el JWT; pero Notificaciones y Analítica ya mandan `X-Api-Key`, y Pagos espera un JWT de servicio emitido por Usuarios | Nadie queda sin servicio: los equipos que hoy mandan `X-Api-Key` (Notificaciones, Opiniones y Analítica) pueden seguir así, y Pagos y los demás pueden pasarse al Bearer sin que Usuarios cambie |
 | Backend y PostgreSQL en Docker (`Dockerfile`, `compose.backend.yaml`) | Clase 13 | Ninguno |
 
-**Pendiente de aprobación docente:** la política de cambios del TPO pide registrar el cambio, analizar su impacto en otros módulos y obtener aprobación docente antes de modificar un contrato obligatorio. La incorporación del JWT de módulo (sin quitar `X-Api-Key`) está registrada y su impacto analizado en esta acta: no rompe a ningún consumidor existente. Falta comunicarla al docente y a los equipos consumidores, y acordar con ellos cuál de las dos formas van a usar.
+### Registro de cambios para el docente
+
+La política de cambios del TPO pide registrar el cambio, analizar su impacto en otros módulos y contar con aprobación docente antes de modificar un contrato obligatorio. Este apartado es ese registro.
+
+| Aspecto | Detalle |
+|---|---|
+| Qué cambió | Se agregó API-17 (`POST /auth/module-token`), que emite un JWT de módulo (rol `MODULO`, sólo lectura), y se mantiene `X-Api-Key` como forma alternativa de identificar a un módulo en API-03, API-05 (sólo Pedidos) y API-16 |
+| Por qué | El TPO fija "Autenticación: Bearer JWT", pero Notificaciones y Analítica ya mandan `X-Api-Key` y Pagos espera un JWT emitido por Usuarios. Aceptar ambas evita romper a los equipos que ya integraron |
+| Contratos obligatorios | Sin cambios: registro, login, `GET`/`PUT /users/{id}` y `POST /users/{id}/addresses` quedan como estaban. API-17 es una operación nueva y las otras dos formas de identificación sólo amplían quién puede leer |
+| Impacto en otros módulos | Ninguno obligatorio: quien ya usa `X-Api-Key` sigue igual; quien prefiera Bearer pide su token. Detalle por equipo en [integración](integracion/README.md) (aviso a los equipos del 17/11/2026) |
+| Seguridad | Las claves son una por módulo, de al menos 16 caracteres, por variable de entorno y sin valores por defecto; se comparan en tiempo constante; el módulo nunca escribe ni renueva sesiones; si llegan JWT y clave, manda el JWT |
+| Verificación | 97 pruebas automáticas y recorrido HTTP sobre PostgreSQL ([verificación](openapi/VERIFICACION.md)) |
+| Estado de la aprobación | Se somete a la consideración del docente; al momento de esta entrega no consta una respuesta suya, y la decisión queda registrada como decisión del grupo hasta que la haya |
 
 ## Pendientes conocidos
 

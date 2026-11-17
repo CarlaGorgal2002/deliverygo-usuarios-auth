@@ -2,6 +2,40 @@
 
 Revisión y pruebas del **16/11/2026**. Usuarios expone sus 17 operaciones sobre PostgreSQL. Se probaron por HTTP la integración de JWT con Catálogo y los flujos de bienvenida y recuperación con Notificaciones. Para Notificaciones fue necesario aplicar el parche local incluido; ese resultado no implica que su repositorio remoto ya tenga la corrección.
 
+## Aviso a los equipos consumidores (17/11/2026)
+
+Este apartado es la comunicación del grupo de Usuarios (Grupo 02) a los equipos que consultan sus datos. **No hay que cambiar nada para seguir funcionando**: los contratos de registro, login, `GET`/`PUT /users/{id}` y direcciones no cambiaron.
+
+**Qué hay de nuevo.** Para identificarse como módulo (sólo lectura) Usuarios acepta ahora dos formas, a elección de cada equipo:
+
+| Forma | Cómo se usa | Cuándo conviene |
+|---|---|---|
+| `X-Api-Key` | La clave del módulo en la cabecera `X-Api-Key` en cada llamada | Si ya la mandan (Notificaciones, Opiniones y Analítica): sigue andando igual |
+| JWT de módulo (Bearer) | Una vez, `POST /api/v1/auth/module-token` con `{"modulo":"pedidos","clave":"<su clave>"}`; la respuesta trae el token, que se manda como `Authorization: Bearer <token>` hasta que vence (8 horas por defecto) y se pide de nuevo | Si su cliente ya propaga Bearer o espera un JWT emitido por Usuarios (Pagos); es la convención "Autenticación: Bearer JWT" del TPO |
+
+Si llegan las dos, manda el JWT. Con cualquiera de las dos el módulo sólo lee: `GET /users/{id}` (todos), `GET /users/{id}/access` (todos) y `GET /users/{id}/addresses` (sólo Pedidos). Escribir o renovar sesiones da 403.
+
+**Qué necesita cada equipo.**
+
+| Equipo | Qué hace hoy (según su repositorio) | Qué tiene que hacer |
+|---|---|---|
+| Notificaciones | Manda `X-Api-Key` a `GET /users/{id}` | Nada; sólo tener cargada la clave de `notificaciones` |
+| Opiniones y Analítica | Manda `X-Api-Key` a `/users/{id}` | Nada; sólo tener cargada la clave de `opiniones-analitica` |
+| Pagos | Espera un "JWT de servicio" emitido por Usuarios (`integraciones.token-servicio`, hoy vacío) | Pedir el token con `POST /auth/module-token` y usarlo como ese JWT, o mandar `X-Api-Key` |
+| Pedidos | Mock de Usuarios | Al implementar el cliente HTTP, usar cualquiera de las dos formas; es el único módulo que puede listar direcciones |
+| Logística y Catálogo | Mock (Logística) / JWT de personas (Catálogo) | Cualquiera de las dos formas para consultar perfil o estado |
+| Portal | No usa credencial de módulo | Nada; sigue con el JWT de la persona |
+
+**Claves.** Cada módulo tiene una clave propia (variables `MODULE_KEY_*` de Usuarios, mínimo 16 caracteres). Se entrega por un canal seguro, no por el repositorio ni por el chat del curso, y hay que usar HTTPS fuera del laboratorio. Para recibir la clave de un módulo o rotarla, pedirla al grupo de Usuarios.
+
+**Cómo probarlo.** Colección de Postman en [`doc/postman`](../postman/README.md) (solicitudes de módulo) y Swagger UI del servicio (`/swagger-ui.html`), donde **Authorize** tiene `bearerAuth` y `moduleApiKey`. Ejemplo con la clave:
+
+```
+curl -H "X-Api-Key: <clave del módulo>" http://localhost:8089/api/v1/users/1/access
+```
+
+Registro del cambio y su impacto: [acta de decisiones](../ACTA_DECISIONES.md) (DM-16, DC-08) y [acuerdos y brechas](../openapi/ACUERDOS_Y_BRECHAS.md).
+
 ## Contrato que deben consumir los equipos
 
 Base local de esta demo: `http://localhost:8080/api/v1`. El puerto habitual de Usuarios solo sigue siendo 8089.
