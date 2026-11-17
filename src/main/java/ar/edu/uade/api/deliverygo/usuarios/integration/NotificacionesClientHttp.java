@@ -1,6 +1,5 @@
 package ar.edu.uade.api.deliverygo.usuarios.integration;
 
-import ar.edu.uade.api.deliverygo.usuarios.config.AsyncConfig;
 import ar.edu.uade.api.deliverygo.usuarios.security.JwtService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
@@ -13,7 +12,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -33,9 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 //   POST /api/v1/notifications  -> { destinatarioId, plantillaId, parametros } -> 201
 // Cada llamada lleva un JWT de servicio corto (HS256, mismo JWT_SECRET, sub = destinatario, role = SISTEMA)
 // y el X-Correlation-Id de la solicitud en curso.
-// Los envíos corren en segundo plano (@Async, AsyncConfig): la respuesta no espera a Notificaciones, así que su
-// tiempo no delata si un email está registrado (RN-13). Una falla sale como NotificacionesException y la
-// registra AsyncConfig, sin afectar el registro ni la recuperación.
+// Las llamadas son sincrónicas pero acotadas: timeout de conexión y de lectura (app.notificaciones.timeout-ms)
+// y una falla sale como NotificacionesException. Quien llama (UsuarioService, AuthService) la captura y la registra
+// sin revertir el registro ni cambiar la respuesta: INT-01 e INT-06 no son bloqueantes.
 @Component
 @ConditionalOnProperty(name = "app.notificaciones.modo", havingValue = "http")
 public class NotificacionesClientHttp implements NotificacionesClient {
@@ -74,13 +72,11 @@ public class NotificacionesClientHttp implements NotificacionesClient {
         this.plantillaRecuperacion = plantillaRecuperacion;
     }
 
-    @Async(AsyncConfig.EJECUTOR_NOTIFICACIONES)
     @Override
     public void enviarBienvenida(Long usuarioId, String nombre, String email) {
         enviar(usuarioId, plantillaBienvenida, Map.of("nombre", nombre), "INT-01");
     }
 
-    @Async(AsyncConfig.EJECUTOR_NOTIFICACIONES)
     @Override
     public void enviarRecuperacion(Long usuarioId, String nombre, String email, String token) {
         enviar(usuarioId, plantillaRecuperacion, Map.of("nombre", nombre, "token", token), "INT-06");

@@ -1,27 +1,20 @@
 # Entrega Swagger del Grupo 02
 
-Contrato de **Usuarios y Autenticación** de DeliveryGo, preparado el **30 de octubre de 2026**, versión **1.1.0**, en OpenAPI 3.0.3 y YAML. Incluye las dieciséis operaciones de los diez casos de uso (los cinco CORE, CU-01 a CU-05, y los cinco de evolución, CU-06 a CU-10), sus DTO, ejemplos, validaciones, seguridad y respuestas de error.
+Contrato de **Usuarios y Autenticación** de DeliveryGo, preparado el **30 de octubre de 2026**, versión **1.1.0**, en OpenAPI 3.0.3 y YAML. Incluye las diecisiete operaciones de los diez casos de uso (los cinco CORE, CU-01 a CU-05, y los cinco de evolución, CU-06 a CU-10), sus DTO, ejemplos, validaciones, seguridad y respuestas de error.
 
 **Archivo principal para entregar: [deliverygo-usuarios.yaml](deliverygo-usuarios.yaml).** Es autónomo: todas sus referencias están dentro del mismo archivo. Corresponde al Grupo 02 académico, denominado Equipo 1 del ecosistema en la guía funcional.
 
-Este contrato parte del diseño de la primera entrega y lo completa con CU-06 a CU-10 ([DISENO_CU_EVOLUCION.md](DISENO_CU_EVOLUCION.md)). El backend del repositorio implementa las dieciséis operaciones y la Swagger generada por Springdoc coincide con él (operaciones, códigos de respuesta y seguridad). La validación del YAML (`validar_contratos.py`) comprueba el documento; el comportamiento del servidor lo comprueban las pruebas automáticas descritas en [VERIFICACION.md](VERIFICACION.md). Lo que sigue pendiente de acuerdo externo está en [ACUERDOS_Y_BRECHAS.md](ACUERDOS_Y_BRECHAS.md).
+Este contrato parte del diseño de la primera entrega y lo completa con CU-06 a CU-10 ([DISENO_CU_EVOLUCION.md](DISENO_CU_EVOLUCION.md)). El backend del repositorio implementa las diecisiete operaciones y la Swagger generada por Springdoc coincide con él (operaciones, códigos de respuesta y seguridad). El comportamiento del servidor lo comprueban las pruebas automáticas descritas en [VERIFICACION.md](VERIFICACION.md). Lo que sigue pendiente de acuerdo externo está en [ACUERDOS_Y_BRECHAS.md](ACUERDOS_Y_BRECHAS.md).
 
 ## Archivos de la entrega
 
 | Archivo | Contenido |
 |---|---|
-| `deliverygo-usuarios.yaml` | Contrato completo y única fuente editable; 16 operaciones |
-| `vistas/autenticacion.yaml` | Vista autónoma de registro, login, recuperación de contraseña y renovación y validación de sesión; 6 operaciones |
-| `vistas/usuarios.yaml` | Vista autónoma de perfil, estado, rol y consulta para módulos; 5 operaciones |
-| `vistas/direcciones.yaml` | Vista autónoma de direcciones; 5 operaciones |
+| `deliverygo-usuarios.yaml` | Contrato completo; 17 operaciones |
 | `DISENO_CU_EVOLUCION.md` | Diseño de CU-06 a CU-10: reglas RN-11 a RN-15, entidad ENT-04, decisiones DM-13 a DM-17, fichas, secuencias y matriz de trazabilidad |
 | `TRAZABILIDAD_Y_FUENTES.md` | Correspondencia con API, CU, RN, SRV, DTO y los 23 adjuntos |
 | `ACUERDOS_Y_BRECHAS.md` | Decisiones de contrato, integración JWT, estado de la implementación y pendientes |
-| `VERIFICACION.md` | Validación del contrato, pruebas automáticas del backend y escenarios aún por acordar |
-| `exportar_vistas.py` | Regenera las vistas a partir del principal |
-| `validar_contratos.py` | Valida especificaciones, ejemplos y restricciones del contrato |
-
-Las vistas son formas de compartir partes del mismo servicio, no tres microservicios adicionales. No se deben editar independientemente ni importar las cuatro especificaciones como si fueran cuatro APIs distintas. Si el profesor pide un único YAML por módulo, entregar solamente el principal; si solicita separación por área, también están disponibles las tres vistas.
+| `VERIFICACION.md` | Pruebas automáticas del backend, comparación con Swagger y recorrido para la demo |
 
 ## Cómo abrir los YAML
 
@@ -31,13 +24,13 @@ Las vistas son formas de compartir partes del mismo servicio, no tres microservi
 4. Registrar un usuario e iniciar sesión usando `email` y `password`. Copiar el `token` de la respuesta real y pegarlo en **Authorize**, sin escribir el prefijo `Bearer`.
 5. Usar el `usuarioId` real en las rutas del perfil y direcciones. El token incluido en los ejemplos tiene una firma ficticia y no permite iniciar sesión.
 
-Para probar los casos de evolución en local, definir antes de arrancar `ADMIN_EMAIL` y `ADMIN_PASSWORD` (primer administrador), `MODULE_KEY_PEDIDOS` y las demás `MODULE_KEY_*` (claves de módulo, de al menos 16 caracteres) y, para ver el token de recuperación sin Notificaciones real, `MOCK_LOG_RECOVERY_TOKEN=true`. En **Authorize** hay dos esquemas: `bearerAuth` (JWT) y `moduleApiKey` (cabecera `X-Api-Key`).
+Para probar los casos de evolución en local, definir antes de arrancar `ADMIN_EMAIL` y `ADMIN_PASSWORD` (primer administrador), `MODULE_KEY_PEDIDOS` y las demás `MODULE_KEY_*` (claves con las que cada módulo pide su token, de al menos 16 caracteres) y, para ver el token de recuperación sin Notificaciones real, `MOCK_LOG_RECOVERY_TOKEN=true`. En **Authorize** hay un solo esquema, `bearerAuth` (JWT): para una persona se obtiene con el login y para un módulo con `POST /api/v1/auth/module-token`.
 
-Swagger UI permite explorar la API, mientras que OpenAPI es la definición formal de sus operaciones. La autenticación HTTP Bearer se declara con `type: http`, `scheme: bearer`; las cuatro operaciones públicas (registro, login y las dos de recuperación de contraseña) la desactivan mediante `security: []`; API-03 y API-05 admiten Bearer o API Key de módulo, y API-16 sólo la API Key. Referencias técnicas: [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3) y [Swagger Bearer Authentication](https://swagger.io/doc/specification/v3_0/authentication/bearer-authentication/).
+Swagger UI permite explorar la API, mientras que OpenAPI es la definición formal de sus operaciones. La autenticación HTTP Bearer se declara con `type: http`, `scheme: bearer`; las cinco operaciones públicas (registro, login, token de módulo y las dos de recuperación de contraseña) la desactivan mediante `security: []`; API-03 y API-05 admiten el Bearer de una persona o de un módulo, y API-16 sólo el de un módulo. Referencias técnicas: [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3) y [Swagger Bearer Authentication](https://swagger.io/doc/specification/v3_0/authentication/bearer-authentication/).
 
 ## Operaciones incluidas
 
-Todas las rutas comienzan con `/api/v1`. Son públicos el registro, el login y la recuperación de contraseña. API-14, API-15 y las demás exigen JWT; las escrituras sobre un perfil o sus direcciones exigen además ser el titular; la administración (API-10 y API-11) exige ser ADMIN. Los módulos consumidores, con su API Key, sólo leen (API-03, API-05 para Pedidos, y API-16).
+Todas las rutas comienzan con `/api/v1`. Son públicos el registro, el login y la recuperación de contraseña. API-14, API-15 y las demás exigen JWT; las escrituras sobre un perfil o sus direcciones exigen además ser el titular; la administración (API-10 y API-11) exige ser ADMIN. Los módulos consumidores, con su JWT de módulo, sólo leen (API-03, API-05 para Pedidos, y API-16).
 
 | API | Método y ruta | Éxito | Caso de uso |
 |---|---|---|---|
@@ -57,36 +50,14 @@ Todas las rutas comienzan con `/api/v1`. Son públicos el registro, el login y l
 | API-14 | `POST /auth/refresh` | 200 + sesión | CU-09 |
 | API-15 | `GET /auth/session` | 200 + rol y estado vigentes | CU-09 |
 | API-16 | `GET /users/{id}/access` | 200 + estado y rol | CU-10 |
+| API-17 | `POST /auth/module-token` | 200 + JWT con rol MODULO | CU-10 |
 
 Los dos `PUT` reciben el conjunto completo de campos modificables. La baja de direcciones es lógica. Elegir una predeterminada desmarca la anterior en la misma transacción; eliminarla deja al usuario sin predeterminada. Cada operación contiene su trazabilidad en `x-trazabilidad`. Las operaciones de administración, recuperación de contraseña y sesión se explican en [DISENO_CU_EVOLUCION.md](DISENO_CU_EVOLUCION.md).
 
-## Validación reproducible
+## Integración con los equipos
 
-Desde la raíz del repositorio, con Python 3.10 o posterior:
+Coordinar con los demás grupos lo que no depende de este módulo: algoritmo y distribución de claves del JWT (hoy HS256 con secreto compartido; la firma asimétrica es una propuesta), la entrega y rotación de las claves con las que cada módulo pide su token y la adopción de las correcciones de Notificaciones y los demás consumidores ([guía y evidencia](../integracion/README.md)). Los claims actuales son `sub` = id del usuario, `role`, `iat` y `exp`; los consumidores no deben leer `sub` como email, y el rol de un token emitido puede quedar desactualizado hasta que venza: el vigente se consulta con API-15 o API-16.
 
-```powershell
-python -m venv target/openapi-venv
-.\target\openapi-venv\Scripts\python.exe -m pip install -r doc/openapi/requirements.txt
-.\target\openapi-venv\Scripts\python.exe doc/openapi/validar_contratos.py
-```
+No debe reemplazarse este archivo por una exportación automática de Springdoc: se perderían ejemplos, trazabilidad y restricciones ya diseñadas. Ante un cambio de comportamiento, actualizar el YAML y volver a correr `mvn test`.
 
-Si `python` apunta a otra instalación en Windows, se puede crear el entorno con `py -3.14 -m venv target/openapi-venv`. La verificación de esta entrega se ejecutó con Python 3.14.
-
-Después de modificar el archivo principal:
-
-```powershell
-.\target\openapi-venv\Scripts\python.exe doc/openapi/exportar_vistas.py
-.\target\openapi-venv\Scripts\python.exe doc/openapi/validar_contratos.py
-```
-
-Para verificar sólo la sincronización de las vistas sin reescribirlas:
-
-```powershell
-.\target\openapi-venv\Scripts\python.exe doc/openapi/exportar_vistas.py --check
-```
-
-## Próximo paso de implementación
-
-Coordinar con los demás grupos lo que no depende de este módulo: algoritmo y distribución de claves del JWT (hoy HS256 con secreto compartido; la firma asimétrica es una propuesta), la entrega y rotación de las API Keys de cada módulo y el contrato real de Notificaciones (hoy un mock declarado para la bienvenida y la recuperación de contraseña). Los claims actuales son `sub` = id del usuario, `role`, `iat` y `exp`; los consumidores no deben leer `sub` como email, y el rol de un token emitido puede quedar desactualizado hasta que venza: el vigente se consulta con API-15 o API-16.
-
-No debe reemplazarse este archivo por una exportación automática de Springdoc: se perderían ejemplos, trazabilidad y restricciones ya diseñadas. Ante un cambio de comportamiento, actualizar el YAML, regenerar las vistas y volver a correr `validar_contratos.py` y `mvn test`.
+Para cotejar el YAML con la implementación, abrir la Swagger UI del servicio (`/swagger-ui.html`) o `/v3/api-docs` y comparar las operaciones, las respuestas y la seguridad.

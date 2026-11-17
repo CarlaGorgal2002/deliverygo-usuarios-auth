@@ -1,28 +1,44 @@
 @startuml arquitectura
-skinparam dpi 170
-skinparam componentStyle rectangle
+skinparam dpi 120
+skinparam shadowing false
+skinparam defaultFontName Arial
 skinparam defaultFontSize 12
-actor "Portal Web (INT-02)" as Portal
-node "Pedidos, Logistica, Catalogo,\nPagos, Analitica, Notificaciones\n(INT-03 a INT-05)" as Mods
-package "Modulo Usuarios y Autenticacion (ar.edu.uade.api.deliverygo.usuarios)" {
-  [security + config\nJwtAuthFilter, JwtProvider,\nSecurityConfig] as Sec
-  [controller\nUsuarioController, AuthController,\nDireccionController] as Ctrl
-  [service\nUsuarioService, AuthService,\nDireccionService] as Srv
-  [repository\nUsuarioRepository, RolRepository,\nDireccionRepository] as Rep
-  [integration\nNotificacionesClient] as Int
-  [dto + mapper] as Dto
-  [domain\nUsuario, Rol, Direccion] as Model
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 45
+title Arquitectura por capas del módulo Usuarios y Autenticación
+
+actor "Portal Web\n(Bearer JWT)" as Portal
+actor "Módulos consumidores\n(Bearer JWT de módulo, sólo lectura)" as Mods
+
+package "Usuarios y Autenticación - Spring Boot (ar.edu.uade.api.deliverygo.usuarios)" {
+  component "security\nJwtAuthenticationFilter · ApiRequestFilter\nSecurityConfig · JwtService · ModulosApiKeys" as Sec
+  component "controller\nAuthController · UsuarioController\nDireccionController" as Ctrl
+  component "dto · mapper\nDTO-01 a DTO-17 · UsuarioMapper\nDireccionMapper" as Dto
+  component "service\nUsuarioService · AuthService · DireccionService\nAdministracionService · RecuperacionService" as Srv
+  component "repository\nUsuarioRepository · RolRepository\nDireccionRepository · TokenRecuperacionRepository" as Rep
+  component "domain\nUsuario · Rol · Direccion\nTokenRecuperacion · EstadoUsuario" as Dom
+  component "integration\nNotificacionesClient\n(HTTP real o mock declarado)" as Int
+  component "exception\nGlobalExceptionHandler\n(DTO-08 ErrorResponse)" as Exc
 }
-database "BD Usuarios\n(propia, DM-11)" as BD
-node "Notificaciones\n(INT-01)" as Notif
-Portal --> Sec : HTTP/JSON
-Mods --> Sec : HTTP/JSON
-Sec --> Ctrl
-Ctrl --> Srv
-Ctrl ..> Dto
-Srv --> Rep
-Srv --> Int
-Rep --> Model
-Rep --> BD
-Int --> Notif : HTTP/JSON (mock en Etapa 2)
+
+database "PostgreSQL 16\nBD propia (DM-11)" as DB
+component "Notificaciones\n(módulo externo)" as Notif
+
+Portal --> Sec : HTTP / JSON
+Mods --> Sec : HTTP / JSON
+Sec --> Ctrl : solicitud autenticada
+Ctrl --> Srv : DTO de entrada
+Ctrl ..> Dto : valida y devuelve DTO
+Srv --> Rep : consultas y transacciones
+Srv ..> Dto : entidad a DTO
+Srv --> Int : INT-01 / INT-06
+Rep ..> Dom : JPA / Hibernate
+Rep --> DB
+Int --> Notif : HTTP con timeout
+Ctrl ..> Exc : errores
+Srv ..> Exc : excepciones del módulo
+
+note bottom of DB : H2 en memoria sólo para las pruebas automáticas.
+note right of Ctrl : El Controller no accede a la base:\nsiempre pasa por el Service.
 @enduml

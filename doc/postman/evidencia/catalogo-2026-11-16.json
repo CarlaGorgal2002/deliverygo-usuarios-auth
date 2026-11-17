@@ -1,0 +1,80 @@
+{
+  "coleccion": "DeliveryGo Usuarios y Catalogo - JWT real",
+  "inicio": 1794880898977,
+  "fin": 1794880901193,
+  "resumen": {
+    "iterations": {
+      "executed": 1,
+      "errors": 0
+    },
+    "executedRequests": {
+      "executed": 7,
+      "errors": 0
+    },
+    "prerequestScripts": {
+      "executed": 8,
+      "errors": 0
+    },
+    "postresponseScripts": {
+      "executed": 7,
+      "errors": 0
+    },
+    "tests": {
+      "executed": 8,
+      "failed": 0,
+      "passed": 8,
+      "skipped": 0
+    },
+    "timeStats": {
+      "responseAverage": 209.14285714285714,
+      "responseMin": 7,
+      "responseMax": 1159,
+      "responseStandardDeviation": 390.58323735936557
+    }
+  },
+  "errorDeEjecucion": false,
+  "solicitudes": [
+    {
+      "nombre": "01 Login ADMIN en Usuarios",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "02 Registrar CLIENTE en Usuarios",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "03 Login CLIENTE en Usuarios",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "04 Catalogo acepta JWT ADMIN de Usuarios",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "05 Catalogo rechaza CLIENTE para administrar",
+      "metodo": "POST",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "06 Catalogo exige autenticacion",
+      "metodo": "POST",
+      "status": 401,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "07 Borrar categoria creada para la prueba",
+      "metodo": "DELETE",
+      "status": 204,
+      "erroresDeEjecucion": 0
+    }
+  ]
+}

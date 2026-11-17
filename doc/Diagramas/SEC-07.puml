@@ -1,0 +1,57 @@
+@startuml SEC-07
+skinparam dpi 110
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-07 Asignar o modificar rol (CU-07 / API-11 / SRV-11)
+autonumber
+actor Administrador as A
+participant "JwtAuthenticationFilter\n+ SecurityConfig" as F
+participant UsuarioController as C
+participant AdministracionService as S
+participant UsuarioRepository as UR
+participant RolRepository as RR
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : PUT /api/v1/users/{id}/role\nBearer JWT + CambiarRolRequest (DTO-11)
+F -> F : validar JWT [RN-09] y exigir rol ADMIN [RN-11]
+alt token ausente, inválido o vencido
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else el rol del token no es ADMIN
+  F --> A : 403 FORBIDDEN
+else rol ADMIN
+  F -> C : solicitud autenticada
+  C -> C : validar rol CLIENTE, COMERCIO, REPARTIDOR o ADMIN [RN-01]
+  alt rol inválido
+    C --> A : 400 VALIDATION_ERROR
+  else rol válido
+    C -> S : cambiarRol(administradorId, id, rol) [SRV-11]
+    note right of S : @Transactional (DM-10)
+    S -> UR : findById(administradorId) [REP-09]
+    S -> S : administrador ACTIVO y ADMIN en la base [RN-11]\nno puede modificar su propia cuenta [RN-12]
+    alt administrador no vigente o es su propia cuenta
+      C --> A : 403 FORBIDDEN / USER_INACTIVE
+    else puede continuar
+      S -> UR : findById(id) [REP-09]
+      UR -> DB : SELECT
+      alt cuenta inexistente
+        C --> A : 404 USER_NOT_FOUND
+      else cuenta encontrada
+        S -> RR : findByNombre(rol) [REP-04]
+        RR -> DB : SELECT
+        RR --> S : Rol
+        S -> UR : save(usuario con el rol nuevo) [REP-03]
+        UR -> DB : UPDATE usuarios (COMMIT al salir)
+        S --> C : UsuarioResponse (DTO-02)
+        C --> A : 200 usuario con el rol nuevo
+      end
+    end
+  end
+end
+note over S : Los JWT ya emitidos conservan el rol anterior hasta vencer (DM-17).\nEl rol vigente se consulta con CU-09 o CU-10.
+@enduml

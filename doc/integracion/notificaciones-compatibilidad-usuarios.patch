@@ -1,0 +1,101 @@
+diff --git a/src/main/java/notificaciones/dto/UsuarioContactoResponseDto.java b/src/main/java/notificaciones/dto/UsuarioContactoResponseDto.java
+index 4fcdeeb..904dd92 100644
+--- a/src/main/java/notificaciones/dto/UsuarioContactoResponseDto.java
++++ b/src/main/java/notificaciones/dto/UsuarioContactoResponseDto.java
+@@ -1,6 +1,7 @@
+ package notificaciones.dto;
+ 
+ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
++import com.fasterxml.jackson.annotation.JsonCreator;
+ 
+ // DTO-04: datos de contacto que Notificaciones necesita para INT-01.
+ // Usuarios informa el estado como texto; Notificaciones lo convierte en el booleano activo.
+@@ -13,6 +14,7 @@ public class UsuarioContactoResponseDto {
+     private boolean activo;
+ 
+     // Necesario para deserializar la respuesta de Usuarios
++    @JsonCreator
+     public UsuarioContactoResponseDto() {
+     }
+ 
+diff --git a/src/main/java/notificaciones/security/JwtAuthFilter.java b/src/main/java/notificaciones/security/JwtAuthFilter.java
+index f1ebdb9..a7beedb 100644
+--- a/src/main/java/notificaciones/security/JwtAuthFilter.java
++++ b/src/main/java/notificaciones/security/JwtAuthFilter.java
+@@ -21,7 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
+ @Component
+ public class JwtAuthFilter extends OncePerRequestFilter {
+     private static final String PREFIJO = "Bearer ";
+-    private static final Set<String> ROLES_VALIDOS = Set.of("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN");
++    private static final Set<String> ROLES_VALIDOS = Set.of("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN", "SISTEMA");
+ 
+     private final JwtService jwtService;
+ 
+diff --git a/src/main/java/notificaciones/security/SecurityConfig.java b/src/main/java/notificaciones/security/SecurityConfig.java
+index 9c196a3..bb12104 100644
+--- a/src/main/java/notificaciones/security/SecurityConfig.java
++++ b/src/main/java/notificaciones/security/SecurityConfig.java
+@@ -40,8 +40,13 @@ public class SecurityConfig {
+                         .requestMatchers(HttpMethod.POST, "/api/v1/templates/**").hasRole("ADMIN")
+                         .requestMatchers(HttpMethod.PUT, "/api/v1/templates/**").hasRole("ADMIN")
+                         .requestMatchers(HttpMethod.PATCH, "/api/v1/channels/**").hasRole("ADMIN")
+-                        // El resto: cualquier usuario o módulo con un token válido
+-                        .anyRequest().authenticated())
++                        // Usuarios emite SISTEMA exclusivamente para consultar plantillas y solicitar envíos.
++                        .requestMatchers(HttpMethod.GET, "/api/v1/templates")
++                        .hasAnyRole("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN", "SISTEMA")
++                        .requestMatchers(HttpMethod.POST, "/api/v1/notifications")
++                        .hasAnyRole("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN", "SISTEMA")
++                        // El token de servicio no habilita historial, reintentos ni administración.
++                        .anyRequest().hasAnyRole("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN"))
+                 // 401 (sin token o inválido) y 403 (sin el rol): los resuelve GlobalExceptionHandler,
+                 // así salen con el mismo formato de error que el resto de la API
+                 .exceptionHandling(errores -> errores
+diff --git a/src/test/java/notificaciones/security/SeguridadTest.java b/src/test/java/notificaciones/security/SeguridadTest.java
+index 3cc38ca..b4a48b5 100644
+--- a/src/test/java/notificaciones/security/SeguridadTest.java
++++ b/src/test/java/notificaciones/security/SeguridadTest.java
+@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.notNullValue;
+ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+@@ -136,4 +137,35 @@ class SeguridadTest {
+                 .header("Access-Control-Request-Method", "GET"))
+                 .andExpect(status().isForbidden());
+     }
++
++    @Test
++    void sistemaPuedeConsultarPlantillasYSolicitarEnvios() throws Exception {
++        String token = bearer(tokens.crear(10L, "SISTEMA"));
++        mockMvc.perform(get("/api/v1/templates").header("Authorization", token))
++                .andExpect(status().isOk());
++        // 400 de validación demuestra que pasó autenticación y llegó al controller.
++        mockMvc.perform(post("/api/v1/notifications").header("Authorization", token)
++                .contentType(MediaType.APPLICATION_JSON).content("{}"))
++                .andExpect(status().isBadRequest());
++    }
++
++    @Test
++    void sistemaNoPuedeLeerHistorialNiAdministrar() throws Exception {
++        String token = bearer(tokens.crear(10L, "SISTEMA"));
++        mockMvc.perform(get("/api/v1/users/10/notifications").header("Authorization", token))
++                .andExpect(status().isForbidden());
++        mockMvc.perform(patch(CANALES + "/PUSH").header("Authorization", token)
++                .contentType(MediaType.APPLICATION_JSON).content("{\"activo\":true}"))
++                .andExpect(status().isForbidden());
++        mockMvc.perform(post("/api/v1/templates").header("Authorization", token)
++                .contentType(MediaType.APPLICATION_JSON).content("{}"))
++                .andExpect(status().isForbidden());
++    }
++
++    @Test
++    void rolDesconocidoSigueSiendoRechazado() throws Exception {
++        mockMvc.perform(get("/api/v1/templates")
++                .header("Authorization", bearer(tokens.crear(10L, "DESCONOCIDO"))))
++                .andExpect(status().isUnauthorized());
++    }
+ }

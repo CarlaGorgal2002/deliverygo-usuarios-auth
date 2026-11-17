@@ -82,11 +82,10 @@ public class RecuperacionService {
             throw new DatoInvalidoException("password", "No puede superar " + MAX_BYTES_PASSWORD + " bytes");
         }
 
-        String huella = huella(token.trim());
-        LocalDateTime ahora = ahora();
-
-        TokenRecuperacion guardado = tokenRepository.findByTokenHash(huella)
+        // Un token inexistente, vencido, ya usado o de una cuenta inactiva se informa igual (RN-13).
+        TokenRecuperacion guardado = tokenRepository.findByTokenHash(huella(token.trim()))
                 .orElseThrow(() -> new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO));
+        LocalDateTime ahora = ahora();
         Usuario usuario = guardado.getUsuario();
         if (guardado.getUsadoEn() != null || !guardado.getExpiraEn().isAfter(ahora) || !usuario.estaActivo()) {
             throw new TokenRecuperacionInvalidoException(MSG_TOKEN_INVALIDO);

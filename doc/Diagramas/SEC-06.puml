@@ -1,0 +1,58 @@
+@startuml SEC-06
+skinparam dpi 110
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-06 Desactivar o reactivar usuario (CU-06 / API-10 / SRV-10)
+autonumber
+actor Administrador as A
+participant "JwtAuthenticationFilter\n+ SecurityConfig" as F
+participant UsuarioController as C
+participant AdministracionService as S
+participant UsuarioRepository as UR
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : PUT /api/v1/users/{id}/status\nBearer JWT + CambiarEstadoRequest (DTO-10)
+F -> F : validar JWT [RN-09] y exigir rol ADMIN [RN-11]
+alt token ausente, inválido o vencido
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else el rol del token no es ADMIN
+  F --> A : 403 FORBIDDEN
+else rol ADMIN
+  F -> C : solicitud autenticada
+  C -> C : validar estado ACTIVO o INACTIVO [RN-01]
+  alt valor inválido
+    C --> A : 400 VALIDATION_ERROR
+  else valor válido
+    C -> S : cambiarEstado(administradorId, id, estado) [SRV-10]
+    note right of S : @Transactional (DM-10)
+    S -> UR : findById(administradorId) [REP-09]
+    UR -> DB : SELECT
+    S -> S : el administrador debe seguir ACTIVO y con rol ADMIN\nen la base: el rol del token puede estar vencido [RN-11]
+    alt administrador degradado o inactivo
+      C --> A : 403 FORBIDDEN / USER_INACTIVE
+    else administrador vigente
+      alt administradorId == id
+        C --> A : 403 FORBIDDEN [RN-12]
+      else otra cuenta
+        S -> UR : findById(id) [REP-09]
+        UR -> DB : SELECT
+        alt cuenta inexistente
+          C --> A : 404 USER_NOT_FOUND
+        else cuenta encontrada
+          S -> UR : save(usuario con el estado nuevo) [REP-03]
+          UR -> DB : UPDATE usuarios (COMMIT al salir)
+          S --> C : UsuarioResponse (DTO-02)
+          C --> A : 200 estado y rol vigentes
+        end
+      end
+    end
+  end
+end
+note over S : Repetir el estado actual es idempotente.\nUna cuenta INACTIVA no inicia sesión ni opera [RN-04].
+@enduml

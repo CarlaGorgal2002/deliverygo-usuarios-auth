@@ -1,0 +1,41 @@
+@startuml seguridad
+skinparam dpi 120
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+hide footbox
+title Seguridad: emisión y validación del JWT, y acceso de los módulos
+
+actor Persona as P
+participant "Portal Web\n(React)" as W
+participant "Usuarios\n(emisor del JWT)" as U
+participant "Otro módulo\n(consumidor)" as M
+
+== Inicio de sesión (CU-02) ==
+P -> W : email y contraseña
+W -> U : POST /api/v1/auth/login
+U -> U : verificar contraseña con BCrypt [RN-03]\nverificar cuenta ACTIVA [RN-04]
+U --> W : JWT HS256: sub = id, role, iat, exp [RN-09]
+note right of W : El Portal guarda el token y lo adjunta.\nNo lo valida (clase 9).
+
+== Llamadas con la sesión de una persona ==
+W -> U : GET/PUT /api/v1/users/{id}...\nAuthorization: Bearer JWT
+U -> U : JwtAuthenticationFilter: firma y vencimiento\nSecurityConfig: rol · Controller: id de la ruta == sub [RN-05]
+U --> W : 200 / 401 UNAUTHENTICATED / 403 FORBIDDEN
+W -> M : Authorization: Bearer JWT
+M -> M : valida firma y vencimiento con el mismo secreto\ny autoriza según el rol del token
+
+== Llamadas de módulo a módulo (sólo lectura) ==
+M -> U : POST /api/v1/auth/module-token {modulo, clave} [RN-15]
+U --> M : JWT firmado por Usuarios: sub = módulo, role = MODULO
+M -> U : GET /users/{id} · GET /users/{id}/addresses (sólo Pedidos)\nGET /users/{id}/access\nAuthorization: Bearer <JWT de módulo> [RN-15]
+U -> U : JwtAuthenticationFilter valida firma y rol MODULO
+U --> M : 200 / 401 / 403 / 404
+
+note over U, M
+  El JWT está firmado, no cifrado: no lleva contraseñas ni datos personales.
+  Hoy la firma es HS256 con un secreto compartido (variable JWT_SECRET).
+  Un token emitido conserva su rol hasta vencer: el rol vigente se consulta con CU-09 o CU-10 (DM-17).
+end note
+@enduml

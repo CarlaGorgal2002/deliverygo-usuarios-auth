@@ -9,7 +9,7 @@ El backlog de la guía funcional fija el nombre y los módulos relacionados de c
 De las clases se tomó lo siguiente:
 
 - Autenticación responde "¿quién sos?" y autorización "¿qué podés hacer?": sin token o con token inválido, 401; con rol insuficiente, 403; operación exitosa, 2xx. Las operaciones destructivas o de administración las ejecuta un ADMIN y los demás roles reciben 403.
-- Entre APIs hay tres opciones de seguridad: API Key ("simple, útil para integraciones controladas"), OAuth 2.0 Client Credentials ("patrón habitual servicio a servicio") y el token JWT, que no tiene estado y maneja el concepto de expiración.
+- Entre APIs hay tres opciones de seguridad: API Key ("simple, útil para integraciones controladas"), OAuth 2.0 Client Credentials ("patrón habitual servicio a servicio") y el token JWT, que no tiene estado y maneja el concepto de expiración. La guía de seguridad de la cátedra (`Seguridad.jpg`) y las clases 10 y 11 definen el camino: Usuarios emite el JWT y cada módulo valida JWT y rol.
 - El 204 es la respuesta de operaciones sin contenido; el estado de las entidades permite "desactivarlas" sin perder información.
 - Para integrar los módulos hace falta que cada equipo conozca el contrato del resto (Swagger) antes de integrarse.
 
@@ -21,19 +21,19 @@ Lo que ni las clases ni el PDF definen (quién puede desactivar, cómo se recupe
 |---|---|---|---|---|
 | CU-06 | Desactivar o reactivar usuario | Portal / Administración | API-10 | Implementado y probado |
 | CU-07 | Asignar o modificar rol | Portal / Administración | API-11 | Implementado y probado |
-| CU-08 | Recuperar o restablecer contraseña | Notificaciones | API-12, API-13 | Implementado y probado; Notificaciones es un mock declarado |
+| CU-08 | Recuperar o restablecer contraseña | Notificaciones | API-12, API-13 | Implementado y probado; cliente HTTP y mock configurable (ver guía de integración) |
 | CU-09 | Renovar o validar sesión/token | Todos los consumidores | API-14, API-15 | Implementado y probado |
-| CU-10 | Consultar estado y rol para otro módulo | Pedidos, Catálogo, Logística | API-16 | Implementado y probado |
+| CU-10 | Consultar estado y rol para otro módulo | Pedidos, Catálogo, Logística | API-16, API-17 | Implementado y probado |
 
 ## Reglas de negocio nuevas
 
 | ID | Regla | CU | Dónde se aplica |
 |---|---|---|---|
 | RN-11 | Sólo un administrador ACTIVO puede cambiar el estado o el rol de una cuenta. Se comprueba contra la base en cada operación, no sólo con el rol del token, que puede estar desactualizado hasta vencer. | CU-06, CU-07 | `AdministracionService` (SRV-10, SRV-11) |
-| RN-12 | Un administrador no puede cambiar su propio estado ni su propio rol, para que el sistema nunca quede sin administradores. | CU-06, CU-07 | SRV-10, SRV-11 / REP-09 |
+| RN-12 | Un administrador no puede cambiar su propio estado ni su propio rol, para evitar la baja o degradación accidental de la propia cuenta. | CU-06, CU-07 | SRV-10, SRV-11 / REP-09 |
 | RN-13 | La recuperación de contraseña no revela si el email existe ni su estado (siempre 202). El token es de un solo uso, vence a los 30 minutos (configurable), sólo se guarda su hash y un pedido nuevo deja sin efecto los anteriores. Un token de una cuenta inactiva no sirve. | CU-08 | `RecuperacionService` (SRV-12, SRV-13) / REP-10 a REP-12 |
 | RN-14 | Sólo se renueva una sesión vigente y de una cuenta ACTIVA. El token nuevo lleva el rol actual de la base. Un token vencido no se renueva. | CU-09 | SRV-14 |
-| RN-15 | Cada módulo consumidor se identifica con su propia API Key y sólo puede leer: API-03 (todos), API-05 (sólo Pedidos) y API-16 (todos). Un módulo nunca escribe y un rol humano no lo reemplaza. Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso. | CU-03, CU-05, CU-10 | `ApiKeyAuthenticationFilter`, `Acceso` |
+| RN-15 | Cada módulo consumidor pide a Usuarios su propio JWT (rol MODULO) con una clave propia y sólo puede leer: API-03 (todos), API-05 (sólo Pedidos) y API-16 (todos). Un módulo nunca escribe y un rol humano no lo reemplaza. Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso. | CU-03, CU-05, CU-10 | `JwtAuthenticationFilter`, `ModulosApiKeys`, `SecurityConfig`, `UsuarioController` |
 
 RN-05 (cada usuario opera sólo sobre sus datos; cada módulo, sólo sobre los contratos autorizados) y RN-04 (sólo un usuario ACTIVO opera) siguen vigentes; RN-11 a RN-15 las completan.
 
@@ -52,8 +52,10 @@ REL-03: Usuario 1 a 0..* TokenRecuperacion; navegable desde TokenRecuperacion ha
 | DM-13 | La administración (CU-06, CU-07) la hace un ADMIN verificado contra la base, con rutas bajo `/users/{id}` y no un prefijo `/admin`. | Confiar en el claim `role` del token; rutas separadas de administración. | Si se degrada o desactiva a un administrador, su token sigue siendo válido hasta vencer: confiar en el claim lo dejaría operando. Las rutas siguen la convención de recursos de la consigna. |
 | DM-14 | El token de recuperación es un valor aleatorio de 256 bits, persistido sólo como hash (ENT-04). | JWT firmado de recuperación sin persistir; código numérico corto. | Un token sin estado no puede ser de un solo uso. El hash evita que una filtración de la base entregue tokens vigentes. Un código corto es adivinable. |
 | DM-15 | Renovación deslizante: un JWT vigente se canjea por uno nuevo, sin token de renovación persistido. | Refresh token persistido (anticipado en DM-03); sin renovación. | Mantiene la sesión sin estado (DM-03) y sin entidades nuevas. Tiene un costo: un token robado y todavía vigente puede renovarse mientras la cuenta esté ACTIVA; se corta con CU-06. |
-| DM-16 | Los módulos consumidores se identifican con una API Key propia (`X-Api-Key`), sólo lectura. | OAuth 2.0 Client Credentials; JWT de servicio firmado por Usuarios; certificados. | Es la opción simple de la clase para integraciones controladas, y necesita sólo una variable de entorno por módulo. OAuth exige un servidor de autorización que el ecosistema no tiene; un JWT de servicio exige acordar claves entre los equipos. Si los equipos prefieren otra, se reemplaza el filtro sin tocar los casos de uso. |
+| DM-16 | Los módulos consumidores piden a Usuarios un JWT con rol MODULO (`POST /auth/module-token`) y lo usan como Bearer, sólo lectura. | API Key en cada llamada (`X-Api-Key`, versión anterior); OAuth 2.0 Client Credentials; certificados. | Es lo que muestra la guía de seguridad de la cátedra: Usuarios emite el JWT y cada módulo valida JWT y rol, con un solo mecanismo de autenticación y un solo filtro. La clave del módulo sólo se usa para pedir el token. OAuth exige un servidor de autorización que el ecosistema no tiene. |
 | DM-17 | El JWT no se revoca: su rol y su estado vigentes se consultan (CU-09, CU-10). | Lista de revocación; validar la base en cada pedido. | Mantiene DM-03 y evita que cada módulo dependa de una consulta por cada llamada. Ver "Limitaciones". |
+| DM-18 | El alta de usuario (CU-01) no abre una transacción propia: `save()` ya es transaccional y la bienvenida se pide recién después. | `@Transactional` sobre todo el método con la llamada a Notificaciones al final; un hook de después del commit. | Notificaciones verifica al destinatario con `GET /users/{id}` en otra conexión: si la llamada saliera dentro de la transacción, todavía no vería al usuario. El alta escribe una sola fila, así que no necesita una unidad de trabajo mayor (clase 3: transacciones para operaciones con varias escrituras). |
+| DM-19 | Sin bloqueos de filas y sin ejecución asíncrona (`@Async`, ejecutores). El email repetido en una carrera lo rechaza la restricción única y se informa 409. | Bloqueo pesimista del usuario en las escrituras; envío a Notificaciones en un hilo aparte. | Ninguno de los dos mecanismos se vio en la cátedra. La integridad la dan `@Transactional` y las restricciones del esquema (clase 5, defensa en profundidad); la llamada a Notificaciones es sincrónica, con timeout y sin efecto sobre la respuesta si falla (clase 4: gestionar timeout y errores). |
 
 DM-07 se cumple así: el primer ADMIN se aprovisiona con las variables `ADMIN_EMAIL` y `ADMIN_PASSWORD` al arrancar (sin ellas no se crea ninguno, no hay administrador ni contraseña por defecto) y desde ahí asigna roles con CU-07.
 
@@ -67,7 +69,7 @@ DM-07 se cumple así: el primer ADMIN se aprovisiona con las variables `ADMIN_EM
 | Objetivo | Dejar una cuenta ACTIVA o INACTIVA sin borrarla. |
 | Precondiciones | El administrador presenta una sesión válida y su cuenta está ACTIVA con rol ADMIN en la base (RN-11). |
 | Flujo principal | 1. El administrador pide el estado deseado para una cuenta. 2. El sistema verifica la sesión (RN-09) y que sea administrador ACTIVO (RN-11). 3. Verifica que no sea su propia cuenta (RN-12). 4. Verifica que la cuenta exista. 5. Deja la cuenta en el estado pedido; si ya lo tenía, no cambia nada. 6. Devuelve la cuenta. |
-| Flujos alternativos | A1 (paso 2). Sesión inválida o vencida: 401. No es administrador: 403 FORBIDDEN. Administrador inactivo: 403 USER_INACTIVE. A2 (paso 3). Su propia cuenta: 403 FORBIDDEN. A3 (paso 4). La cuenta no existe: 404 USER_NOT_FOUND. A4. Estado inválido o campo no permitido: 400 VALIDATION_ERROR. |
+| Flujos alternativos | A1 (paso 1). Módulo desconocido, clave incorrecta o no configurada: 401 INVALID_CREDENTIALS. A2 (paso 3). Token faltante, inválido o vencido: 401 UNAUTHENTICATED. Un JWT de persona: 403 FORBIDDEN. A3 (paso 4). El usuario no existe: 404 USER_NOT_FOUND. A4. Id inválido: 400. |
 | Postcondiciones | Éxito: la cuenta tiene el estado pedido. Una cuenta INACTIVA no inicia sesión (RN-04); sus tokens ya emitidos son rechazados en sus operaciones y en CU-09; los módulos la siguen consultando con su estado (CU-03, CU-10). A1 a A4: no cambia ningún dato. |
 | RN / ENT | RN-04, RN-05, RN-09, RN-11, RN-12 / ENT-01 |
 | SEC / SRV / API / DTO | SEC-06 / SRV-10 / API-10 / DTO-10, DTO-02, DTO-08 |
@@ -117,16 +119,16 @@ DM-07 se cumple así: el primer ADMIN se aprovisiona con las variables `ADMIN_EM
 |---|---|
 | Actor principal | Módulos Pedidos, Catálogo y Logística; también Notificaciones, Pagos y Opiniones y Analítica. |
 | Objetivo | Conocer, con un dato mínimo, si un usuario puede operar y con qué rol, sin traer datos personales. |
-| Precondiciones | El módulo presenta su API Key (RN-15). |
-| Flujo principal | 1. El módulo consulta un usuario por su id. 2. El sistema identifica al módulo por su clave. 3. Busca al usuario. 4. Devuelve su estado y su rol vigentes, también si la cuenta está INACTIVA. |
+| Precondiciones | El módulo tiene su clave y obtuvo su JWT con API-17 (RN-15). |
+| Flujo principal | 1. El módulo pide su token a Usuarios (API-17) con su nombre y su clave. 2. El módulo consulta un usuario por su id con el Bearer. 3. El sistema valida el token y el rol MODULO. 4. Busca al usuario. 5. Devuelve su estado y su rol vigentes, también si la cuenta está INACTIVA. |
 | Flujos alternativos | A1 (paso 2). Clave faltante, inválida o desconfigurada: 401 UNAUTHENTICATED. Credencial que no es de un módulo (un JWT de usuario): 403 FORBIDDEN. A2 (paso 3). El usuario no existe: 404 USER_NOT_FOUND. A3. Id inválido: 400. |
 | Postcondiciones | No se modifica ningún dato. |
 | RN / ENT | RN-04, RN-15 / ENT-01, ENT-02 |
-| SEC / SRV / API / DTO | SEC-10 / SRV-16 / API-16 / DTO-15, DTO-08 |
+| SEC / SRV / API / DTO | SEC-10 / SRV-16 y SRV-17 / API-16 y API-17 / DTO-15, DTO-16, DTO-17, DTO-08 |
 
 ## Cambios sobre lo ya diseñado
 
-- **API-03 y API-05 admiten a los módulos** (RN-15). Ya estaban diseñados así (CU-03 y CU-05 nombran a Pedidos, Logística, Catálogo y demás como actores secundarios, e INT-03 a INT-05 como "Real"); faltaba la credencial. Con API Key, API-03 responde también las cuentas INACTIVAS con su estado (CU-03 paso 6) y API-05 lo hace sólo para Pedidos. Nada cambia para el titular.
+- **API-03 y API-05 admiten a los módulos** (RN-15). Ya estaban diseñados así (CU-03 y CU-05 nombran a Pedidos, Logística, Catálogo y demás como actores secundarios, e INT-03 a INT-05 como "Real"); faltaba la credencial. Con el JWT de módulo, API-03 responde también las cuentas INACTIVAS con su estado (CU-03 paso 6) y API-05 lo hace sólo para Pedidos. Nada cambia para el titular.
 - **Las rutas públicas ahora son cuatro**: registro, login, solicitud y restablecimiento de contraseña. Renovar y validar la sesión exigen JWT.
 - **DM-07** se materializa con el administrador inicial por configuración.
 - **El código `INVALID_RESET_TOKEN`** se suma al catálogo de errores (400).
@@ -141,7 +143,8 @@ DM-07 se cumple así: el primer ADMIN se aprovisiona con las variables `ADMIN_EM
 | API-13 | POST `/api/v1/auth/password/reset` | CU-08 | SRV-13 | DTO-13 / sin cuerpo | 204, 400, 500 | Pública |
 | API-14 | POST `/api/v1/auth/refresh` | CU-09 | SRV-14 | sin cuerpo / DTO-04 | 200, 401, 403, 500 | JWT |
 | API-15 | GET `/api/v1/auth/session` | CU-09 | SRV-15 | sin cuerpo / DTO-14 | 200, 401, 403, 500 | JWT |
-| API-16 | GET `/api/v1/users/{id}/access` | CU-10 | SRV-16 | sin cuerpo / DTO-15 | 200, 400, 401, 403, 404, 500 | API Key de módulo |
+| API-16 | GET `/api/v1/users/{id}/access` | CU-10 | SRV-16 | sin cuerpo / DTO-15 | 200, 400, 401, 403, 404, 500 | JWT de módulo |
+| API-17 | POST `/api/v1/auth/module-token` | CU-10 | SRV-17 | DTO-16 / DTO-17 | 200, 400, 401, 500 | pública (la clave va en el cuerpo) |
 
 | ID | DTO | Campos |
 |---|---|---|
@@ -173,146 +176,19 @@ SRV-03 y SRV-09 tienen una variante para módulos (`consultarPerfilParaModulo`, 
 
 | ID | Integración | Dirección | Estado |
 |---|---|---|---|
-| INT-06 | Usuarios hacia Notificaciones (recuperación de contraseña) | Saliente | Mock declarado hasta contar con el contrato real. Por defecto escribe sólo el id del usuario en el log; con `MOCK_LOG_RECOVERY_TOKEN=true` también el token, únicamente para demostrarlo en local. |
+| INT-06 | Usuarios hacia Notificaciones (recuperación de contraseña) | Saliente | Cliente HTTP implementado y probado con el parche de Notificaciones; mock declarado por defecto. Con `MOCK_LOG_RECOVERY_TOKEN=true` el mock escribe el token únicamente para la demo local. |
 
 ## Secuencias
 
-SEC-06 a SEC-10 se describen con diagramas Mermaid (se ven en GitHub); no se generaron imágenes ni fuentes PlantUML.
+Las fuentes PlantUML y los PNG de los diez CU están en [el índice de diagramas](../Diagramas/README.md). Sustituyen las secuencias preliminares de esta sección y corresponden al código actual.
 
-### SEC-06 y SEC-07: administrar una cuenta (CU-06, CU-07)
-
-```mermaid
-sequenceDiagram
-    actor A as Administrador (Portal)
-    participant F as Filtros de seguridad
-    participant C as UsuarioController
-    participant S as AdministracionService
-    participant R as UsuarioRepository
-    A->>F: PUT /users/{id}/status o /role + Bearer JWT [RN-09]
-    alt token faltante, inválido o vencido
-        F-->>A: 401 UNAUTHENTICATED
-    else el rol del token no es ADMIN
-        F-->>A: 403 FORBIDDEN
-    else
-        F->>C: solicitud autenticada
-        C->>C: validar cuerpo [RN-01]
-        C->>S: cambiarEstado / cambiarRol (SRV-10, SRV-11)
-        Note over S: transacción [DM-10]
-        S->>R: findById(administrador), findById(cuenta) (REP-09)
-        alt el administrador ya no existe
-            S-->>A: 401 UNAUTHENTICATED
-        else está inactivo [RN-04]
-            S-->>A: 403 USER_INACTIVE
-        else ya no es ADMIN en la base [RN-11]
-            S-->>A: 403 FORBIDDEN
-        else es su propia cuenta [RN-12]
-            S-->>A: 403 FORBIDDEN
-        else la cuenta no existe
-            S-->>A: 404 USER_NOT_FOUND
-        else
-            S->>R: save(usuario con estado o rol nuevo)
-            S-->>A: 200 UsuarioResponse (DTO-02)
-        end
-    end
-```
-
-### SEC-08: recuperar contraseña (CU-08)
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario (Portal)
-    participant C as AuthController
-    participant S as AuthService
-    participant RS as RecuperacionService
-    participant R as Repositorios
-    participant N as NotificacionesClient
-    U->>C: POST /auth/password/forgot {email}
-    C->>S: solicitarRecuperacion (SRV-12)
-    S->>RS: generarToken(email)
-    Note over RS: transacción
-    RS->>R: findByEmail(email) (REP-01)
-    opt la cuenta existe y está ACTIVA
-        RS->>R: invalidarVigentes (REP-12) y save(hash del token) (ENT-04)
-    end
-    RS-->>S: token, o vacío
-    opt hay token
-        S-)N: enviarRecuperacion(usuarioId, nombre, email, token) [INT-06, no bloqueante]
-    end
-    S-->>U: 202 (igual con o sin cuenta) [RN-13]
-    U->>C: POST /auth/password/reset {token, password}
-    C->>C: validar formato y política [RN-01]
-    C->>S: restablecerPassword (SRV-13)
-    S->>RS: restablecerPassword(token, password)
-    Note over RS: transacción
-    RS->>R: findByTokenHash(hash) (REP-10)
-    alt no existe, venció, usado o cuenta inactiva
-        RS-->>U: 400 INVALID_RESET_TOKEN
-    else
-        RS->>RS: marcar el token como usado (REP-11)
-        alt otro pedido ya lo consumió
-            RS-->>U: 400 INVALID_RESET_TOKEN
-        else
-            RS->>R: guardar hash de la contraseña [RN-03] e invalidarVigentes (REP-12)
-            RS-->>U: 204
-        end
-    end
-```
-
-### SEC-09: renovar y validar la sesión (CU-09)
-
-```mermaid
-sequenceDiagram
-    actor U as Usuario o consumidor
-    participant F as JwtAuthenticationFilter
-    participant C as AuthController
-    participant S as AuthService
-    participant R as UsuarioRepository
-    U->>F: POST /auth/refresh o GET /auth/session + Bearer JWT
-    alt token faltante, inválido o vencido [RN-09]
-        F-->>U: 401 UNAUTHENTICATED
-    else es una API Key de módulo
-        F-->>U: 403 FORBIDDEN
-    else
-        F->>C: solicitud autenticada
-        C->>S: renovarSesion o validarSesion (SRV-14, SRV-15)
-        S->>R: findById(sub) (REP-02)
-        alt la cuenta no existe
-            S-->>U: 401 UNAUTHENTICATED
-        else está inactiva [RN-04, RN-14]
-            S-->>U: 403 USER_INACTIVE
-        else renovar
-            S-->>U: 200 LoginResponse con el rol actual (DTO-04)
-        else validar
-            S-->>U: 200 SesionResponse (DTO-14)
-        end
-    end
-```
-
-### SEC-10: consulta de estado y rol para un módulo (CU-10)
-
-```mermaid
-sequenceDiagram
-    actor M as Módulo consumidor
-    participant F as ApiKeyAuthenticationFilter
-    participant C as UsuarioController
-    participant S as UsuarioService
-    participant R as UsuarioRepository
-    M->>F: GET /users/{id}/access + X-Api-Key
-    alt clave faltante, inválida o desconfigurada [RN-15]
-        F-->>M: 401 UNAUTHENTICATED
-    else la credencial es un JWT de usuario
-        F-->>M: 403 FORBIDDEN
-    else
-        F->>C: módulo autenticado
-        C->>S: consultarAcceso (SRV-16)
-        S->>R: findById(id) (REP-02)
-        alt no existe
-            S-->>M: 404 USER_NOT_FOUND
-        else
-            S-->>M: 200 AccesoUsuarioResponse, también si está INACTIVA (DTO-15)
-        end
-    end
-```
+| Secuencia | Caso | Imagen | Fuente editable |
+|---|---|---|---|
+| SEC-06 | Desactivar/reactivar | [PNG](../Diagramas/SEC-06.png) | [PlantUML](../Diagramas/SEC-06.puml) |
+| SEC-07 | Asignar rol | [PNG](../Diagramas/SEC-07.png) | [PlantUML](../Diagramas/SEC-07.puml) |
+| SEC-08 | Recuperación | [PNG](../Diagramas/SEC-08.png) | [PlantUML](../Diagramas/SEC-08.puml) |
+| SEC-09 | Sesión | [PNG](../Diagramas/SEC-09.png) | [PlantUML](../Diagramas/SEC-09.puml) |
+| SEC-10 | Consulta de módulo | [PNG](../Diagramas/SEC-10.png) | [PlantUML](../Diagramas/SEC-10.puml) |
 
 ## Matriz de trazabilidad
 
@@ -322,14 +198,14 @@ sequenceDiagram
 | CU-07 | RN-05, RN-09, RN-11, RN-12 | ENT-01, ENT-02 / REL-02 | SEC-07 | SRV-11 | REP-03, REP-04, REP-09 | API-11 | DTO-11, DTO-02, DTO-08 | INT-02 |
 | CU-08 | RN-01, RN-03, RN-13 | ENT-01, ENT-04 / REL-03 | SEC-08 | SRV-12, SRV-13 | REP-01, REP-10, REP-11, REP-12 | API-12, API-13 | DTO-12, DTO-13, DTO-08 | INT-02, INT-06 |
 | CU-09 | RN-04, RN-09, RN-14 | ENT-01, ENT-02 / REL-02 | SEC-09 | SRV-14, SRV-15 | REP-02 | API-14, API-15 | DTO-04, DTO-14, DTO-08 | INT-02, INT-03, INT-04, INT-05 |
-| CU-10 | RN-04, RN-15 | ENT-01, ENT-02 / REL-02 | SEC-10 | SRV-16 | REP-02 | API-16 | DTO-15, DTO-08 | INT-03, INT-04, INT-05 |
+| CU-10 | RN-04, RN-15 | ENT-01, ENT-02 / REL-02 | SEC-10 | SRV-16, SRV-17 | REP-02 | API-16, API-17 | DTO-15, DTO-16, DTO-17, DTO-08 | INT-03, INT-04, INT-05 |
 
-Cada ID nuevo (RN-11 a RN-15, ENT-04, REL-03, SEC-06 a SEC-10, SRV-10 a SRV-16, REP-09 a REP-12, API-10 a API-16, DTO-10 a DTO-15 e INT-06) aparece al menos una vez en la matriz. Las decisiones DM-13 a DM-17 se registran en su propia tabla.
+Cada ID nuevo (RN-11 a RN-15, ENT-04, REL-03, SEC-06 a SEC-10, SRV-10 a SRV-17, REP-09 a REP-12, API-10 a API-17, DTO-10 a DTO-17 e INT-06) aparece al menos una vez en la matriz. Las decisiones DM-13 a DM-17 se registran en su propia tabla.
 
 ## Limitaciones conocidas
 
 - **JWT sin revocación (DM-17).** Un token ya emitido conserva su rol y sigue siendo válido hasta vencer (una hora por defecto) aunque la cuenta cambie de rol, se desactive o restablezca su contraseña. Lo que protege es que las operaciones sobre el perfil y las direcciones rechazan a las cuentas inactivas, y que la administración vuelve a comprobar al administrador en la base. Un módulo que necesite el dato exacto usa API-15 o API-16.
 - **Renovación deslizante (DM-15).** Un token robado y todavía vigente puede renovarse mientras la cuenta esté activa. Se corta desactivando la cuenta (CU-06).
 - **Recuperación sin límite de intentos.** No hay limitación de pedidos por cuenta o por origen; conviene agregarla (por ejemplo, en un gateway) antes de exponer el servicio.
-- **API Keys.** Se entregan y rotan a mano, por variable de entorno, y viajan en una cabecera: sólo deben usarse sobre HTTPS fuera de laboratorio.
+- **Claves de módulo.** Se entregan y rotan a mano, por variable de entorno, y se presentan en el cuerpo de API-17: sólo deben usarse sobre HTTPS fuera de laboratorio. El token de módulo dura 8 horas por defecto y se pide de nuevo al vencer.
 - **Notificaciones es un mock** (INT-01 e INT-06). El envío real depende del contrato de ese equipo.

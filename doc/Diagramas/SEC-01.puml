@@ -1,41 +1,52 @@
 @startuml SEC-01
-skinparam dpi 170
-title SEC-01 Registrar usuario (CU-01)
+skinparam dpi 110
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-01 Registrar usuario (CU-01 / API-01 / SRV-01)
 autonumber
-actor "Cliente via Portal" as Cliente
-participant "AuthController" as Ctrl
-participant "UsuarioService" as Srv
-participant "UsuarioRepository" as RepU
-participant "RolRepository" as RepR
-database "BD Usuarios" as BD
-participant "NotificacionesClient" as Notif
+actor "Cliente\n(Portal Web)" as A
+participant AuthController as C
+participant UsuarioService as S
+participant UsuarioRepository as UR
+participant RolRepository as RR
+participant PasswordEncoder as PE
+database "BD Usuarios\n(PostgreSQL)" as DB
+participant NotificacionesClient as N
 
-Cliente -> Ctrl : POST /api/v1/auth/register (API-01)\nRegistrarUsuarioRequest (DTO-01)
-Ctrl -> Ctrl : validar obligatorios y formato [RN-01]
-alt datos invalidos
-  Ctrl --> Cliente : 400 ErrorResponse (DTO-08)
-else datos validos
-Ctrl -> Srv : registrarUsuario(DTO-01) (SRV-01)
-Srv -> RepU : findByEmail(email) (REP-01)
-RepU -> BD : SELECT usuario WHERE email
-BD --> RepU : Optional<Usuario>
-RepU --> Srv : Optional<Usuario>
-alt email ya registrado [RN-02]
-  Srv --> Ctrl : EmailDuplicadoException
-  Ctrl --> Cliente : 409 ErrorResponse (DTO-08)
-else email disponible
-  Srv -> Srv : generar hash de contrasena [RN-03]
-  Srv -> RepR : findByNombre("CLIENTE") (REP-04) [RN-06]
-  RepR --> Srv : Rol
-  Srv -> Srv : estado = ACTIVO [DM-05]
-  Srv -> RepU : save(usuario) (REP-03)
-  RepU -> BD : INSERT usuario
-  BD --> RepU : id
-  RepU --> Srv : Usuario
-  Srv ->> Notif : solicitarBienvenida(usuarioId, email) (INT-01)
-  note right : asincronica, mock declarado;\nno bloquea el alta y un fallo se registra en el log
-  Srv --> Ctrl : Usuario
-  Ctrl --> Cliente : 201 UsuarioResponse (DTO-02)
-end
+A -> C : POST /api/v1/auth/register\nRegistrarUsuarioRequest (DTO-01)
+C -> C : validar obligatorios y formato [RN-01]
+alt datos inválidos
+  C --> A : 400 VALIDATION_ERROR (DTO-08)
+else datos válidos
+  C -> S : registrarUsuario(request) [SRV-01]
+  S -> UR : existsByEmail(email normalizado) [REP-01 / RN-02]
+  UR -> DB : SELECT
+  DB --> UR : resultado
+  UR --> S : boolean
+  alt email ya registrado
+    S --> C : EmailDuplicadoException
+    C --> A : 409 EMAIL_ALREADY_REGISTERED (DTO-08)
+  else email disponible
+    S -> RR : findByNombre("CLIENTE") [REP-04 / RN-06]
+    RR -> DB : SELECT
+    RR --> S : Rol CLIENTE
+    S -> PE : encode(password) [RN-03]
+    PE --> S : passwordHash (BCrypt)
+    S -> UR : save(usuario con estado ACTIVO) [REP-03]
+    UR -> DB : INSERT usuarios (confirmado)
+    DB --> UR : id generado
+    UR --> S : Usuario
+    S -> N : enviarBienvenida(id, nombre, email) [INT-01]
+    note right of N : Se pide recién con el alta confirmada.\nTiene timeout; si falla se registra\ny el alta se mantiene (no bloqueante).
+    N --> S : respuesta o falla (se ignora)
+    S --> C : UsuarioResponse (DTO-02)
+    C --> A : 201 Created + Location\nsin contraseña ni hash [RN-03]
+  end
 end
 @enduml

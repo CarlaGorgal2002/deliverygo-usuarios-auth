@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     private static final String ESQUEMA_BEARER = "bearerAuth";
-    private static final String ESQUEMA_API_KEY = "moduleApiKey";
 
     @Bean
     public OpenAPI usuariosOpenAPI() {
@@ -33,13 +32,8 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("JWT de POST /api/v1/auth/login. En Swagger UI pegar sólo el token."))
-                        .addSecuritySchemes(ESQUEMA_API_KEY, new SecurityScheme()
-                                .type(SecurityScheme.Type.APIKEY)
-                                .in(SecurityScheme.In.HEADER)
-                                .name("X-Api-Key")
-                                .description("Credencial propia de un módulo consumidor (Pedidos, Logística, Catálogo, Notificaciones, "
-                                        + "Pagos, Opiniones y Analítica). La entrega el equipo de Usuarios; sólo lectura.")))
+                                .description("JWT de una persona (POST /api/v1/auth/login) o de un módulo consumidor "
+                                        + "(POST /api/v1/auth/module-token). En Swagger UI pegar sólo el token.")))
                 // Seguridad por defecto; registro y login la anulan con @SecurityRequirements.
                 .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER));
     }

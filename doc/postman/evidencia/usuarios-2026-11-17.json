@@ -1,0 +1,346 @@
+{
+  "coleccion": "DeliveryGo Usuarios - CU-01 a CU-10",
+  "inicio": 1794890648627,
+  "fin": 1794890654959,
+  "resumen": {
+    "iterations": {
+      "executed": 1,
+      "errors": 0
+    },
+    "executedRequests": {
+      "executed": 52,
+      "errors": 0
+    },
+    "prerequestScripts": {
+      "executed": 53,
+      "errors": 0
+    },
+    "tests": {
+      "executed": 159,
+      "failed": 0,
+      "passed": 159,
+      "skipped": 0
+    },
+    "timeStats": {
+      "responseAverage": 33.0,
+      "responseMin": 7,
+      "responseMax": 155
+    },
+    "nota": "Corrida con newman. Las solicitudes de módulo piden antes su token a POST /auth/module-token (prerequestScripts), por eso hay más solicitudes ejecutadas que ítems de la colección."
+  },
+  "errorDeEjecucion": null,
+  "solicitudes": [
+    {
+      "nombre": "01 CU-01 Registrar A",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "02 CU-01 Email duplicado",
+      "metodo": "POST",
+      "status": 409,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "03 CU-01 Validacion de entrada",
+      "metodo": "POST",
+      "status": 400,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "04 CU-02 Login A",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "05 CU-02 Password incorrecta",
+      "metodo": "POST",
+      "status": 401,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "06 Registrar B para acceso cruzado",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "07 CU-03 Perfil propio",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "08 CU-03 Sin token",
+      "metodo": "GET",
+      "status": 401,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "09 CU-03 Perfil ajeno",
+      "metodo": "GET",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "10 CU-03 ID invalido",
+      "metodo": "GET",
+      "status": 400,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "11 CU-04 Modificar perfil completo",
+      "metodo": "PUT",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "12 CU-04 Conflicto de email",
+      "metodo": "PUT",
+      "status": 409,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "13 CU-05 Direcciones vacias",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "14 CU-05 Alta D1 no predeterminada",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "15 CU-05 Alta D2 predeterminada",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "16 CU-05 Seleccionar D1",
+      "metodo": "PATCH",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "17 CU-05 Seleccion idempotente",
+      "metodo": "PATCH",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "18 CU-05 Solo una predeterminada",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "19 CU-05 Modificar D1",
+      "metodo": "PUT",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "20 CU-05 Baja logica D1",
+      "metodo": "DELETE",
+      "status": 204,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "21 CU-05 Repetir baja",
+      "metodo": "DELETE",
+      "status": 404,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "22 CU-05 Solo queda D2 sin predeterminada",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "23 CU-09 Validar sesion",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "24 CU-09 Renovar sesion",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "25 CU-10 Pedidos consulta acceso",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "25 CU-10 Pedidos consulta acceso",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "26 CU-10 Sin token de modulo",
+      "metodo": "GET",
+      "status": 401,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "27 CU-10 Persona no es modulo",
+      "metodo": "GET",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "28 INT-03 Pedidos lee direcciones",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "28 INT-03 Pedidos lee direcciones",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "29 INT-04 Catalogo no lee direcciones",
+      "metodo": "GET",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "29 INT-04 Catalogo no lee direcciones",
+      "metodo": "GET",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "30 INT-05 Notificaciones lee perfil",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "30 INT-05 Notificaciones lee perfil",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "31 Modulo no modifica perfil",
+      "metodo": "PUT",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "31 Modulo no modifica perfil",
+      "metodo": "PUT",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "32 Login administrador",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "33 CU-07 Cliente no asigna roles",
+      "metodo": "PUT",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "34 CU-07 ADMIN asigna COMERCIO",
+      "metodo": "PUT",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "35 CU-09 Sesion informa rol vigente",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "36 CU-06 Desactivar A",
+      "metodo": "PUT",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "37 CU-06 Login inactivo",
+      "metodo": "POST",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "38 CU-06 Token de inactivo",
+      "metodo": "GET",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "39 CU-10 Modulo ve inactivo",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "39 CU-10 Modulo ve inactivo",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "40 CU-06 Reactivar A",
+      "metodo": "PUT",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "41 CU-07 Restaurar CLIENTE",
+      "metodo": "PUT",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "42 CU-06 ADMIN no se desactiva",
+      "metodo": "PUT",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "43 CU-08 Pedir recuperacion",
+      "metodo": "POST",
+      "status": 202,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "44 CU-08 Email inexistente misma respuesta",
+      "metodo": "POST",
+      "status": 202,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "45 CU-08 Token invalido",
+      "metodo": "POST",
+      "status": 400,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "45b CU-10 Token de modulo con clave incorrecta (API-17)",
+      "metodo": "POST",
+      "status": 401,
+      "erroresDeEjecucion": 0
+    }
+  ]
+}

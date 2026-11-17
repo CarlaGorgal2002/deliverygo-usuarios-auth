@@ -1,0 +1,2 @@
+# Los parches se aplican con git apply. Una línea de contexto vacía contiene un espacio.
+*.patch text eol=lf whitespace=-blank-at-eol

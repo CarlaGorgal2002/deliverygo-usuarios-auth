@@ -1,24 +1,31 @@
 @startuml contexto
-skinparam dpi 170
+skinparam dpi 120
+skinparam shadowing false
+skinparam defaultFontName Arial
 skinparam defaultFontSize 12
-skinparam rectangle {
-  BackgroundColor<<propio>> #DBEAFE
-  BorderColor<<propio>> #1E3A8A
-}
-actor "Cliente" as Cliente
+skinparam rectangleBackgroundColor #F2F6FC
+skinparam nodesep 50
+skinparam ranksep 60
+title Contexto del módulo Usuarios y Autenticación (C4 nivel 1)
+
+actor "Cliente, comercio,\nrepartidor o administrador" as Persona
 rectangle "Portal Web\n(Equipo 8)" as Portal
-rectangle "Modulo Usuarios y Autenticacion\nidentidad, perfil, rol, direcciones y sesion (JWT)\nBD propia" <<propio>> as Usr
-rectangle "Pedidos (Equipo 3)" as Ped
-rectangle "Logistica (Equipo 5)" as Log
-rectangle "Catalogo (Equipo 2)" as Cat
-rectangle "Pagos (Equipo 4)\nOpiniones y Analitica (Equipo 7)" as Otros
-rectangle "Notificaciones (Equipo 6)" as Not
-Cliente --> Portal : usa
-Portal --> Usr : registro, login, perfil,\ndirecciones (INT-02)
-Ped --> Usr : perfil y direcciones\n(INT-03)
-Log --> Usr : perfil y direcciones\n(INT-03)
-Cat --> Usr : valida responsable\n(INT-04)
-Otros --> Usr : datos del usuario\n(INT-05)
-Not --> Usr : datos del destinatario\n(INT-05)
-Usr --> Not : solicita bienvenida\n(INT-01)
+rectangle "Usuarios y Autenticación (Equipo 1)\nCU-01 a CU-10\nidentidad, perfil, rol, direcciones y JWT" as U #DBEAFE
+rectangle "Pedidos (Equipo 3)\nLogística (Equipo 5)" as PL
+rectangle "Catálogo (Equipo 2)\nPagos (Equipo 4)\nOpiniones y Analítica (Equipo 7)" as Otros
+rectangle "Notificaciones (Equipo 6)" as N
+
+Persona --> Portal : usa
+Portal --> U : INT-02\nregistro, login, perfil, direcciones,\nadministración y recuperación
+PL --> U : INT-03\nperfil, direcciones, estado y rol
+Otros --> U : INT-04 / INT-05\nperfil, estado y rol
+N --> U : INT-05\ndatos del destinatario
+U --> N : INT-01 bienvenida\nINT-06 recuperación
+
+note bottom of U
+  Cada módulo tiene su propia base de datos:
+  los demás sólo consumen la API, nunca las tablas.
+  Las flechas muestran contratos; el estado de cada
+  integración está en doc/integracion/README.md.
+end note
 @enduml

@@ -1,36 +1,60 @@
 @startuml SEC-03
-skinparam dpi 170
-title SEC-03 Consultar perfil (CU-03)
+skinparam dpi 110
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-03 Consultar perfil (CU-03 / API-03 / SRV-03)
 autonumber
-actor "Cliente via Portal\no modulo consumidor" as Cliente
-participant "JwtAuthFilter" as Sec
-participant "UsuarioController" as Ctrl
-participant "UsuarioService" as Srv
-participant "UsuarioRepository" as RepU
-database "BD Usuarios" as BD
-Cliente -> Sec : GET /api/v1/users/{id} (API-03)\nAuthorization: Bearer
-Sec -> Sec : validar sesion [RN-09]\ne identidad [RN-05] (DM-08)
-alt sesion ausente, invalida o vencida
-  Sec --> Cliente : 401 ErrorResponse (DTO-08)
-else no es el titular ni un modulo autorizado
-  Sec --> Cliente : 403 ErrorResponse (DTO-08)
-else solicitud autorizada
-  Sec -> Ctrl : solicitud autenticada
-  Ctrl -> Srv : consultarPerfil(id) (SRV-03)
-  Srv -> RepU : findById(id) (REP-02)
-  RepU -> BD : SELECT usuario WHERE id
-  BD --> RepU : Optional<Usuario>
-  RepU --> Srv : Optional<Usuario>
-  alt usuario inexistente
-    Srv --> Ctrl : RecursoNoEncontradoException
-    Ctrl --> Cliente : 404 ErrorResponse (DTO-08)
-  else titular INACTIVO [RN-04]
-    Srv --> Ctrl : UsuarioInactivoException
-    Ctrl --> Cliente : 422 ErrorResponse (DTO-08)
-  else usuario encontrado
-    Srv --> Ctrl : Usuario
-    Ctrl -> Ctrl : UsuarioMapper: Usuario a UsuarioResponse\n(sin passwordHash)
-    Ctrl --> Cliente : 200 UsuarioResponse (DTO-02)\nincluye rol y estado
+actor "Usuario (Portal)\no módulo consumidor" as A
+participant "Filtros de seguridad\nJWT de persona / de módulo" as F
+participant UsuarioController as C
+participant UsuarioService as S
+participant UsuarioRepository as UR
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : GET /api/v1/users/{id}\nBearer JWT (de persona o de módulo)
+F -> F : validar firma y vencimiento [RN-09]\ny rol: titular o MODULO [RN-15]
+alt credencial ausente, inválida o vencida
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else credencial válida
+  F -> C : solicitud autenticada
+  alt persona
+    C -> C : el id de la ruta debe ser el del token [RN-05]
+    alt no es el titular
+      C --> A : 403 FORBIDDEN
+    else es el titular
+      C -> S : consultarPerfil(id) [SRV-03]
+      S -> UR : findById(id) [REP-02]
+      UR -> DB : SELECT
+      DB --> UR : fila o vacío
+      UR --> S : Optional<Usuario>
+      alt usuario inexistente
+        S --> C : UsuarioNoEncontradoException
+        C --> A : 404 USER_NOT_FOUND
+      else titular INACTIVO [RN-04]
+        S --> C : UsuarioInactivoException
+        C --> A : 403 USER_INACTIVE
+      else titular ACTIVO
+        S --> C : UsuarioResponse (DTO-02)
+        C --> A : 200 perfil con rol y estado,\nsin contraseña [RN-03]
+      end
+    end
+  else módulo consumidor
+    C -> S : consultarPerfilParaModulo(id) [SRV-03]
+    S -> UR : findById(id) [REP-02]
+    UR -> DB : SELECT
+    UR --> S : Optional<Usuario>
+    alt usuario inexistente
+      C --> A : 404 USER_NOT_FOUND
+    else existe (también INACTIVO)
+      S --> C : UsuarioResponse (DTO-02)
+      C --> A : 200 perfil; el módulo decide\nsegún el estado
+    end
   end
 end
 @enduml

@@ -1,0 +1,56 @@
+@startuml SEC-09
+skinparam dpi 110
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-09 Renovar o validar sesión (CU-09 / API-14 y API-15 / SRV-14 y SRV-15)
+autonumber
+actor "Usuario\n(Portal Web)" as A
+participant JwtAuthenticationFilter as F
+participant AuthController as C
+participant AuthService as S
+participant UsuarioRepository as UR
+participant JwtService as J
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : GET /api/v1/auth/session  o  POST /api/v1/auth/refresh\nBearer JWT vigente
+F -> F : validar firma y vencimiento [RN-09]\nexigir rol de persona (no el token de un módulo)
+alt token ausente, inválido o vencido
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else token vigente
+  F -> C : solicitud autenticada
+  alt GET /auth/session [API-15]
+    C -> S : validarSesion(usuarioAutenticado) [SRV-15]
+    S -> UR : findById(id del token) [REP-02]
+    UR -> DB : SELECT
+    UR --> S : Optional<Usuario>
+    alt cuenta inexistente
+      C --> A : 401 UNAUTHENTICATED
+    else cuenta INACTIVA [RN-04]
+      C --> A : 403 USER_INACTIVE
+    else cuenta ACTIVA
+      S --> C : SesionResponse (DTO-14)
+      C --> A : 200 usuarioId, rol y estado vigentes, expiraEn
+    end
+  else POST /auth/refresh [API-14]
+    C -> S : renovarSesion(usuarioAutenticado) [SRV-14]
+    S -> UR : findById(id del token) [REP-02]
+    UR -> DB : SELECT
+    UR --> S : Optional<Usuario>
+    alt cuenta inexistente o INACTIVA
+      C --> A : 401 UNAUTHENTICATED / 403 USER_INACTIVE
+    else cuenta ACTIVA
+      S -> J : generarToken(id, rol vigente de la base) [RN-14]
+      J --> S : token nuevo y vencimiento
+      S --> C : LoginResponse (DTO-04)
+      C --> A : 200 token nuevo
+    end
+  end
+end
+note over J : El JWT anterior no se revoca; vence solo (DM-17).
+@enduml

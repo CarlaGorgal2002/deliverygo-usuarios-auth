@@ -7,6 +7,8 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.RegistrarUsuarioRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.RestablecerPasswordRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SesionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SolicitarRecuperacionRequest;
+import ar.edu.uade.api.deliverygo.usuarios.dto.TokenModuloRequest;
+import ar.edu.uade.api.deliverygo.usuarios.dto.TokenModuloResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,9 +24,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 
-// Contrato documentado de CU-01, CU-02, CU-08 y CU-09. Registro, login y recuperación son públicos;
-// renovar y validar la sesión exigen un JWT.
-@Tag(name = "Autenticación", description = "CU-01, CU-02, CU-08 y CU-09. Registro, emisión y renovación de JWT, y recuperación de contraseña.")
+// Contrato documentado de CU-01, CU-02, CU-08, CU-09 y de la emisión del token de módulo de CU-10. Registro,
+// login, token de módulo y recuperación son públicos; renovar y validar la sesión exigen un JWT.
+@Tag(name = "Autenticación", description = "CU-01, CU-02, CU-08, CU-09 y CU-10. Registro, emisión y renovación de JWT (de personas y de módulos) y recuperación de contraseña.")
 public interface IAuthController {
 
     @Operation(operationId = "registrarUsuario", summary = "Registrar usuario (API-01 / CU-01)",
@@ -52,6 +54,18 @@ public interface IAuthController {
     @ErroresComunes
     ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request);
 
+    @Operation(operationId = "emitirTokenModulo", summary = "Emitir token de módulo (API-17 / CU-10)",
+            description = """
+                    Un módulo consumidor presenta su nombre y la clave que le entregó Usuarios (RN-15) y recibe un JWT con rol MODULO,
+                    firmado por Usuarios. Ese JWT va como Authorization: Bearer en las consultas de lectura (API-03, API-05 y API-16).
+                    Módulo desconocido, clave incorrecta y clave no configurada dan el mismo 401. No sirve para renovar ni validar sesiones de personas.""")
+    @SecurityRequirements
+    @ApiResponse(responseCode = "200", description = "Token de módulo emitido.")
+    @ApiResponse(responseCode = "401", description = "INVALID_CREDENTIALS: Módulo o clave incorrectos.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ErroresComunes
+    ResponseEntity<TokenModuloResponse> emitirTokenModulo(@Valid @RequestBody TokenModuloRequest request);
+
     @Operation(operationId = "solicitarRecuperacionPassword", summary = "Solicitar recuperación de contraseña (API-12 / CU-08)",
             description = """
                     Pide a Notificaciones que envíe un token de un solo uso (vigencia 30 minutos por defecto) al email de la cuenta.
@@ -78,7 +92,7 @@ public interface IAuthController {
     @Operation(operationId = "renovarSesion", summary = "Renovar sesión (API-14 / CU-09)",
             description = """
                     Con un JWT todavía vigente emite uno nuevo, con el rol actual de la cuenta. Un token vencido no se renueva: hay que iniciar sesión.
-                    La cuenta debe seguir ACTIVA. No admite API Key de módulo.""")
+                    La cuenta debe seguir ACTIVA. No admite el token de un módulo.""")
     @ApiResponse(responseCode = "200", description = "Sesión renovada.")
     @ApiResponse(responseCode = "401", description = "UNAUTHENTICATED: El token falta, es inválido o está vencido, o la cuenta ya no existe.",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

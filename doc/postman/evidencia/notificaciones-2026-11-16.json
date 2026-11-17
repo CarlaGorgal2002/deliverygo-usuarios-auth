@@ -1,0 +1,110 @@
+{
+  "coleccion": "DeliveryGo Usuarios y Notificaciones - integración HTTP",
+  "inicio": 1794880898947,
+  "fin": 1794880905205,
+  "resumen": {
+    "iterations": {
+      "executed": 1,
+      "errors": 0
+    },
+    "executedRequests": {
+      "executed": 12,
+      "errors": 0
+    },
+    "prerequestScripts": {
+      "executed": 13,
+      "errors": 0
+    },
+    "postresponseScripts": {
+      "executed": 24,
+      "errors": 0
+    },
+    "tests": {
+      "executed": 40,
+      "failed": 0,
+      "passed": 40,
+      "skipped": 0
+    },
+    "timeStats": {
+      "responseAverage": 134.33333333333334,
+      "responseMin": 16,
+      "responseMax": 867,
+      "responseStandardDeviation": 225.9300530892003
+    }
+  },
+  "errorDeEjecucion": false,
+  "solicitudes": [
+    {
+      "nombre": "01 Login ADMIN",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "02 Verificar plantillas reales",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "03 Registrar destinatario real",
+      "metodo": "POST",
+      "status": 201,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "04 Login destinatario",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "05 INT-01 Esperar bienvenida",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "06 INT-05 Consultar destinatario con API Key",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "07 INT-06 Solicitar recuperacion",
+      "metodo": "POST",
+      "status": 202,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "08 INT-06 Esperar mensaje y obtener token",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "46 CU-08 Restablecer con token recibido",
+      "metodo": "POST",
+      "status": 204,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "47 CU-08 Token de un solo uso",
+      "metodo": "POST",
+      "status": 400,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "48 CU-08 Login con nueva password",
+      "metodo": "POST",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "49 CU-08 Password anterior rechazada",
+      "metodo": "POST",
+      "status": 401,
+      "erroresDeEjecucion": 0
+    }
+  ]
+}

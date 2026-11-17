@@ -1,8 +1,20 @@
 @startuml der
-skinparam dpi 170
-hide circle
+skinparam dpi 120
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
 skinparam linetype ortho
-entity "usuario" as usuario {
+hide circle
+title Diagrama entidad-relación de la base propia del módulo (PostgreSQL)
+
+entity "roles" as roles {
+  * id : BIGINT <<PK>>
+  --
+  * nombre : VARCHAR(30) <<UNIQUE>>
+  descripcion : VARCHAR(120)
+}
+
+entity "usuarios" as usuarios {
   * id : BIGINT <<PK>>
   --
   * nombre : VARCHAR(80)
@@ -14,13 +26,8 @@ entity "usuario" as usuario {
   * fecha_alta : TIMESTAMP
   * rol_id : BIGINT <<FK>>
 }
-entity "rol" as rol {
-  * id : BIGINT <<PK>>
-  --
-  * nombre : VARCHAR(30) <<UNIQUE>>
-  descripcion : VARCHAR(120)
-}
-entity "direccion" as direccion {
+
+entity "direcciones" as direcciones {
   * id : BIGINT <<PK>>
   --
   * usuario_id : BIGINT <<FK>>
@@ -31,10 +38,21 @@ entity "direccion" as direccion {
   * ciudad : VARCHAR(80)
   * provincia : VARCHAR(80)
   * codigo_postal : VARCHAR(10)
-  referencia : VARCHAR(150)
   * predeterminada : BOOLEAN
   * activa : BOOLEAN
 }
-rol ||--o{ usuario : "REL-02"
-usuario ||--o{ direccion : "REL-01"
+
+entity "tokens_recuperacion" as tokens {
+  * id : BIGINT <<PK>>
+  --
+  * usuario_id : BIGINT <<FK>>
+  * token_hash : VARCHAR(64) <<UNIQUE>>
+  * creado_en : TIMESTAMP
+  * expira_en : TIMESTAMP
+  usado_en : TIMESTAMP
+}
+
+roles ||--o{ usuarios : "REL-02\nun rol, muchos usuarios"
+usuarios ||--o{ direcciones : "REL-01\nun usuario, muchas direcciones"
+usuarios ||--o{ tokens : "REL-03\nun usuario, muchos tokens"
 @enduml

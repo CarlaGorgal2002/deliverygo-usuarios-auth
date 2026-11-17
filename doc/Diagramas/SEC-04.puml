@@ -1,51 +1,60 @@
 @startuml SEC-04
-skinparam dpi 170
-title SEC-04 Modificar perfil (CU-04)
+skinparam dpi 110
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-04 Modificar perfil (CU-04 / API-04 / SRV-04)
 autonumber
-actor "Cliente via Portal" as Cliente
-participant "JwtAuthFilter" as Sec
-participant "UsuarioController" as Ctrl
-participant "UsuarioService" as Srv
-participant "UsuarioRepository" as RepU
-database "BD Usuarios" as BD
-Cliente -> Sec : PUT /api/v1/users/{id} (API-04)\nModificarPerfilRequest (DTO-05) + Bearer
-Sec -> Sec : validar sesion [RN-09]\ne identidad [RN-05] (DM-08)
-alt sesion invalida
-  Sec --> Cliente : 401 ErrorResponse (DTO-08)
-else no es el titular
-  Sec --> Cliente : 403 ErrorResponse (DTO-08)
-else titular autenticado
-  Sec -> Ctrl : solicitud autenticada
-  Ctrl -> Ctrl : validar formato [RN-01]\ny que no haya campos no permitidos [RN-10] (DM-09)
-  alt datos invalidos o campos no permitidos
-    Ctrl --> Cliente : 400 ErrorResponse (DTO-08)
-  else datos validos
-    Ctrl -> Srv : modificarPerfil(id, DTO-05) (SRV-04)
-    Srv -> RepU : findById(id) (REP-02)
-    RepU -> BD : SELECT usuario WHERE id
-    RepU --> Srv : Optional<Usuario>
+actor "Usuario\n(Portal Web)" as A
+participant JwtAuthenticationFilter as F
+participant UsuarioController as C
+participant UsuarioService as S
+participant UsuarioRepository as UR
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : PUT /api/v1/users/{id}\nBearer JWT + ModificarPerfilRequest (DTO-05)
+F -> F : validar firma y vencimiento [RN-09]
+alt token ausente, inválido o vencido
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else token válido
+  F -> C : solicitud autenticada
+  C -> C : id de la ruta == id del token [RN-05]\nvalidar nombre, apellido y email [RN-01]
+  alt no es el titular
+    C --> A : 403 FORBIDDEN
+  else datos inválidos
+    C --> A : 400 VALIDATION_ERROR
+  else titular y datos válidos
+    C -> S : modificarPerfil(id, request) [SRV-04]
+    note right of S : @Transactional (DM-10)
+    S -> UR : findById(id) [REP-02]
+    UR -> DB : SELECT
+    UR --> S : Optional<Usuario>
     alt usuario inexistente
-      Srv --> Ctrl : RecursoNoEncontradoException
-      Ctrl --> Cliente : 404 ErrorResponse (DTO-08)
+      S --> C : UsuarioNoEncontradoException
+      C --> A : 404 USER_NOT_FOUND
     else usuario INACTIVO [RN-04]
-      Srv --> Ctrl : UsuarioInactivoException
-      Ctrl --> Cliente : 422 ErrorResponse (DTO-08)
+      S --> C : UsuarioInactivoException
+      C --> A : 403 USER_INACTIVE
     else usuario ACTIVO
-      opt el email cambia
-        Srv -> RepU : findByEmail(nuevoEmail) (REP-01)
-        RepU --> Srv : Optional<Usuario>
-        alt email de otro usuario [RN-02]
-          Srv --> Ctrl : EmailDuplicadoException
-          Ctrl --> Cliente : 409 ErrorResponse (DTO-08)
-        end
+      S -> UR : existsByEmailAndIdNot(email, id) [REP-01 / RN-02]
+      UR -> DB : SELECT
+      UR --> S : boolean
+      alt el email es de otra cuenta
+        S --> C : EmailDuplicadoException
+        C --> A : 409 EMAIL_ALREADY_REGISTERED
+      else email disponible
+        S -> S : reemplazar nombre, apellido, email y teléfono\nrol, estado y contraseña no se tocan [RN-10]
+        S -> UR : save(usuario) [REP-03]
+        UR -> DB : UPDATE usuarios (COMMIT al salir)
+        UR --> S : Usuario
+        S --> C : UsuarioResponse (DTO-02)
+        C --> A : 200 perfil actualizado, sin contraseña [RN-03]
       end
-      Srv -> Srv : aplicar solo nombre, apellido,\ntelefono y email [RN-10]
-      Srv -> RepU : save(usuario) (REP-03)
-      note right : transaccional [DM-10]
-      RepU -> BD : UPDATE usuario
-      RepU --> Srv : Usuario
-      Srv --> Ctrl : Usuario
-      Ctrl --> Cliente : 200 UsuarioResponse (DTO-02)
     end
   end
 end
