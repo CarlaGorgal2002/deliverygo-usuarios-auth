@@ -2,7 +2,7 @@
 
 **Grupo 02 · Aplicaciones Interactivas · DeliveryGo · 16 de noviembre de 2026**
 
-El módulo implementa los diez casos de uso y las diecisiete operaciones REST del contrato. Incluye persistencia PostgreSQL con Docker Compose (también el backend en contenedor, clase 13), JWT, permisos por titular y rol, JWT de módulos emitido por Usuarios, validaciones y errores comunes. Esta entrega rehace los diagramas con las capas y participantes que pide la plantilla, agrega las colecciones de Postman y el backlog, y deja el código dentro de lo visto en la cátedra.
+El módulo implementa los diez casos de uso y las dieciséis operaciones REST del contrato. Incluye persistencia PostgreSQL con Docker Compose (también el backend en contenedor, clase 13), JWT, permisos por titular y rol, lecturas sin credencial para los otros módulos, validaciones y errores comunes. Esta entrega rehace los diagramas con las capas y participantes que pide la plantilla, agrega las colecciones de Postman y el backlog, y deja el código dentro de lo visto en la cátedra.
 
 El alcance propio está implementado y probado. La integración completa del ecosistema requiere además que los otros equipos incorporen las correcciones y acuerdos documentados. En particular, Notificaciones fue probado con un parche local incluido en esta entrega; no se afirma que ese parche ya esté publicado en su repositorio.
 
@@ -33,7 +33,7 @@ El PDF de primera entrega y el ZIP Swagger del 30/10 se conservan como anteceden
 | CU-07 Rol | API-11 | AdministracionService, SRV-11 | [SEC-07](Diagramas/SEC-07.png) | AdministracionApiTest |
 | CU-08 Recuperación | API-12, API-13 | AuthService / RecuperacionService, SRV-12, SRV-13 | [SEC-08](Diagramas/SEC-08.png) | RecuperacionApiTest |
 | CU-09 Sesión | API-14, API-15 | AuthService, SRV-14, SRV-15 | [SEC-09](Diagramas/SEC-09.png) | SesionApiTest |
-| CU-10 Consulta de módulo | API-16, API-17 | UsuarioService, SRV-16 | [SEC-10](Diagramas/SEC-10.png) | ModulosApiTest |
+| CU-10 Consulta de módulo | API-16 | UsuarioService, SRV-16 | [SEC-10](Diagramas/SEC-10.png) | ModulosApiTest |
 
 Las matrices de RN, ENT, REL, REP, DTO e INT se conservan en [trazabilidad y fuentes](openapi/TRAZABILIDAD_Y_FUENTES.md) y en [el diseño de CU-06 a CU-10](openapi/DISENO_CU_EVOLUCION.md). El dominio actual contiene Usuario, Rol, Dirección y TokenRecuperacion; los consumidores conservan referencias por ID y no acceden a esta base.
 
@@ -46,10 +46,10 @@ Las matrices de RN, ENT, REL, REP, DTO e INT se conservan en [trazabilidad y fue
 | Postman, Notificaciones con parche local | 12 solicitudes; 40 comprobaciones; 0 fallas |
 | Postman, Catálogo sin modificar su código | 7 solicitudes; 8 comprobaciones; 0 fallas |
 | Suite de Notificaciones con el parche | 103 pruebas; 0 fallas, errores u omisiones |
-| YAML frente a Springdoc en ejecución | Coinciden las 16 operaciones iniciales; la API-17 (token de módulo) se agregó después y se verifica con pruebas de integración, sus respuestas y seguridad |
+| YAML frente a Springdoc en ejecución | Coinciden las 16 operaciones; la API-17 (token de módulo) se agregó y luego se eliminó. La seguridad opcional de API-03, API-05 y API-16 se verifica con pruebas de integración |
 | Diagramas | 15 fuentes PlantUML en `doc/Diagramas` |
 
-Los resúmenes de Postman están en [evidencia](postman/evidencia/). Las pruebas de contratos no sustituyen a las pruebas HTTP, y las llamadas con un token de módulo desde Postman no se presentan como clientes implementados por otros equipos.
+Los resúmenes de Postman están en [evidencia](postman/evidencia/). Las pruebas de contratos no sustituyen a las pruebas HTTP, y las llamadas de módulo desde Postman no se presentan como clientes implementados por otros equipos.
 
 ## Explicación para la defensa
 

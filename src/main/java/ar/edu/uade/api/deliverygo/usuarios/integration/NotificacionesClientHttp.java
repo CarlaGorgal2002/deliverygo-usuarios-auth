@@ -1,6 +1,5 @@
 package ar.edu.uade.api.deliverygo.usuarios.integration;
 
-import ar.edu.uade.api.deliverygo.usuarios.security.JwtService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +17,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,8 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 // Consume el contrato tal como lo publica Notificaciones:
 //   GET  /api/v1/templates      -> se busca la plantilla activa por nombre (y se guarda su id en caché)
 //   POST /api/v1/notifications  -> { destinatarioId, plantillaId, parametros } -> 201
-// Cada llamada lleva un JWT de servicio corto (HS256, mismo JWT_SECRET, sub = destinatario, role = SISTEMA)
-// y el X-Correlation-Id de la solicitud en curso.
+// Entre módulos no se usa JWT ni clave: cada llamada lleva sólo el X-Correlation-Id de la solicitud en curso.
 // Las llamadas son sincrónicas pero acotadas: timeout de conexión y de lectura (app.notificaciones.timeout-ms)
 // y una falla sale como NotificacionesException. Quien llama (UsuarioService, AuthService) la captura y la registra
 // sin revertir el registro ni cambiar la respuesta: INT-01 e INT-06 no son bloqueantes.
@@ -43,31 +40,26 @@ public class NotificacionesClientHttp implements NotificacionesClient {
     static final String RUTA_PLANTILLAS = "/api/v1/templates";
     static final String RUTA_NOTIFICACIONES = "/api/v1/notifications";
     static final String CORRELATION_HEADER = "X-Correlation-Id";
-    static final Duration VIGENCIA_TOKEN_SERVICIO = Duration.ofMinutes(2);
 
     private final RestClient restClient;
-    private final JwtService jwtService;
     private final String plantillaBienvenida;
     private final String plantillaRecuperacion;
     private final Map<String, Long> plantillasPorNombre = new ConcurrentHashMap<>();
 
     @Autowired
     public NotificacionesClientHttp(RestClient.Builder builder,
-                                    JwtService jwtService,
                                     @Value("${app.notificaciones.base-url}") String baseUrl,
                                     @Value("${app.notificaciones.timeout-ms}") int timeoutMs,
                                     @Value("${app.notificaciones.plantillas.bienvenida}") String plantillaBienvenida,
                                     @Value("${app.notificaciones.plantillas.recuperacion}") String plantillaRecuperacion,
                                     @Value("${server.port:8080}") int puertoPropio) {
         this(validarQueNoApunteASiMismo(builder, baseUrl, puertoPropio).baseUrl(baseUrl).requestFactory(fabricaConTimeout(timeoutMs)).build(),
-                jwtService, plantillaBienvenida, plantillaRecuperacion);
+                plantillaBienvenida, plantillaRecuperacion);
     }
 
     // Para las pruebas: recibe el RestClient ya armado (por ejemplo, ligado a MockRestServiceServer).
-    NotificacionesClientHttp(RestClient restClient, JwtService jwtService,
-                             String plantillaBienvenida, String plantillaRecuperacion) {
+    NotificacionesClientHttp(RestClient restClient, String plantillaBienvenida, String plantillaRecuperacion) {
         this.restClient = restClient;
-        this.jwtService = jwtService;
         this.plantillaBienvenida = plantillaBienvenida;
         this.plantillaRecuperacion = plantillaRecuperacion;
     }
@@ -84,10 +76,10 @@ public class NotificacionesClientHttp implements NotificacionesClient {
 
     private void enviar(Long destinatarioId, String nombrePlantilla, Map<String, String> parametros, String integracion) {
         try {
-            Long plantillaId = resolverPlantilla(nombrePlantilla, destinatarioId);
+            Long plantillaId = resolverPlantilla(nombrePlantilla);
             NotificacionResponse respuesta = restClient.post()
                     .uri(RUTA_NOTIFICACIONES)
-                    .headers(h -> cabeceras(h, destinatarioId))
+                    .headers(this::cabeceras)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new NotificacionRequest(destinatarioId, plantillaId, parametros))
                     .retrieve()
@@ -111,14 +103,14 @@ public class NotificacionesClientHttp implements NotificacionesClient {
 
     // Busca el id de la plantilla activa con ese nombre. Sólo se guarda en caché cuando se encuentra, y se
     // descarta si Notificaciones rechaza un envío con 4xx (ver enviar).
-    private Long resolverPlantilla(String nombre, Long destinatarioId) {
+    private Long resolverPlantilla(String nombre) {
         Long enCache = plantillasPorNombre.get(nombre);
         if (enCache != null) {
             return enCache;
         }
         List<PlantillaResponse> plantillas = restClient.get()
                 .uri(RUTA_PLANTILLAS)
-                .headers(h -> cabeceras(h, destinatarioId))
+                .headers(this::cabeceras)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .body(new ParameterizedTypeReference<List<PlantillaResponse>>() { });
@@ -135,9 +127,7 @@ public class NotificacionesClientHttp implements NotificacionesClient {
         return id;
     }
 
-    private void cabeceras(HttpHeaders headers, Long destinatarioId) {
-        String token = jwtService.generarToken(destinatarioId, JwtService.ROL_SERVICIO, VIGENCIA_TOKEN_SERVICIO).token();
-        headers.setBearerAuth(token);
+    private void cabeceras(HttpHeaders headers) {
         String correlationId = MDC.get("correlationId");
         if (correlationId != null) {
             headers.set(CORRELATION_HEADER, correlationId);

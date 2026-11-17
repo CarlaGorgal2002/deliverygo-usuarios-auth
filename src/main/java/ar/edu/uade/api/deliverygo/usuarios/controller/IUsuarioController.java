@@ -30,7 +30,7 @@ public interface IUsuarioController {
     @Operation(operationId = "consultarPerfil", summary = "Consultar perfil (API-03 / CU-03)",
             description = """
                     Con JWT: el titular consulta su propio perfil (el sub debe coincidir con el id) y la cuenta debe estar ACTIVA.
-                    Con el JWT de un módulo (POST /auth/module-token): cualquier módulo consumidor autorizado consulta el perfil de un usuario y recibe 200 también si la cuenta
+                    Sin credencial: es la consulta de otro módulo (no lleva JWT ni clave) y recibe el perfil con 200 también si la cuenta
                     está INACTIVA, para decidir con sus propias reglas. Un JWT de otra persona, aunque sea ADMIN, recibe 403.
                     No devuelve contraseña ni hash; las direcciones se obtienen en API-05.""")
         @ApiResponse(responseCode = "200", description = "Perfil del usuario.")
@@ -78,7 +78,7 @@ public interface IUsuarioController {
     @Operation(operationId = "consultarAccesoUsuario", summary = "Consultar estado y rol para otro módulo (API-16 / CU-10)",
             description = """
                     Consulta liviana para módulos consumidores: devuelve sólo el estado y el rol vigentes, sin datos personales.
-                    Se autentica con el JWT de módulo (rol MODULO); un JWT de persona recibe 403. Una cuenta INACTIVA se devuelve con 200.""")
+                    No lleva credencial: los módulos la llaman sin JWT ni clave. Una cuenta INACTIVA se devuelve con 200.""")
     @ApiResponse(responseCode = "200", description = "Estado y rol del usuario.")
     @ErroresDeSesion
     @ErroresComunes

@@ -16,8 +16,8 @@ class CorrelacionApiTest extends ApiTestSupport {
 
     @Test
     void seReutilizaElIdValidoRecibidoEnCabeceraYEnLosErrores() throws Exception {
-        assertError(mvc.perform(get("/api/v1/users/1").header("X-Correlation-Id", "g02-demo.001_A")),
-                401, "UNAUTHENTICATED", "/api/v1/users/1")
+        assertError(mvc.perform(get("/api/v1/auth/session").header("X-Correlation-Id", "g02-demo.001_A")),
+                401, "UNAUTHENTICATED", "/api/v1/auth/session")
                 .andExpect(header().string("X-Correlation-Id", "g02-demo.001_A"))
                 .andExpect(jsonPath("$.correlationId").value("g02-demo.001_A"));
 
@@ -26,7 +26,7 @@ class CorrelacionApiTest extends ApiTestSupport {
 
     @Test
     void siFaltaSeGeneraUnoNuevoYCoincideEnCabeceraYCuerpo() throws Exception {
-        String cabecera = assertError(mvc.perform(get("/api/v1/users/1")), 401, "UNAUTHENTICATED", "/api/v1/users/1")
+        String cabecera = assertError(mvc.perform(get("/api/v1/auth/session")), 401, "UNAUTHENTICATED", "/api/v1/auth/session")
                 .andExpect(header().exists("X-Correlation-Id"))
                 .andReturn().getResponse().getHeader("X-Correlation-Id");
         assertThat(cabecera).matches("^[A-Za-z0-9._-]{1,128}$");

@@ -32,8 +32,8 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("JWT de una persona (POST /api/v1/auth/login) o de un módulo consumidor "
-                                        + "(POST /api/v1/auth/module-token). En Swagger UI pegar sólo el token.")))
+                                .description("JWT de una persona (POST /api/v1/auth/login), sólo para el front. Las "
+                                        + "consultas de otros módulos no llevan credencial. En Swagger UI pegar sólo el token.")))
                 // Seguridad por defecto; registro y login la anulan con @SecurityRequirements.
                 .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER));
     }

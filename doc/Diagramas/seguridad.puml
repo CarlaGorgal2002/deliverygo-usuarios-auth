@@ -27,11 +27,9 @@ W -> M : Authorization: Bearer JWT
 M -> M : valida firma y vencimiento con el mismo secreto\ny autoriza según el rol del token
 
 == Llamadas de módulo a módulo (sólo lectura) ==
-M -> U : POST /api/v1/auth/module-token {modulo, clave} [RN-15]
-U --> M : JWT firmado por Usuarios: sub = módulo, role = MODULO
-M -> U : GET /users/{id} · GET /users/{id}/addresses (sólo Pedidos)\nGET /users/{id}/access\nAuthorization: Bearer <JWT de módulo> [RN-15]
-U -> U : JwtAuthenticationFilter valida firma y rol MODULO
-U --> M : 200 / 401 / 403 / 404
+M -> U : GET /users/{id} · GET /users/{id}/addresses\nGET /users/{id}/access\nsin credencial: ni JWT ni clave [RN-15]
+U --> M : 200 / 400 / 404
+note over U, M : Entre módulos no hay JWT. Sin credencial sólo se lee:\nmodificar o administrar responde 401.
 
 note over U, M
   El JWT está firmado, no cifrado: no lleva contraseñas ni datos personales.

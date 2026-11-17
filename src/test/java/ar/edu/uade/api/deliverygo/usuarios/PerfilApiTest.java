@@ -45,16 +45,18 @@ class PerfilApiTest extends ApiTestSupport {
     void sinTokenOConUnTokenInvalidoLaRespuestaEs401ConElFormatoComun() throws Exception {
         Sesion a = registrarYLoguear();
         String ruta = "/api/v1/users/" + a.id();
+        // La lectura sin token es la de otro módulo (RN-15): el control de identidad se prueba con la modificación.
+        String perfil = cuerpo("nombre", "X", "apellido", "Y", "email", emailUnico());
 
-        assertError(mvc.perform(get(ruta)), 401, "UNAUTHENTICATED", ruta)
+        assertError(mvc.perform(conJson(put(ruta), perfil)), 401, "UNAUTHENTICATED", ruta)
                 .andExpect(header().string("WWW-Authenticate", org.hamcrest.Matchers.startsWith("Bearer")));
 
         // firma alterada
         String alterado = a.token().substring(0, a.token().length() - 3) + "abc";
-        assertError(mvc.perform(get(ruta).header("Authorization", "Bearer " + alterado)), 401, "UNAUTHENTICATED", ruta);
+        assertError(mvc.perform(conJson(put(ruta).header("Authorization", "Bearer " + alterado), perfil)), 401, "UNAUTHENTICATED", ruta);
 
         // basura
-        assertError(mvc.perform(get(ruta).header("Authorization", "Bearer esto-no-es-un-jwt")), 401, "UNAUTHENTICATED", ruta);
+        assertError(mvc.perform(conJson(put(ruta).header("Authorization", "Bearer esto-no-es-un-jwt"), perfil)), 401, "UNAUTHENTICATED", ruta);
 
         // vencido
         SecretKey clave = Keys.hmacShaKeyFor(secreto.getBytes(StandardCharsets.UTF_8));
@@ -62,14 +64,14 @@ class PerfilApiTest extends ApiTestSupport {
                 .issuedAt(Date.from(Instant.now().minusSeconds(7200)))
                 .expiration(Date.from(Instant.now().minusSeconds(3600)))
                 .signWith(clave).compact();
-        assertError(mvc.perform(get(ruta).header("Authorization", "Bearer " + vencido)), 401, "UNAUTHENTICATED", ruta);
+        assertError(mvc.perform(conJson(put(ruta).header("Authorization", "Bearer " + vencido), perfil)), 401, "UNAUTHENTICATED", ruta);
 
         // firmado con otra clave
         String ajeno = Jwts.builder().subject(String.valueOf(a.id())).claim("role", "ADMIN")
                 .expiration(Date.from(Instant.now().plusSeconds(3600)))
                 .signWith(Keys.hmacShaKeyFor("otra-clave-que-no-es-la-del-modulo-1234567890".getBytes(StandardCharsets.UTF_8)))
                 .compact();
-        assertError(mvc.perform(get(ruta).header("Authorization", "Bearer " + ajeno)), 401, "UNAUTHENTICATED", ruta);
+        assertError(mvc.perform(conJson(put(ruta).header("Authorization", "Bearer " + ajeno), perfil)), 401, "UNAUTHENTICATED", ruta);
     }
 
     @Test
@@ -100,8 +102,8 @@ class PerfilApiTest extends ApiTestSupport {
                     400, "VALIDATION_ERROR", "/api/v1/users/" + id)
                     .andExpect(jsonPath("$.details[0].campo").value("id"));
         }
-        // sin autenticar, el control de identidad va primero
-        assertError(mvc.perform(get("/api/v1/users/abc")), 401, "UNAUTHENTICATED", "/api/v1/users/abc");
+        // sin token (lectura de otro módulo) el id también se valida
+        assertError(mvc.perform(get("/api/v1/users/abc")), 400, "VALIDATION_ERROR", "/api/v1/users/abc");
     }
 
     @Test

@@ -8,53 +8,31 @@ skinparam responseMessageBelowArrow true
 skinparam NoteBackgroundColor #FFF9DB
 skinparam ParticipantPadding 12
 hide footbox
-title SEC-10 Token de módulo y consulta de estado y rol (CU-10 / API-17 / SRV-17 y API-16 / SRV-16)
+title SEC-10 Consulta de estado y rol para otro módulo (CU-10 / API-16 / SRV-16)
 autonumber
-actor "Módulo consumidor\n(Pedidos, Catálogo, Logística...)" as A
-participant AuthController as AC
-participant AuthService as AS
-participant "ModulosApiKeys\nJwtService" as K
-participant JwtAuthenticationFilter as F
+actor "Módulo consumidor\n(Pedidos, Logística, Notificaciones...)" as A
+participant SecurityConfig as F
 participant UsuarioController as C
 participant UsuarioService as S
 participant UsuarioRepository as UR
-database "BD Usuarios\n(PostgreSQL)" as DB
+database "BD Usuarios" as DB
 
-== Paso 1: el módulo pide su token (API-17) ==
-A -> AC : POST /api/v1/auth/module-token\n{modulo, clave} (DTO-16)
-AC -> AS : emitirTokenModulo(request) [SRV-17]
-AS -> K : verificar(modulo, clave) [RN-15]
-alt módulo desconocido, clave incorrecta o de menos de 16 caracteres
-  AS --> AC : CredencialesInvalidasException
-  AC --> A : 401 INVALID_CREDENTIALS (DTO-08)
-else clave correcta
-  AS -> K : generarTokenModulo(modulo)\nJWT: sub = módulo, role = MODULO [RN-09]
-  K --> AS : TokenEmitido
-  AS --> AC : TokenModuloResponse (DTO-17)
-  AC --> A : 200 token Bearer, expiraEn, modulo, rol
+A -> F : GET /api/v1/users/{id}/access\nsin credencial (ni JWT ni clave) [RN-15]
+note right of F : La ruta es de lectura y no exige credencial.\nUna X-Api-Key o un Bearer que llegue igual se ignora.
+F -> C : solicitud sin autenticar
+C -> S : consultarAcceso(id) [SRV-16]
+S -> UR : findById(id) [REP-02]
+UR -> DB : SELECT
+DB --> UR : fila o vacío
+UR --> S : Optional<Usuario>
+alt id inválido
+  C --> A : 400 VALIDATION_ERROR
+else usuario inexistente
+  S --> C : UsuarioNoEncontradoException
+  C --> A : 404 USER_NOT_FOUND
+else usuario encontrado (también INACTIVO)
+  S --> C : AccesoUsuarioResponse (DTO-15)
+  C --> A : 200 usuarioId, estado y rol\nsin datos personales
 end
-
-== Paso 2: el módulo consulta estado y rol (API-16) ==
-A -> F : GET /api/v1/users/{id}/access\nAuthorization: Bearer <token del módulo>
-F -> F : validar firma y vencimiento [RN-09]\nrol MODULO [RN-15]
-alt token ausente, inválido o vencido
-  F --> A : 401 UNAUTHENTICATED (DTO-08)
-else JWT de persona (no es un módulo)
-  F --> A : 403 FORBIDDEN
-else módulo autenticado
-  F -> C : solicitud autenticada con rol MODULO
-  C -> S : consultarAcceso(id) [SRV-16]
-  S -> UR : findById(id) [REP-02]
-  UR -> DB : SELECT
-  DB --> UR : fila o vacío
-  UR --> S : Optional<Usuario>
-  alt usuario inexistente
-    S --> C : UsuarioNoEncontradoException
-    C --> A : 404 USER_NOT_FOUND
-  else usuario encontrado (también INACTIVO)
-    S --> C : AccesoUsuarioResponse (DTO-15)
-    C --> A : 200 usuarioId, estado y rol\nsin datos personales
-  end
-end
-note over S : El módulo decide según el estado recibido.\nCuando el token vence, lo pide de nuevo (paso 1).
+note over S : El módulo decide según el estado recibido.\nSin credencial sólo se lee: escribir o administrar responde 401.
 @enduml

@@ -2,7 +2,7 @@
   "info": {
     "name": "DeliveryGo Usuarios y Notificaciones - integración HTTP",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Requiere ambos servicios reales en modo HTTP, JWT_SECRET compartido, clave de módulo para el token de Usuarios (API-17) y emisor simulado sin fallas. Ejecutar con --delay-request 250. La lectura del token en historial es exclusiva de la demo local del envío simulado, usando la sesión del destinatario."
+    "description": "Requiere ambos servicios reales en modo HTTP, el mismo JWT_SECRET para validar el JWT de los usuarios del front, y emisor simulado sin fallas. Ejecutar con --delay-request 250. La lectura del token en historial es exclusiva de la demo local del envío simulado, usando la sesión del destinatario."
   },
   "event": [
     {
@@ -270,10 +270,6 @@
           {
             "key": "X-Correlation-Id",
             "value": "{{correlationId}}"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{moduloToken}}"
           }
         ],
         "auth": {
@@ -282,23 +278,6 @@
         "url": "{{baseUrl}}/api/v1/users/{{userId}}"
       },
       "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-              "pm.sendRequest({",
-              "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-              "  method: 'POST',",
-              "  header: { 'Content-Type': 'application/json' },",
-              "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'notificaciones', clave: pm.variables.get('notificacionesKey') }) }",
-              "}, (err, res) => {",
-              "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-              "});"
-            ]
-          }
-        },
         {
           "listen": "test",
           "script": {

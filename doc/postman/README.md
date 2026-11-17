@@ -6,7 +6,7 @@ Las colecciones usan datos ficticios, generan emails nuevos por corrida y captur
 
 | Archivo | Alcance |
 |---|---|
-| [Usuarios](DeliveryGo-Usuarios.postman_collection.json) | 46 solicitudes automáticas para CU-01 a CU-10 (incluida la emisión del token de módulo, API-17) y cuatro pasos de restablecimiento con token recibido |
+| [Usuarios](DeliveryGo-Usuarios.postman_collection.json) | 43 solicitudes automáticas para CU-01 a CU-10 (las de módulos, sin credencial) y cuatro pasos de restablecimiento con token recibido |
 | [Notificaciones](DeliveryGo-Integracion-Notificaciones.postman_collection.json) | Bienvenida y recuperación completas entre los dos servicios por HTTP |
 | [Catálogo](DeliveryGo-Integracion-Catalogo.postman_collection.json) | JWT real de Usuarios aceptado por Catálogo; permisos ADMIN/CLIENTE y 401 sin credencial |
 | [Environment local](Local.postman_environment.json) | URLs y credenciales de ejemplo, exclusivas de la demo local |
@@ -47,6 +47,6 @@ New-Item -ItemType Directory -Force target/postman | Out-Null
 postman collection run doc/postman/DeliveryGo-Usuarios.postman_collection.json -e doc/postman/Local.postman_environment.json -i "01 Recorrido automatico" --reporters cli,json --reporter-json-export target/postman/usuarios.json
 ```
 
-Las solicitudes de módulo (CU-10, INT-03 a INT-05) piden primero su token a `POST /auth/module-token` con la clave del environment (`pedidosKey`, `catalogoKey`, `notificacionesKey`) y lo envían como Bearer; ya no se usa `X-Api-Key`. La evidencia de Usuarios se actualizó el 17/11/2026 (corrida con newman: 159 comprobaciones, 0 fallas); las de Notificaciones y Catálogo son del 16/11/2026, anteriores a ese cambio, y hay que repetirlas con esos módulos levantados.
+Las solicitudes de módulo (CU-10, INT-03 a INT-05) no llevan credencial: entre módulos no se usa JWT ni clave, y una `X-Api-Key` que llegue igual se ignora. Última corrida de Usuarios: 17/11/2026, 43 solicitudes y 145 comprobaciones, 0 fallas. Las evidencias de Notificaciones y Catálogo son del 16/11/2026 y hay que repetirlas con esos módulos levantados.
 
 Los reportes completos contienen JWT y cuerpos con contraseñas de prueba: se guardan en `target/`, excluido de Git. La evidencia compartida sólo incluye nombres de solicitudes, estados HTTP y cantidades de comprobaciones. Las corridas dejan usuarios ficticios y direcciones con baja lógica; no borran usuarios ni reinician la base.

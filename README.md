@@ -6,7 +6,7 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Backend de los diez casos de uso implementado y verificado.** El servicio expone las diecisiete operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT (de personas y de módulos), validación en la frontera, formato de error común y correlación. Se comprueba con 96 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
+**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT para el front, lecturas sin credencial para los otros módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 92 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
 
 La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), la trazabilidad y la verificación. La integración HTTP de bienvenida y recuperación se probó con Notificaciones aplicando el parche incluido para ese módulo; Catálogo se probó con JWT emitidos por Usuarios. Los resultados y bloqueos de los demás consumidores están en [Integración](doc/integracion/README.md). La firma asimétrica y la distribución de credenciales siguen requiriendo acuerdo entre equipos. La [entrega actual](doc/ENTREGA_FINAL.md) reúne trazabilidad, evidencia y diagramas; el PDF de la primera entrega se conserva como antecedente.
 
@@ -41,7 +41,7 @@ CU-01 a CU-05 son los CORE; CU-06 a CU-10, los de evolución.
 
 ## Endpoints
 
-Base URL: `/api/v1`. Son públicos el registro, el login y la recuperación de contraseña. El resto requiere `Authorization: Bearer <token>`; sobre `/users/{id}` el token debe ser del usuario de la ruta, salvo la administración (ADMIN) y la lectura de los módulos consumidores, que piden a Usuarios su propio JWT (`POST /auth/module-token`, rol `MODULO`) y lo envían como Bearer.
+Base URL: `/api/v1`. Son públicos el registro, el login y la recuperación de contraseña. El JWT (`Authorization: Bearer <token>`) es sólo para el front: sobre `/users/{id}` el token debe ser del usuario de la ruta, salvo la administración (ADMIN). Los demás módulos no usan JWT ni claves: leen el perfil, las direcciones y el estado y rol (`GET /users/{id}`, `/users/{id}/addresses`, `/users/{id}/access`) sin credencial. Ver [Integración entre módulos](#integración-entre-módulos).
 
 | Método | Ruta | CU |
 |---|---|---|
@@ -71,9 +71,31 @@ Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`,
 | INT-01 | Notificaciones (bienvenida) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
 | INT-06 | Notificaciones (recuperación de contraseña) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
 | INT-02 | Portal Web | Entrante | API disponible; prueba desde el Portal final pendiente |
-| INT-03 | Pedidos y Logística | Entrante | JWT de módulo implementado; consumidores publicados todavía usan mocks de Usuarios |
-| INT-04 | Catálogo | Entrante | JWT de Usuarios validado en Catálogo; JWT de módulo disponible para consultas |
-| INT-05 | Notificaciones, Pagos, Opiniones y Analítica | Entrante | Notificaciones probado con el parche; otros consumidores requieren ajustes |
+| INT-03 | Pedidos y Logística | Entrante | Lectura sin credencial disponible; ver la tabla de abajo |
+| INT-04 | Catálogo | Entrante | Valida el JWT de Usuarios que llega desde el front; no consulta a Usuarios |
+| INT-05 | Notificaciones, Pagos, Opiniones y Analítica | Entrante | Lectura sin credencial disponible; ver la tabla de abajo |
+
+### Integración entre módulos
+
+Entre módulos no hay JWT ni claves: ningún módulo necesita pedirle nada a Usuarios ni configurar un secreto para consultarlo, alcanza con hacer la request. El JWT es sólo la sesión del usuario que llega desde el front.
+
+| Operación | Para qué | Credencial |
+|---|---|---|
+| `GET /api/v1/users/{id}` | Perfil: `id`, `nombre`, `apellido`, `email`, `telefono`, `rol`, `estado`, `fechaAlta`. Responde 200 también si la cuenta está `INACTIVO` | Ninguna |
+| `GET /api/v1/users/{id}/access` | Sólo `usuarioId`, `estado` y `rol`, sin datos personales | Ninguna |
+| `GET /api/v1/users/{id}/addresses` | Direcciones activas del usuario (Pedidos) | Ninguna |
+
+Sin credencial sólo se lee: modificar, borrar o administrar responde 401. Si un módulo manda igual `X-Api-Key` o un `Authorization` vacío o viejo, se ignora y la lectura funciona. Con el JWT de una persona (el front) rigen las reglas del titular (RN-05). Usuarios también llama a Notificaciones sin credencial.
+
+Estado de cada consumidor según su repositorio (revisado el 17/11/2026):
+
+| Módulo | Qué consulta | Qué manda hoy | ¿Funciona sin cambios? |
+|---|---|---|---|
+| Notificaciones | `GET /users/{id}` (`id`, `nombre`, `email`, `estado`) | `X-Api-Key` | Sí, la clave se ignora. Su API todavía exige el JWT de un usuario para recibir nuestros envíos: tiene que aceptar llamadas sin credencial en `GET /templates` y `POST /notifications` |
+| Analítica | `GET /users/{id}` (`id`, `estado`) | `X-Api-Key` | Sí, la clave se ignora |
+| Pagos | `GET /users/{codigoUsuario}` | JWT de servicio opcional, vacío por defecto | No: espera `codigoUsuario` como UUID y nuestro id es numérico (`id`) |
+| Pedidos | `GET /users/{id}` | Nada | No: espera `id` UUID y una lista `direccionesIds`; nuestro id es numérico y las direcciones están en `/users/{id}/addresses` |
+| Logística | `GET /users/{id}` (`id`, `activo`, `rol`) | Nada (hoy usa un mock) | Al implementar el cliente: `activo` sale de `estado == "ACTIVO"` |
 
 ## Estructura del repositorio
 
@@ -100,7 +122,7 @@ Grupo 02 · Aplicaciones Interactivas · UADE · Prof. Alejandro Foglino: Camach
 
 - La firma del JWT es HS256 con un secreto compartido (`JWT_SECRET`). La firma asimétrica que menciona la clase 11 requiere acordar el algoritmo y la distribución de claves con los demás equipos.
 - Un JWT emitido no se revoca: conserva su rol hasta vencer. El rol y el estado vigentes se consultan con CU-09 y CU-10.
-- Los módulos consumidores piden su JWT con una clave propia (`MODULE_KEY_*`), que se lee de variables de entorno; falta acordar su distribución y rotación con cada equipo. El token de módulo no expira pronto (8 horas por defecto) y se vuelve a pedir al vencer.
+- Las lecturas entre módulos no llevan credencial: cualquiera que llegue a la API puede leer el perfil, el email, el teléfono y las direcciones de un usuario si conoce su id. Es una decisión para simplificar la integración del TP; en un ambiente real esas rutas quedarían sólo en la red interna o detrás de un gateway.
 - Notificaciones se llama de forma sincrónica y con timeout, después de guardar. Si el módulo falla, el envío se registra y se pierde: no hay cola ni reintento (los brokers quedan como evolución).
 - Hibernate crea las tablas con `ddl-auto=update`; en producción se usarían migraciones (Flyway), como indica la clase 3.
 - Las integraciones con Pedidos, Pagos, Logística, Opiniones y Analítica y el Portal dependen de los ajustes de esos equipos; el detalle está en [Integración](doc/integracion/README.md).
@@ -118,7 +140,7 @@ Requisitos: JDK 25, Maven (ver el instructivo de la cátedra) y Docker para la b
 ```bash
 docker compose up -d     # levanta PostgreSQL en localhost:5432 (los datos persisten en un volumen)
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
-mvn test                 # 96 pruebas automáticas; usan H2 en memoria, no necesitan Docker
+mvn test                 # 92 pruebas automáticas; usan H2 en memoria, no necesitan Docker
 ```
 
 También se puede levantar el backend dentro de la red de Docker Compose junto con PostgreSQL (clase 13). Detener antes `mvn spring-boot:run`: ambos usan el puerto 8089.
@@ -141,7 +163,6 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 | `JWT_EXPIRATION_MINUTES` | Vigencia del token | `60` |
 | `CORS_ALLOWED_ORIGINS` | Orígenes del Portal, separados por coma | `http://localhost:5173,http://localhost:5174` |
 | `ADMIN_EMAIL` y `ADMIN_PASSWORD` | Primer administrador (CU-06 y CU-07); se definen juntos, la contraseña tiene entre 8 caracteres y 72 bytes | Sin ellos no se crea ningún administrador |
-| `MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA` | Clave con la que cada módulo consumidor pide su JWT, de al menos 16 caracteres (CU-10) | Vacías: el módulo no tiene acceso |
 | `RECOVERY_TOKEN_MINUTES` | Vigencia del token de recuperación de contraseña | `30` |
 | `MOCK_LOG_RECOVERY_TOKEN` | Sólo para demostrar CU-08 en local: el mock de Notificaciones escribe el token en el log | `false`; no activar en ambientes compartidos |
 | `NOTIFICACIONES_MODO` | `mock` (sólo log) o `http` (API real de Notificaciones) | `mock` |
@@ -153,7 +174,7 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 - Swagger UI: `http://localhost:8089/swagger-ui.html` (JSON en `/v3/api-docs`).
 - Base de datos: H2 en memoria. La consola web está en `http://localhost:8089/h2-console` (JDBC URL `jdbc:h2:mem:deliverygo_usuarios`, usuario `sa`, sin contraseña); se desactiva con `H2_CONSOLE_ENABLED=false`. Al arrancar se crean los roles CLIENTE, COMERCIO, REPARTIDOR y ADMIN.
 - INT-01 (bienvenida) e INT-06 (recuperación de contraseña) con Notificaciones usan por defecto un mock declarado que sólo escribe en el log; con `NOTIFICACIONES_MODO=http` llaman a la API real. Su falla nunca revierte el registro ni cambia la respuesta.
-- Para probar la administración y los módulos en local, definir antes de arrancar, por ejemplo: `ADMIN_EMAIL=admin@deliverygo.test`, `ADMIN_PASSWORD=<una contraseña propia>` y `MODULE_KEY_PEDIDOS=<una clave de 16 caracteres o más>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) de una persona o de un módulo (el de módulo se obtiene con `POST /api/v1/auth/module-token`). Las claves y contraseñas no se suben al repositorio.
+- Para probar la administración en local, definir antes de arrancar `ADMIN_EMAIL=admin@deliverygo.test` y `ADMIN_PASSWORD=<una contraseña propia>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) de una persona; las consultas de módulos se prueban sin autorizar. Las contraseñas no se suben al repositorio.
 
 ## Datos de prueba
 
@@ -166,9 +187,6 @@ En PowerShell, antes de iniciar Usuarios:
 ```powershell
 $env:ADMIN_EMAIL = 'admin@deliverygo.test'
 $env:ADMIN_PASSWORD = 'AdminDemo2026!'
-$env:MODULE_KEY_PEDIDOS = 'pedidos-demo-local-2026'
-$env:MODULE_KEY_CATALOGO = 'catalogo-demo-local-2026'
-$env:MODULE_KEY_NOTIFICACIONES = 'notificaciones-demo-local-2026'
 # Opcional, sólo para ver el token de recuperación en el log del mock local:
 $env:MOCK_LOG_RECOVERY_TOKEN = 'true'
 docker compose up -d

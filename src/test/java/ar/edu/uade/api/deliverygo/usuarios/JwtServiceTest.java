@@ -36,19 +36,6 @@ class JwtServiceTest {
     }
 
     @Test
-    void generaYLeeUnTokenDeModulo() {
-        TokenEmitido emitido = servicio.generarTokenModulo("pedidos");
-
-        JwtService.Credencial credencial = servicio.leerCredencial(emitido.token());
-
-        assertThat(credencial.sujeto()).isEqualTo("pedidos");
-        assertThat(credencial.rol()).isEqualTo(JwtService.ROL_MODULO);
-        assertThat(emitido.expiraEn()).isAfter(Instant.now().plusSeconds(479 * 60)).isBefore(Instant.now().plusSeconds(481 * 60));
-        // un token de módulo no se lee como persona: su sujeto no es un id
-        assertThatThrownBy(() -> servicio.leer(emitido.token())).isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
     void rechazaUnTokenFirmadoConOtraClave() {
         String ajeno = new JwtService("otra-clave-distinta-de-mas-de-treinta-y-dos-bytes", 60)
                 .generarToken(1L, "ADMIN").token();

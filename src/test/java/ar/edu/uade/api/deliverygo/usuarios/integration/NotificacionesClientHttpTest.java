@@ -1,25 +1,20 @@
 package ar.edu.uade.api.deliverygo.usuarios.integration;
 
-import ar.edu.uade.api.deliverygo.usuarios.security.JwtService;
-import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.test.web.client.RequestMatcher;
 import org.springframework.web.client.RestClient;
 
 import java.net.ConnectException;
-import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,7 +31,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 class NotificacionesClientHttpTest {
 
     private static final String BASE = "http://notificaciones.test";
-    private static final String SECRETO = "secreto-de-prueba-con-mas-de-treinta-y-dos-caracteres";
     private static final String BIENVENIDA = "USUARIO_BIENVENIDA_EMAIL";
     private static final String RECUPERACION = "RECUPERACION_PASSWORD_EMAIL";
 
@@ -58,7 +52,6 @@ class NotificacionesClientHttpTest {
              "cantidadIntentos": 0, "fechaCreacion": "2026-11-16T12:00:00Z"}
             """;
 
-    private final JwtService jwtService = new JwtService(SECRETO, 60);
     private MockRestServiceServer servidor;
     private NotificacionesClientHttp cliente;
 
@@ -74,7 +67,7 @@ class NotificacionesClientHttpTest {
                     c.add(new MappingJackson2HttpMessageConverter(estricto));
                 });
         servidor = MockRestServiceServer.bindTo(builder).ignoreExpectOrder(true).build();
-        cliente = new NotificacionesClientHttp(builder.build(), jwtService, BIENVENIDA, RECUPERACION);
+        cliente = new NotificacionesClientHttp(builder.build(), BIENVENIDA, RECUPERACION);
         MDC.put("correlationId", "corr-123");
     }
 
@@ -84,15 +77,15 @@ class NotificacionesClientHttpTest {
     }
 
     @Test
-    void enviaLaBienvenidaConPlantillaTokenDeServicioYCorrelacion() {
+    void enviaLaBienvenidaConPlantillaSinCredencialYConCorrelacion() {
         servidor.expect(requestTo(BASE + "/api/v1/templates"))
                 .andExpect(method(HttpMethod.GET))
-                .andExpect(tokenDeServicioPara(42L))
+                .andExpect(sinCredencial())
                 .andExpect(header("X-Correlation-Id", "corr-123"))
                 .andRespond(withSuccess(PLANTILLAS, MediaType.APPLICATION_JSON));
         servidor.expect(requestTo(BASE + "/api/v1/notifications"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(tokenDeServicioPara(42L))
+                .andExpect(sinCredencial())
                 .andExpect(header("X-Correlation-Id", "corr-123"))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("""
@@ -111,7 +104,7 @@ class NotificacionesClientHttpTest {
                 .andRespond(withSuccess(PLANTILLAS, MediaType.APPLICATION_JSON));
         servidor.expect(requestTo(BASE + "/api/v1/notifications"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(tokenDeServicioPara(42L))
+                .andExpect(sinCredencial())
                 .andExpect(content().json("""
                         {"destinatarioId": 42, "plantillaId": 9, "parametros": {"nombre": "Ana", "token": "tok-abc"}}
                         """, true))
@@ -257,24 +250,18 @@ class NotificacionesClientHttpTest {
 
     @Test
     void noArrancaSiLaUrlApuntaAlMismoServicio() {
-        assertThatThrownBy(() -> new NotificacionesClientHttp(RestClient.builder(), jwtService,
+        assertThatThrownBy(() -> new NotificacionesClientHttp(RestClient.builder(),
                 "http://localhost:8089", 2000, BIENVENIDA, RECUPERACION, 8089))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("NOTIFICACIONES_URL")
                 .hasMessageContaining("SERVER_PORT");
     }
 
-    // El Bearer es un JWT HS256 con el mismo secreto: sub = destinatario, role = SISTEMA, vigencia de 2 minutos.
-    private RequestMatcher tokenDeServicioPara(Long destinatarioId) {
+    // Entre módulos no se usa JWT ni clave: la llamada a Notificaciones no lleva credencial.
+    private static org.springframework.test.web.client.RequestMatcher sinCredencial() {
         return request -> {
-            String autorizacion = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            assertThat(autorizacion).startsWith("Bearer ");
-            UsuarioAutenticado servicio = jwtService.leer(autorizacion.substring("Bearer ".length()));
-            assertThat(servicio.id()).isEqualTo(destinatarioId);
-            assertThat(servicio.rol()).isEqualTo("SISTEMA");
-            assertThat(servicio.expiraEn())
-                    .isAfter(Instant.now().plusSeconds(60))
-                    .isBeforeOrEqualTo(Instant.now().plusSeconds(120));
+            headerDoesNotExist("Authorization").match(request);
+            headerDoesNotExist("X-Api-Key").match(request);
         };
     }
 }
