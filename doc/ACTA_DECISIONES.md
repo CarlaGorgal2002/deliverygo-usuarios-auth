@@ -27,7 +27,7 @@ Módulo Usuarios y Autenticación · Grupo 02. Este documento reúne y ordena la
 | DM-13 | La administración (CU-06, CU-07) la hace un ADMIN verificado contra la base, con rutas bajo `/users/{id}` | `AdministracionService` |
 | DM-14 | El token de recuperación es aleatorio de 256 bits y se guarda sólo su hash | `RecuperacionService`, ENT-04 |
 | DM-15 | Renovación deslizante: un JWT vigente se canjea por uno nuevo, sin refresh token persistido | `AuthService.renovarSesion` |
-| DM-16 | Los módulos piden a Usuarios un JWT con rol MODULO (`POST /auth/module-token`) y lo usan como Bearer, sólo lectura | `AuthService.emitirTokenModulo`, `SecurityConfig` |
+| DM-16 | Los módulos piden a Usuarios un JWT con rol MODULO (`POST /auth/module-token`) y lo usan como Bearer, sólo lectura; la clave en `X-Api-Key` sigue aceptándose como alternativa | `AuthService.emitirTokenModulo`, `ApiKeyAuthenticationFilter`, `SecurityConfig` |
 | DM-17 | El JWT no se revoca; el rol y el estado vigentes se consultan con CU-09 y CU-10 | API-15, API-16 |
 | DM-18 | El alta de usuario no abre una transacción propia: `save()` ya es transaccional y la bienvenida se pide después | `UsuarioService.registrarUsuario` |
 | DM-19 | Sin bloqueos de filas ni ejecución asíncrona; un email repetido en una carrera lo rechaza la restricción única (409) | `GlobalExceptionHandler`, `IntegridadApiTest` |
@@ -43,7 +43,7 @@ Módulo Usuarios y Autenticación · Grupo 02. Este documento reúne y ordena la
 | DC-05 | Contraseña de al menos 8 caracteres en el alta; en el login, obligatoria y no vacía |
 | DC-06 | `X-Correlation-Id` en todas las respuestas |
 | DC-07 | IDs positivos: 400 si el formato es inválido y 404 si el usuario no existe |
-| DC-08 | Los módulos piden un JWT con rol MODULO presentando su nombre y su clave (API-17); el token sólo permite leer |
+| DC-08 | Los módulos piden un JWT con rol MODULO presentando su nombre y su clave (API-17), o mandan su clave en `X-Api-Key`; en ambos casos sólo pueden leer, y si llegan las dos cosas manda el JWT |
 | DC-09 | La recuperación de contraseña responde siempre 202; el token es de un solo uso y vence a los 30 minutos |
 | DC-10 | El JWT no se revoca; se consulta el rol y el estado vigentes |
 
@@ -52,10 +52,10 @@ Módulo Usuarios y Autenticación · Grupo 02. Este documento reúne y ordena la
 | Cambio | Motivo | Impacto |
 |---|---|---|
 | Se eliminan los bloqueos de filas, `@Async` y los scripts de validación (DM-19) | Exceden lo visto en la cátedra | Ninguno sobre otros módulos; Notificaciones se llama de forma sincrónica con timeout |
-| Los módulos dejan de usar `X-Api-Key` y piden un JWT de módulo (DM-16, DC-08, API-17) | La guía de seguridad de la cátedra (`Seguridad.jpg`, clases 10 y 11) define que Usuarios emite el JWT y cada módulo valida JWT y rol | Los módulos que hoy mandan `X-Api-Key` deben pedir su token y enviarlo como Bearer |
+| Los módulos pueden pedir un JWT de módulo (API-17) y usarlo como Bearer, además de seguir mandando `X-Api-Key` (DM-16, DC-08) | El TPO fija la convención "Autenticación: Bearer JWT" y la guía de seguridad de la cátedra (`Seguridad.jpg`) muestra que Usuarios emite el JWT; pero Notificaciones y Analítica ya mandan `X-Api-Key`, y Pagos espera un JWT de servicio emitido por Usuarios | Nadie queda sin servicio: los equipos que hoy mandan `X-Api-Key` (Notificaciones, Opiniones y Analítica) pueden seguir así, y Pagos y los demás pueden pasarse al Bearer sin que Usuarios cambie |
 | Backend y PostgreSQL en Docker (`Dockerfile`, `compose.backend.yaml`) | Clase 13 | Ninguno |
 
-**Pendiente de aprobación docente:** la política de cambios del TPO pide registrar el cambio, analizar su impacto en otros módulos y obtener aprobación docente antes de modificar un contrato obligatorio. El cambio de `X-Api-Key` a JWT de módulo está registrado y su impacto analizado en esta acta; falta comunicarlo al docente y a los equipos consumidores.
+**Pendiente de aprobación docente:** la política de cambios del TPO pide registrar el cambio, analizar su impacto en otros módulos y obtener aprobación docente antes de modificar un contrato obligatorio. La incorporación del JWT de módulo (sin quitar `X-Api-Key`) está registrada y su impacto analizado en esta acta: no rompe a ningún consumidor existente. Falta comunicarla al docente y a los equipos consumidores, y acordar con ellos cuál de las dos formas van a usar.
 
 ## Pendientes conocidos
 

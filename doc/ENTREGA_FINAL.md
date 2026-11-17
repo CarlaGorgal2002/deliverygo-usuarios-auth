@@ -2,7 +2,7 @@
 
 **Grupo 02 · Aplicaciones Interactivas · DeliveryGo · 16 de noviembre de 2026**
 
-El módulo implementa los diez casos de uso y las diecisiete operaciones REST del contrato. Incluye persistencia PostgreSQL con Docker Compose (también el backend en contenedor, clase 13), JWT, permisos por titular y rol, JWT de módulos emitido por Usuarios, validaciones y errores comunes. Esta entrega rehace los diagramas con las capas y participantes que pide la plantilla, agrega las colecciones de Postman y el backlog, y deja el código dentro de lo visto en la cátedra.
+El módulo implementa los diez casos de uso y las diecisiete operaciones REST del contrato. Incluye persistencia PostgreSQL con Docker Compose (también el backend en contenedor, clase 13), JWT, permisos por titular y rol, JWT de módulos emitido por Usuarios (con `X-Api-Key` como alternativa), validaciones y errores comunes. Esta entrega rehace los diagramas con las capas y participantes que pide la plantilla, agrega las colecciones de Postman y el backlog, y deja el código dentro de lo visto en la cátedra.
 
 El alcance propio está implementado y probado. La integración completa del ecosistema requiere además que los otros equipos incorporen las correcciones y acuerdos documentados. En particular, Notificaciones fue probado con un parche local incluido en esta entrega; no se afirma que ese parche ya esté publicado en su repositorio.
 
@@ -41,7 +41,7 @@ Las matrices de RN, ENT, REL, REP, DTO e INT se conservan en [trazabilidad y fue
 
 | Comprobación | Resultado |
 |---|---|
-| Maven, backend de Usuarios | 96 pruebas; 0 fallas, errores u omisiones |
+| Maven, backend de Usuarios | 97 pruebas; 0 fallas, errores u omisiones |
 | Postman, Usuarios sobre PostgreSQL | 45 solicitudes; 155 comprobaciones; 0 fallas |
 | Postman, Notificaciones con parche local | 12 solicitudes; 40 comprobaciones; 0 fallas |
 | Postman, Catálogo sin modificar su código | 7 solicitudes; 8 comprobaciones; 0 fallas |

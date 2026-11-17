@@ -16,14 +16,14 @@ info:
     Convenciones: rutas /api/v1; JSON UTF-8; IDs Long positivos; DTO separados de entidades; fechas ISO-8601 con zona;
     errores normalizados; PUT completo; baja lógica con 204 sin cuerpo. Datos de ejemplo ficticios.
     Hay una sola forma de autenticarse en las rutas protegidas: el JWT Bearer que emite Usuarios, de una persona (rol CLIENTE, COMERCIO,
-    REPARTIDOR o ADMIN) o de un módulo consumidor (rol MODULO, sólo lectura, pedido con API-17). Un ADMIN no es un módulo.
+    REPARTIDOR o ADMIN) o de un módulo consumidor (rol MODULO, sólo lectura, pedido con API-17 o con su clave en X-Api-Key). Un ADMIN no es un módulo.
     Usuarios emite el JWT; cada servicio valida firma, vencimiento y rol.
     El objetivo de firma es asimétrico, conforme a la teoría. No se distribuyen claves privadas en el contrato.
 
     Decisiones que completan ambigüedades de la primera entrega: DC-01 campos desconocidos ignorados;
     DC-02 normalización de email; DC-03 ausencia/null de opcionales y reemplazo PUT;
     DC-04 zona horaria; DC-05 validación de login; DC-06 correlación; DC-07 errores de ruta y usuario inexistente;
-    DC-08 token de módulo (rol MODULO) emitido por Usuarios con la clave del módulo; DC-09 recuperación de contraseña uniforme y de un solo uso;
+    DC-08 credencial de módulo (rol MODULO): token emitido por Usuarios con la clave del módulo o la clave en X-Api-Key; DC-09 recuperación de contraseña uniforme y de un solo uso;
     DC-10 rol y estado vigentes consultables, con JWT sin estado y sin revocación.
     Se documentan como decisiones del equipo, no como nuevas instrucciones del profesor.
   contact:
@@ -351,7 +351,7 @@ paths:
         Un módulo consumidor (Pedidos, Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica) presenta su nombre y la clave que le
         entregó el equipo de Usuarios (RN-15) y recibe un JWT con role MODULO, firmado por Usuarios, igual que el de las personas.
         Ese JWT viaja como Authorization: Bearer en las consultas de lectura (API-03, API-05 sólo Pedidos, y API-16); cada módulo vuelve a
-        pedirlo cuando vence. Módulo desconocido, clave incorrecta, clave de otro módulo y clave no configurada (vacía o de menos de 16
+        pedirlo cuando vence. La clave en X-Api-Key sigue aceptándose como alternativa, con los mismos permisos. Módulo desconocido, clave incorrecta, clave de otro módulo y clave no configurada (vacía o de menos de 16
         caracteres) dan el mismo 401 INVALID_CREDENTIALS. El token de un módulo no renueva ni valida sesiones de personas.
         Esta operación es pública aun si el cliente conserva un token viejo.
       operationId: emitirTokenModulo
@@ -876,9 +876,12 @@ paths:
       summary: Consultar perfil
       description: |-
         Con JWT: el titular consulta su propio perfil; sub debe coincidir con id y la cuenta debe estar ACTIVA.
-        Con el JWT de un módulo (API-17): cualquier módulo consumidor consulta el perfil de un usuario y recibe 200 también si la cuenta está INACTIVA, para decidir con sus propias reglas (RN-15). Un JWT de otra persona, aunque sea ADMIN, recibe 403.
+        Con el JWT de un módulo (API-17) o su clave en X-Api-Key: cualquier módulo consumidor consulta el perfil de un usuario y recibe 200 también si la cuenta está INACTIVA, para decidir con sus propias reglas (RN-15). Un JWT de otra persona, aunque sea ADMIN, recibe 403.
         No devuelve contraseña ni hash, y las direcciones se obtienen en API-05.
       operationId: consultarPerfil
+      security:
+      - bearerAuth: []
+      - moduleApiKey: []
       x-trazabilidad:
         api: API-03
         caso-de-uso: CU-03
@@ -1037,7 +1040,7 @@ paths:
         - Notificaciones
         - Pagos
         - Opiniones y Analítica
-        estado: Habilitada con el JWT de módulo (API-17, RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
+        estado: Habilitada con el JWT de módulo (API-17) o X-Api-Key (RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
         regla: Sólo lectura. Recibe el estado aunque la cuenta esté INACTIVA. Un rol humano distinto de CLIENTE
           no identifica a un módulo.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
@@ -1607,9 +1610,12 @@ paths:
       - Usuarios
       summary: Consultar estado y rol para otro módulo
       description: 'Consulta liviana para módulos consumidores: devuelve sólo estado y rol vigentes, sin datos personales.
-        Se autentica con el JWT de módulo (rol MODULO, API-17, RN-15); un JWT de persona, aunque sea ADMIN, recibe 403.
+        Se autentica con el JWT de módulo (rol MODULO, API-17, RN-15) o con la clave del módulo en X-Api-Key; un JWT de persona, aunque sea ADMIN, recibe 403.
         Una cuenta INACTIVA se devuelve con 200 para que el módulo decida con sus propias reglas.'
       operationId: consultarAccesoUsuario
+      security:
+      - bearerAuth: []
+      - moduleApiKey: []
       x-trazabilidad:
         api: API-16
         caso-de-uso: CU-10
@@ -1757,7 +1763,7 @@ paths:
         - Notificaciones
         - Pagos
         - Opiniones y Analítica
-        estado: Habilitada con el JWT de módulo (API-17, RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
+        estado: Habilitada con el JWT de módulo (API-17) o X-Api-Key (RN-15, DC-08). Cada equipo recibe su clave del equipo de Usuarios.
         regla: Sólo lectura. El sub del token identifica al módulo; no hay un rol humano que lo reemplace.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
   /api/v1/users/{id}/addresses:
@@ -1767,9 +1773,12 @@ paths:
       summary: Listar direcciones activas
       description: |-
         Con JWT: el titular ACTIVO consulta sus direcciones. Devuelve un array sin paginación; si no tiene direcciones activas devuelve 200 y [].
-        Con el JWT de módulo: sólo el módulo Pedidos puede listar las direcciones activas de un usuario, también si la cuenta está INACTIVA (CU-05 A5: 404 si el usuario no existe); debe consultar API-03 o API-16 para conocer el estado. Los demás módulos reciben 403.
+        Con el JWT de módulo o X-Api-Key: sólo el módulo Pedidos puede listar las direcciones activas de un usuario, también si la cuenta está INACTIVA (CU-05 A5: 404 si el usuario no existe); debe consultar API-03 o API-16 para conocer el estado. Los demás módulos reciben 403.
         No incluye direcciones dadas de baja. Puede haber cero o una predeterminada, nunca más de una.
       operationId: listarDirecciones
+      security:
+      - bearerAuth: []
+      - moduleApiKey: []
       x-trazabilidad:
         api: API-05
         caso-de-uso: CU-05
@@ -1927,7 +1936,7 @@ paths:
       x-integracion-modulos:
         consumidores:
         - Pedidos
-        estado: Habilitada con el JWT de módulo, sólo para Pedidos (RN-05, RN-15, DC-08).
+        estado: Habilitada con el JWT de módulo o X-Api-Key, sólo para Pedidos (RN-05, RN-15, DC-08).
         regla: Sólo lectura y autorización explícita por operación.
       x-estado-implementacion: Implementada; verificada con pruebas de integración (ver VERIFICACION.md)
     post:
@@ -2646,6 +2655,13 @@ components:
         /api/v1/auth/refresh); de un módulo consumidor, por POST /api/v1/auth/module-token. En Swagger UI pegar sólo el
         token. sub contiene el id del usuario como texto (o el nombre del módulo); role su rol (o MODULO); exp el
         vencimiento. Validar firma, vencimiento, rol, titularidad y estado en backend.
+    moduleApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Alternativa al JWT de módulo para Pedidos, Logística, Catálogo, Notificaciones, Pagos, Opiniones y
+        Analítica. La clave que entregó el equipo de Usuarios, en cada llamada. Sólo lectura. Si llega también
+        Authorization, manda el JWT.
   parameters:
     CorrelationId:
       name: X-Correlation-Id

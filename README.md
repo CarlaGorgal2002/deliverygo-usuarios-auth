@@ -6,7 +6,7 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Backend de los diez casos de uso implementado y verificado.** El servicio expone las diecisiete operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT (de personas y de módulos), validación en la frontera, formato de error común y correlación. Se comprueba con 96 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
+**Backend de los diez casos de uso implementado y verificado.** El servicio expone las diecisiete operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT (de personas y de módulos; los módulos también pueden usar `X-Api-Key`), validación en la frontera, formato de error común y correlación. Se comprueba con 97 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
 
 La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), la trazabilidad y la verificación. La integración HTTP de bienvenida y recuperación se probó con Notificaciones aplicando el parche incluido para ese módulo; Catálogo se probó con JWT emitidos por Usuarios. Los resultados y bloqueos de los demás consumidores están en [Integración](doc/integracion/README.md). La firma asimétrica y la distribución de credenciales siguen requiriendo acuerdo entre equipos. La [entrega actual](doc/ENTREGA_FINAL.md) reúne trazabilidad, evidencia y diagramas; el PDF de la primera entrega se conserva como antecedente.
 
@@ -41,7 +41,7 @@ CU-01 a CU-05 son los CORE; CU-06 a CU-10, los de evolución.
 
 ## Endpoints
 
-Base URL: `/api/v1`. Son públicos el registro, el login y la recuperación de contraseña. El resto requiere `Authorization: Bearer <token>`; sobre `/users/{id}` el token debe ser del usuario de la ruta, salvo la administración (ADMIN) y la lectura de los módulos consumidores, que piden a Usuarios su propio JWT (`POST /auth/module-token`, rol `MODULO`) y lo envían como Bearer.
+Base URL: `/api/v1`. Son públicos el registro, el login y la recuperación de contraseña. El resto requiere `Authorization: Bearer <token>`; sobre `/users/{id}` el token debe ser del usuario de la ruta, salvo la administración (ADMIN) y la lectura de los módulos consumidores, que piden a Usuarios su propio JWT (`POST /auth/module-token`, rol `MODULO`) y lo envían como Bearer, o bien mandan su clave en `X-Api-Key`.
 
 | Método | Ruta | CU |
 |---|---|---|
@@ -71,8 +71,8 @@ Los errores siguen el formato normalizado del ecosistema: `timestamp`, `status`,
 | INT-01 | Notificaciones (bienvenida) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
 | INT-06 | Notificaciones (recuperación de contraseña) | Saliente | Cliente HTTP real (`NOTIFICACIONES_MODO=http`); mock declarado por defecto |
 | INT-02 | Portal Web | Entrante | API disponible; prueba desde el Portal final pendiente |
-| INT-03 | Pedidos y Logística | Entrante | JWT de módulo implementado; consumidores publicados todavía usan mocks de Usuarios |
-| INT-04 | Catálogo | Entrante | JWT de Usuarios validado en Catálogo; JWT de módulo disponible para consultas |
+| INT-03 | Pedidos y Logística | Entrante | JWT de módulo y `X-Api-Key` implementados; consumidores publicados todavía usan mocks de Usuarios |
+| INT-04 | Catálogo | Entrante | JWT de Usuarios validado en Catálogo; JWT de módulo y `X-Api-Key` disponibles para consultas |
 | INT-05 | Notificaciones, Pagos, Opiniones y Analítica | Entrante | Notificaciones probado con el parche; otros consumidores requieren ajustes |
 
 ## Estructura del repositorio
@@ -100,7 +100,7 @@ Grupo 02 · Aplicaciones Interactivas · UADE · Prof. Alejandro Foglino: Camach
 
 - La firma del JWT es HS256 con un secreto compartido (`JWT_SECRET`). La firma asimétrica que menciona la clase 11 requiere acordar el algoritmo y la distribución de claves con los demás equipos.
 - Un JWT emitido no se revoca: conserva su rol hasta vencer. El rol y el estado vigentes se consultan con CU-09 y CU-10.
-- Los módulos consumidores piden su JWT con una clave propia (`MODULE_KEY_*`), que se lee de variables de entorno; falta acordar su distribución y rotación con cada equipo. El token de módulo no expira pronto (8 horas por defecto) y se vuelve a pedir al vencer.
+- Los módulos consumidores piden su JWT con una clave propia (`MODULE_KEY_*`), que se lee de variables de entorno; falta acordar su distribución y rotación con cada equipo. El token de módulo no expira pronto (8 horas por defecto) y se vuelve a pedir al vencer; con `X-Api-Key` la misma clave va en cada llamada.
 - Notificaciones se llama de forma sincrónica y con timeout, después de guardar. Si el módulo falla, el envío se registra y se pierde: no hay cola ni reintento (los brokers quedan como evolución).
 - Hibernate crea las tablas con `ddl-auto=update`; en producción se usarían migraciones (Flyway), como indica la clase 3.
 - Las integraciones con Pedidos, Pagos, Logística, Opiniones y Analítica y el Portal dependen de los ajustes de esos equipos; el detalle está en [Integración](doc/integracion/README.md).
@@ -118,7 +118,7 @@ Requisitos: JDK 25, Maven (ver el instructivo de la cátedra) y Docker para la b
 ```bash
 docker compose up -d     # levanta PostgreSQL en localhost:5432 (los datos persisten en un volumen)
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
-mvn test                 # 96 pruebas automáticas; usan H2 en memoria, no necesitan Docker
+mvn test                 # 97 pruebas automáticas; usan H2 en memoria, no necesitan Docker
 ```
 
 También se puede levantar el backend dentro de la red de Docker Compose junto con PostgreSQL (clase 13). Detener antes `mvn spring-boot:run`: ambos usan el puerto 8089.
@@ -153,7 +153,7 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 - Swagger UI: `http://localhost:8089/swagger-ui.html` (JSON en `/v3/api-docs`).
 - Base de datos: `docker compose exec postgres psql -U deliverygo -d deliverygo_usuarios` abre una consola SQL. Al arrancar se crean los roles CLIENTE, COMERCIO, REPARTIDOR y ADMIN si no existen.
 - INT-01 (bienvenida) e INT-06 (recuperación de contraseña) con Notificaciones usan por defecto un mock declarado que sólo escribe en el log; con `NOTIFICACIONES_MODO=http` llaman a la API real. Su falla nunca revierte el registro ni cambia la respuesta.
-- Para probar la administración y los módulos en local, definir antes de arrancar, por ejemplo: `ADMIN_EMAIL=admin@deliverygo.test`, `ADMIN_PASSWORD=<una contraseña propia>` y `MODULE_KEY_PEDIDOS=<una clave de 16 caracteres o más>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) de una persona o de un módulo (el de módulo se obtiene con `POST /api/v1/auth/module-token`). Las claves y contraseñas no se suben al repositorio.
+- Para probar la administración y los módulos en local, definir antes de arrancar, por ejemplo: `ADMIN_EMAIL=admin@deliverygo.test`, `ADMIN_PASSWORD=<una contraseña propia>` y `MODULE_KEY_PEDIDOS=<una clave de 16 caracteres o más>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) de una persona o de un módulo (el de módulo se obtiene con `POST /api/v1/auth/module-token`) y, para las consultas de los módulos, la clave en `moduleApiKey` (`X-Api-Key`). Las claves y contraseñas no se suben al repositorio.
 
 ## Datos de prueba
 

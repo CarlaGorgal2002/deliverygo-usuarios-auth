@@ -32,6 +32,11 @@ U --> M : JWT firmado por Usuarios: sub = módulo, role = MODULO
 M -> U : GET /users/{id} · GET /users/{id}/addresses (sólo Pedidos)\nGET /users/{id}/access\nAuthorization: Bearer <JWT de módulo> [RN-15]
 U -> U : JwtAuthenticationFilter valida firma y rol MODULO
 U --> M : 200 / 401 / 403 / 404
+note right of M
+  Alternativa: la clave del módulo en X-Api-Key en cada llamada
+  (ApiKeyAuthenticationFilter); mismos permisos de sólo lectura.
+  Si llegan las dos, manda el JWT.
+end note
 
 note over U, M
   El JWT está firmado, no cifrado: no lleva contraseñas ni datos personales.
