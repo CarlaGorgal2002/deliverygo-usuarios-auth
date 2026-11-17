@@ -1,0 +1,1029 @@
+{
+  "info": {
+    "name": "DeliveryGo - Usuarios y Autenticacion",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "16 operaciones. Ejecutar primero el recorrido automatico; luego copiar el token de recuperacion del log local para el recorrido manual."
+  },
+  "item": [
+    {
+      "name": "Recorrido automatico",
+      "item": [
+        {
+          "name": "API-01 | Registrar usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Pérez\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"email\", \"postman.\" + pm.variables.replaceIn(\"{{$guid}}\") + \"@example.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().rol).to.eql(\"CLIENTE\"); pm.expect(pm.response.json().estado).to.eql(\"ACTIVO\"); pm.expect(pm.response.json()).not.to.have.property(\"passwordHash\"); });",
+                  "if (pm.response.code < 300) pm.environment.set(\"usuarioId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registro duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Pérez\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-02 | Login usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "if (pm.response.code < 300) pm.environment.set(\"token\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-03 | Consultar perfil",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().email).to.eql(pm.environment.get(\"email\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-04 | Modificar perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Maria\",\n  \"apellido\": \"Pérez\",\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().nombre).to.eql(\"Ana Maria\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-05 | Listar direcciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/addresses",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json()).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-06 | Crear direccion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/addresses",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calle\": \"Av. Independencia\",\n  \"numero\": \"1200\",\n  \"ciudad\": \"Ciudad Autónoma de Buenos Aires\",\n  \"provincia\": \"Ciudad Autónoma de Buenos Aires\",\n  \"codigoPostal\": \"C1099AAZ\",\n  \"predeterminada\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "if (pm.response.code < 300) pm.environment.set(\"addressId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-07 | Modificar direccion",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/addresses/{{addressId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calle\": \"Av. Independencia\",\n  \"numero\": \"1201\",\n  \"ciudad\": \"Ciudad Autónoma de Buenos Aires\",\n  \"provincia\": \"Ciudad Autónoma de Buenos Aires\",\n  \"codigoPostal\": \"C1099AAZ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().numero).to.eql(\"1201\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-09 | Seleccionar predeterminada",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/addresses/{{addressId}}/default",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().predeterminada).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-08 | Eliminar direccion",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/addresses/{{addressId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", function () { pm.response.to.have.status(204); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verificar baja",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/addresses",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json()).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "if (pm.response.code < 300) pm.environment.set(\"adminToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-11 | Asignar COMERCIO",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/role",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rol\": \"COMERCIO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().rol).to.eql(\"COMERCIO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-15 | Validar sesion",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/session",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().rol).to.eql(\"COMERCIO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-14 | Renovar sesion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().rol).to.eql(\"COMERCIO\"); });",
+                  "if (pm.response.code < 300) pm.environment.set(\"token\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-10 | Desactivar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/status",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"INACTIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().estado).to.eql(\"INACTIVO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sesion inactiva rechazada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/session",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-16 | Consultar acceso inactivo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{moduleKeyPedidos}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/access",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { var b=pm.response.json(); pm.expect(b).to.have.all.keys(\"usuarioId\",\"estado\",\"rol\"); pm.expect(b.estado).to.eql(\"INACTIVO\"); pm.expect(b.rol).to.eql(\"COMERCIO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reactivar usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/status",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ACTIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modulo sin permiso de escritura",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{moduleKeyPedidos}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/role",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rol\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-16 | Consultar acceso activo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{moduleKeyPedidos}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/{{usuarioId}}/access",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"Contenido esperado\", function () { pm.expect(pm.response.json().estado).to.eql(\"ACTIVO\"); pm.expect(pm.response.json().rol).to.eql(\"COMERCIO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-12 | Solicitar recuperacion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/password/forgot",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 202\", function () { pm.response.to.have.status(202); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-12 | Email inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/password/forgot",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailInexistente}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"emailInexistente\", \"noexiste.\" + pm.variables.replaceIn(\"{{$guid}}\") + \"@example.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 202\", function () { pm.response.to.have.status(202); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "API-13 | Rechazar token invalido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/password/reset",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-invalido\",\n  \"password\": \"{{passwordNueva}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Restablecimiento manual",
+      "item": [
+        {
+          "name": "API-13 | Restablecer con token del log",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/password/reset",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{recoveryToken}}\",\n  \"password\": \"{{passwordNueva}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", function () { pm.response.to.have.status(204); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con nueva contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordNueva}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rechazar contraseña anterior",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rechazar reutilizacion de token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/password/reset",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{recoveryToken}}\",\n  \"password\": \"{{passwordNueva}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Correlation ID\", function () { pm.expect(pm.response.headers.get(\"X-Correlation-Id\")).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
