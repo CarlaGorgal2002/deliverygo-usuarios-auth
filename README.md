@@ -12,6 +12,15 @@ La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML compl
 
 Paquete para entregar: [G02 Usuarios Swagger — 30/10/2026](entregables/G02_Usuarios_Swagger_2026-10-30.zip).
 
+## Integrantes
+
+| Integrante | Responsabilidad |
+|---|---|
+| Camacho Lucas | A definir |
+| Gorgal Carla Fátima | A definir |
+| Hanine Santiago | A definir |
+| Safadie Ezra | A definir |
+
 ## Tecnologías
 
 - Java 25 y Maven
