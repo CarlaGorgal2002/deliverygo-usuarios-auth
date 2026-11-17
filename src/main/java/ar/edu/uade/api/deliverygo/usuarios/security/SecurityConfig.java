@@ -49,6 +49,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/module-token", "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        // Estado del servicio, público
+                        .requestMatchers(HttpMethod.GET, "/api/v1/status").permitAll()
                         // Consola de H2 (sólo desarrollo): tiene su propio login con el usuario de la base
                         .requestMatchers(PathRequest.toH2Console()).permitAll()
 
