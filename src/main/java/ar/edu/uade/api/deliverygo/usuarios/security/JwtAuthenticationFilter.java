@@ -42,8 +42,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (cabecera != null && cabecera.regionMatches(true, 0, PREFIJO_BEARER, 0, PREFIJO_BEARER.length())) {
             try {
                 UsuarioAutenticado usuario = jwtService.leer(cabecera.substring(PREFIJO_BEARER.length()).trim());
-                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                        usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol()))));
+                // Los tokens de servicio sólo sirven para llamar a otros módulos: no autentican a nadie en
+                // Usuarios. La solicitud sigue como no autenticada y una ruta protegida responde 401.
+                if (!JwtService.ROL_SERVICIO.equals(usuario.rol())) {
+                    SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                            usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol()))));
+                }
             } catch (JwtException | IllegalArgumentException e) {
                 // Token inválido: no se autentica a nadie.
                 SecurityContextHolder.clearContext();
