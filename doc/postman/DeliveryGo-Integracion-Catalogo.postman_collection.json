@@ -63,8 +63,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', data.token);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', cuerpo.token);"
             ]
           }
         }
@@ -105,8 +105,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('userId', data.id);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('userId', cuerpo.id);"
             ]
           }
         }
@@ -147,8 +147,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('token', cuerpo.token);"
             ]
           }
         }
@@ -196,8 +196,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('categoriaId', data.id);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('categoriaId', cuerpo.id);"
             ]
           }
         }
@@ -245,7 +245,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-              "const data = pm.response.json();"
+              "const cuerpo = pm.response.json();"
             ]
           }
         }
@@ -286,7 +286,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-              "const data = pm.response.json();"
+              "const cuerpo = pm.response.json();"
             ]
           }
         }

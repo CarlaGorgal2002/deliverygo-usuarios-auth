@@ -2,7 +2,7 @@
   "info": {
     "name": "DeliveryGo Usuarios y Notificaciones - integración HTTP",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Requiere ambos servicios reales en modo HTTP, JWT_SECRET compartido, API Key y emisor simulado sin fallas. Ejecutar con --delay-request 250. La lectura del token en historial es exclusiva de la demo local del envío simulado, usando la sesión del destinatario."
+    "description": "Requiere ambos servicios reales en modo HTTP, JWT_SECRET compartido, clave de módulo para el token de Usuarios (API-17) y emisor simulado sin fallas. Ejecutar con --delay-request 250. La lectura del token en historial es exclusiva de la demo local del envío simulado, usando la sesión del destinatario."
   },
   "event": [
     {
@@ -80,8 +80,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', data.token);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', cuerpo.token);"
             ]
           }
         }
@@ -116,10 +116,10 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
+              "const cuerpo = pm.response.json();",
               "",
               "['USUARIO_BIENVENIDA_EMAIL','RECUPERACION_PASSWORD_EMAIL'].forEach(nombre => {",
-              " const p = data.find(p => p.nombre === nombre && p.activa);",
+              " const p = cuerpo.find(p => p.nombre === nombre && p.activa);",
               " pm.test('Plantilla activa ' + nombre, () => pm.expect(p).to.exist);",
               " if (p) pm.collectionVariables.set(nombre, p.id);",
               "});"
@@ -163,8 +163,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('userId', data.id);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('userId', cuerpo.id);"
             ]
           }
         }
@@ -205,8 +205,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('token', cuerpo.token);"
             ]
           }
         }
@@ -241,9 +241,9 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
+              "const cuerpo = pm.response.json();",
               "",
-              "const notification = data.content.find(n => n.plantillaId === Number(pm.collectionVariables.get('USUARIO_BIENVENIDA_EMAIL')));",
+              "const notification = cuerpo.content.find(n => n.plantillaId === Number(pm.collectionVariables.get('USUARIO_BIENVENIDA_EMAIL')));",
               "const count = Number(pm.collectionVariables.get('pollCount') || 0) + 1;",
               "if (!notification && count < 20) {",
               " pm.collectionVariables.set('pollCount', count);",
@@ -263,7 +263,7 @@
       ]
     },
     {
-      "name": "06 INT-05 Consultar destinatario con API Key",
+      "name": "06 INT-05 Consultar destinatario con token de modulo",
       "request": {
         "method": "GET",
         "header": [
@@ -272,8 +272,8 @@
             "value": "{{correlationId}}"
           },
           {
-            "key": "X-Api-Key",
-            "value": "{{notificacionesKey}}"
+            "key": "Authorization",
+            "value": "Bearer {{moduloToken}}"
           }
         ],
         "auth": {
@@ -283,13 +283,30 @@
       },
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+              "pm.sendRequest({",
+              "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'notificaciones', clave: pm.variables.get('notificacionesKey') }) }",
+              "}, (err, res) => {",
+              "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+              "});"
+            ]
+          }
+        },
+        {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"ACTIVO\"));"
+              "const cuerpo = pm.response.json();",
+              "pm.test(\"estado esperado\", () => pm.expect(cuerpo.estado).to.eql(\"ACTIVO\"));"
             ]
           }
         }
@@ -365,9 +382,9 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
+              "const cuerpo = pm.response.json();",
               "",
-              "const notification = data.content.find(n => n.plantillaId === Number(pm.collectionVariables.get('RECUPERACION_PASSWORD_EMAIL')));",
+              "const notification = cuerpo.content.find(n => n.plantillaId === Number(pm.collectionVariables.get('RECUPERACION_PASSWORD_EMAIL')));",
               "const count = Number(pm.collectionVariables.get('pollCount') || 0) + 1;",
               "if (!notification && count < 20) {",
               " pm.collectionVariables.set('pollCount', count);",
@@ -462,8 +479,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
-              "const data = pm.response.json();",
-              "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(data.code).to.eql(\"INVALID_RESET_TOKEN\"));"
+              "const cuerpo = pm.response.json();",
+              "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_RESET_TOKEN\"));"
             ]
           }
         }
@@ -504,8 +521,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-              "const data = pm.response.json();",
-              "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+              "const cuerpo = pm.response.json();",
+              "if (pm.response.code < 300) pm.collectionVariables.set('token', cuerpo.token);"
             ]
           }
         }
@@ -546,8 +563,8 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-              "const data = pm.response.json();",
-              "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(data.code).to.eql(\"INVALID_CREDENTIALS\"));"
+              "const cuerpo = pm.response.json();",
+              "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_CREDENTIALS\"));"
             ]
           }
         }

@@ -6,12 +6,15 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.LoginResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.RestablecerPasswordRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SesionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SolicitarRecuperacionRequest;
+import ar.edu.uade.api.deliverygo.usuarios.dto.TokenModuloRequest;
+import ar.edu.uade.api.deliverygo.usuarios.dto.TokenModuloResponse;
 import ar.edu.uade.api.deliverygo.usuarios.exception.CredencialesInvalidasException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.SesionInvalidaException;
 import ar.edu.uade.api.deliverygo.usuarios.exception.UsuarioInactivoException;
 import ar.edu.uade.api.deliverygo.usuarios.integration.NotificacionesClient;
 import ar.edu.uade.api.deliverygo.usuarios.repository.UsuarioRepository;
 import ar.edu.uade.api.deliverygo.usuarios.security.JwtService;
+import ar.edu.uade.api.deliverygo.usuarios.security.ModulosApiKeys;
 import ar.edu.uade.api.deliverygo.usuarios.security.TokenEmitido;
 import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import org.slf4j.Logger;
@@ -29,21 +32,25 @@ public class AuthService {
 
     private static final String TIPO_TOKEN = "Bearer";
     private static final String MSG_CREDENCIALES = "Email o contraseña incorrectos";
+    private static final String MSG_CREDENCIALES_MODULO = "Módulo o clave incorrectos";
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final NotificacionesClient notificacionesClient;
     private final RecuperacionService recuperacionService;
+    private final ModulosApiKeys modulosApiKeys;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder, JwtService jwtService,
-                       NotificacionesClient notificacionesClient, RecuperacionService recuperacionService) {
+                       NotificacionesClient notificacionesClient, RecuperacionService recuperacionService,
+                       ModulosApiKeys modulosApiKeys) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.notificacionesClient = notificacionesClient;
         this.recuperacionService = recuperacionService;
+        this.modulosApiKeys = modulosApiKeys;
     }
 
     // SRV-02 (CU-02)
@@ -62,6 +69,18 @@ public class AuthService {
         }
 
         return iniciarSesion(usuario);
+    }
+
+    // SRV-17 (CU-10 / RN-15). El módulo presenta su clave una vez y recibe un JWT con rol MODULO. Módulo
+    // desconocido, clave incorrecta y clave no configurada dan el mismo 401.
+    public TokenModuloResponse emitirTokenModulo(TokenModuloRequest request) {
+        if (!modulosApiKeys.verificar(request.modulo(), request.clave())) {
+            throw new CredencialesInvalidasException(MSG_CREDENCIALES_MODULO);
+        }
+        String modulo = request.modulo().trim().toLowerCase();
+        TokenEmitido token = jwtService.generarTokenModulo(modulo);
+        return new TokenModuloResponse(token.token(), TIPO_TOKEN, token.expiraEn().atOffset(ZoneOffset.UTC),
+                modulo, JwtService.ROL_MODULO);
     }
 
     // SRV-14 (CU-09). Sólo se renueva un token todavía vigente (RN-14): el filtro ya verificó firma y

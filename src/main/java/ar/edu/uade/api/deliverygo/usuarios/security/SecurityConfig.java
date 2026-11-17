@@ -22,13 +22,13 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    // Roles de las personas (tabla roles). Los módulos consumidores entran con el rol MODULO (API Key).
+    // Roles de las personas (tabla roles). Los módulos consumidores entran con un JWT de rol MODULO que les emite Usuarios.
     private static final String[] PERSONAS = {"CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN"};
     private static final String ADMIN = "ADMIN";
     private static final String MODULO = "MODULO";
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ModulosApiKeys modulos,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
                                             ErrorResponseWriter errorWriter) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -42,9 +42,9 @@ public class SecurityConfig {
                                 request, response, HttpStatus.FORBIDDEN, "FORBIDDEN",
                                 "No tiene permiso para acceder a este recurso")))
                 .authorizeHttpRequests(auth -> auth
-                        // Públicas: registro, login y recuperación de contraseña (CU-01, CU-02, CU-08)
+                        // Públicas: registro, login, token de módulo y recuperación de contraseña (CU-01, CU-02, CU-08, CU-10)
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
+                                "/api/v1/auth/module-token", "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
                         // CU-09: renovar y validar la sesión es sólo para personas
@@ -65,8 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/**").hasAnyRole(PERSONAS)
 
                         .anyRequest().authenticated())
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(new ApiKeyAuthenticationFilter(modulos), JwtAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -80,7 +79,6 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origenes);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        // Los módulos consumidores llaman servidor a servidor: X-Api-Key no se habilita para el navegador.
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", ApiRequestFilter.CORRELATION_HEADER));
         config.setExposedHeaders(List.of(ApiRequestFilter.CORRELATION_HEADER, "Location"));
         config.setMaxAge(3600L);

@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")   // H2 en memoria (src/test/resources/application-test.properties)
-// Credenciales de módulo sólo para las pruebas (RN-15). 'pagos' tiene una clave demasiado corta a propósito:
+// Claves de módulo sólo para las pruebas (RN-15): con cada una se pide el token de módulo. 'pagos' tiene una clave demasiado corta a propósito:
 // debe quedar sin acceso.
 @TestPropertySource(properties = {
         "app.modules.api-keys.pedidos=" + ApiTestSupport.CLAVE_PEDIDOS,
@@ -105,6 +105,23 @@ abstract class ApiTestSupport {
         JsonNode sesion = json.readTree(login(email, PASSWORD).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
         return new Sesion(sesion.get("usuarioId").asLong(), email, sesion.get("token").asText());
+    }
+
+    // Pide a Usuarios el token de un módulo (API-17) y devuelve la cabecera Authorization lista para usar.
+    protected String bearerModulo(String modulo, String clave) throws Exception {
+        JsonNode token = json.readTree(mvc.perform(conJson(post("/api/v1/auth/module-token"),
+                        cuerpo("modulo", modulo, "clave", clave)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        return "Bearer " + token.get("token").asText();
+    }
+
+    protected String bearerPedidos() throws Exception {
+        return bearerModulo("pedidos", CLAVE_PEDIDOS);
+    }
+
+    protected String bearerCatalogo() throws Exception {
+        return bearerModulo("catalogo", CLAVE_CATALOGO);
     }
 
     protected void marcarInactivo(String email) {

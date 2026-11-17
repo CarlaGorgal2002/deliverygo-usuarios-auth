@@ -146,8 +146,8 @@ class SesionApiTest extends ApiTestSupport {
     }
 
     @Test
-    void unaApiKeyDeModuloNoRenuevaNiValidaSesionesDeUsuario() throws Exception {
-        assertError(mvc.perform(post(REFRESH).header("X-Api-Key", CLAVE_PEDIDOS)), 403, "FORBIDDEN", REFRESH);
-        assertError(mvc.perform(get(SESSION).header("X-Api-Key", CLAVE_PEDIDOS)), 403, "FORBIDDEN", SESSION);
+    void elTokenDeUnModuloNoRenuevaNiValidaSesionesDeUsuario() throws Exception {
+        assertError(mvc.perform(post(REFRESH).header("Authorization", bearerPedidos())), 403, "FORBIDDEN", REFRESH);
+        assertError(mvc.perform(get(SESSION).header("Authorization", bearerPedidos())), 403, "FORBIDDEN", SESSION);
     }
 }

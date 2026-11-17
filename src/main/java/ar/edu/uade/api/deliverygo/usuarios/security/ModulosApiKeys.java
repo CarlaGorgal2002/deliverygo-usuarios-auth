@@ -5,13 +5,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
-// Credencial propia de cada módulo consumidor (RN-15): una API Key por módulo, configurada por variable de
-// entorno (app.modules.api-keys.<modulo>). Una clave vacía o de menos de 16 caracteres deja al módulo
-// sin acceso: nunca hay una credencial por defecto.
+// Credencial propia de cada módulo consumidor (RN-15): una clave por módulo, configurada por variable de
+// entorno (app.modules.api-keys.<modulo>). El módulo la presenta una sola vez en POST /api/v1/auth/module-token
+// ("un rol y una key", clase 10) y recibe un JWT con rol MODULO, que es lo que usa en cada llamada.
+// Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: nunca hay una credencial por defecto.
 @Component
 @ConfigurationProperties(prefix = "app.modules")
 public class ModulosApiKeys {
@@ -30,22 +32,20 @@ public class ModulosApiKeys {
         this.apiKeys = apiKeys;
         apiKeys.forEach((modulo, clave) -> {
             if (clave != null && !clave.isBlank() && clave.length() < LARGO_MINIMO) {
-                log.warn("La API Key del módulo '{}' tiene menos de {} caracteres y se ignora", modulo, LARGO_MINIMO);
+                log.warn("La clave del módulo '{}' tiene menos de {} caracteres y se ignora", modulo, LARGO_MINIMO);
             }
         });
     }
 
-    // Devuelve el módulo dueño de la clave presentada, o vacío si ninguna coincide.
-    public Optional<String> identificar(String presentada) {
-        if (presentada == null || presentada.isBlank()) {
-            return Optional.empty();
+    // Verdadero si el módulo existe, tiene una clave válida configurada y coincide con la presentada.
+    public boolean verificar(String modulo, String presentada) {
+        if (modulo == null || presentada == null) {
+            return false;
         }
-        for (Map.Entry<String, String> entrada : apiKeys.entrySet()) {
-            String clave = entrada.getValue();
-            if (clave != null && clave.length() >= LARGO_MINIMO && clave.equals(presentada)) {
-                return Optional.of(entrada.getKey());
-            }
+        String clave = apiKeys.get(modulo.trim().toLowerCase());
+        if (clave == null || clave.length() < LARGO_MINIMO) {
+            return false;
         }
-        return Optional.empty();
+        return MessageDigest.isEqual(clave.getBytes(StandardCharsets.UTF_8), presentada.getBytes(StandardCharsets.UTF_8));
     }
 }

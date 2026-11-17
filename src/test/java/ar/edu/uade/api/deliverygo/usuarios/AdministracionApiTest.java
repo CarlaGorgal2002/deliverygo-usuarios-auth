@@ -84,8 +84,8 @@ class AdministracionApiTest extends ApiTestSupport {
         assertError(mvc.perform(conJson(put(rol(b.id())).header("Authorization", a.bearer()), cuerpo("rol", "ADMIN"))),
                 403, "FORBIDDEN", rol(b.id()));
 
-        // un módulo con API Key tampoco administra cuentas
-        assertError(mvc.perform(conJson(put(ruta).header("X-Api-Key", CLAVE_PEDIDOS), cuerpo("estado", "INACTIVO"))),
+        // un módulo con su token tampoco administra cuentas
+        assertError(mvc.perform(conJson(put(ruta).header("Authorization", bearerPedidos()), cuerpo("estado", "INACTIVO"))),
                 403, "FORBIDDEN", ruta);
 
         // nada cambió

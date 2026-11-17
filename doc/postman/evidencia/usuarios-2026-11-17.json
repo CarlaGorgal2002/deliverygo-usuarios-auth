@@ -1,38 +1,34 @@
 {
   "coleccion": "DeliveryGo Usuarios - CU-01 a CU-10",
-  "inicio": 1794880899033,
-  "fin": 1794880906032,
+  "inicio": 1794890648627,
+  "fin": 1794890654959,
   "resumen": {
     "iterations": {
       "executed": 1,
       "errors": 0
     },
     "executedRequests": {
-      "executed": 45,
+      "executed": 52,
       "errors": 0
     },
     "prerequestScripts": {
-      "executed": 46,
-      "errors": 0
-    },
-    "postresponseScripts": {
-      "executed": 90,
+      "executed": 53,
       "errors": 0
     },
     "tests": {
-      "executed": 155,
+      "executed": 159,
       "failed": 0,
-      "passed": 155,
+      "passed": 159,
       "skipped": 0
     },
     "timeStats": {
-      "responseAverage": 60.2,
-      "responseMin": 5,
-      "responseMax": 1093,
-      "responseStandardDeviation": 159.1078739583795
-    }
+      "responseAverage": 33.0,
+      "responseMin": 7,
+      "responseMax": 155
+    },
+    "nota": "Corrida con newman. Las solicitudes de módulo piden antes su token a POST /auth/module-token (prerequestScripts), por eso hay más solicitudes ejecutadas que ítems de la colección."
   },
-  "errorDeEjecucion": false,
+  "errorDeEjecucion": null,
   "solicitudes": [
     {
       "nombre": "01 CU-01 Registrar A",
@@ -185,7 +181,13 @@
       "erroresDeEjecucion": 0
     },
     {
-      "nombre": "26 CU-10 Sin API Key",
+      "nombre": "25 CU-10 Pedidos consulta acceso",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "26 CU-10 Sin token de modulo",
       "metodo": "GET",
       "status": 401,
       "erroresDeEjecucion": 0
@@ -203,6 +205,18 @@
       "erroresDeEjecucion": 0
     },
     {
+      "nombre": "28 INT-03 Pedidos lee direcciones",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "29 INT-04 Catalogo no lee direcciones",
+      "metodo": "GET",
+      "status": 403,
+      "erroresDeEjecucion": 0
+    },
+    {
       "nombre": "29 INT-04 Catalogo no lee direcciones",
       "metodo": "GET",
       "status": 403,
@@ -212,6 +226,18 @@
       "nombre": "30 INT-05 Notificaciones lee perfil",
       "metodo": "GET",
       "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "30 INT-05 Notificaciones lee perfil",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "31 Modulo no modifica perfil",
+      "metodo": "PUT",
+      "status": 403,
       "erroresDeEjecucion": 0
     },
     {
@@ -269,6 +295,12 @@
       "erroresDeEjecucion": 0
     },
     {
+      "nombre": "39 CU-10 Modulo ve inactivo",
+      "metodo": "GET",
+      "status": 200,
+      "erroresDeEjecucion": 0
+    },
+    {
       "nombre": "40 CU-06 Reactivar A",
       "metodo": "PUT",
       "status": 200,
@@ -302,6 +334,12 @@
       "nombre": "45 CU-08 Token invalido",
       "metodo": "POST",
       "status": 400,
+      "erroresDeEjecucion": 0
+    },
+    {
+      "nombre": "45b CU-10 Token de modulo con clave incorrecta (API-17)",
+      "metodo": "POST",
+      "status": 401,
       "erroresDeEjecucion": 0
     }
   ]

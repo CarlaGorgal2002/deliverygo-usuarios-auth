@@ -83,11 +83,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('userId', data.id);",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"CLIENTE\"));",
-                  "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"ACTIVO\"));",
-                  "pm.test('Location y sin password', () => { pm.expect(pm.response.headers.get('Location')).to.include('/users/' + data.id); pm.expect(data).not.to.have.property('passwordHash'); pm.expect(data).not.to.have.property('password'); });"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('userId', cuerpo.id);",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"CLIENTE\"));",
+                  "pm.test(\"estado esperado\", () => pm.expect(cuerpo.estado).to.eql(\"ACTIVO\"));",
+                  "pm.test('Location y sin password', () => { pm.expect(pm.response.headers.get('Location')).to.include('/users/' + cuerpo.id); pm.expect(cuerpo).not.to.have.property('passwordHash'); pm.expect(cuerpo).not.to.have.property('password'); });"
                 ]
               }
             }
@@ -128,8 +128,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error EMAIL_ALREADY_REGISTERED\", () => pm.expect(data.code).to.eql(\"EMAIL_ALREADY_REGISTERED\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error EMAIL_ALREADY_REGISTERED\", () => pm.expect(cuerpo.code).to.eql(\"EMAIL_ALREADY_REGISTERED\"));"
                 ]
               }
             }
@@ -170,8 +170,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error VALIDATION_ERROR\", () => pm.expect(data.code).to.eql(\"VALIDATION_ERROR\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error VALIDATION_ERROR\", () => pm.expect(cuerpo.code).to.eql(\"VALIDATION_ERROR\"));"
                 ]
               }
             }
@@ -212,9 +212,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);",
-                  "pm.test(\"tipo esperado\", () => pm.expect(data.tipo).to.eql(\"Bearer\"));"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('token', cuerpo.token);",
+                  "pm.test(\"tipo esperado\", () => pm.expect(cuerpo.tipo).to.eql(\"Bearer\"));"
                 ]
               }
             }
@@ -255,8 +255,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(data.code).to.eql(\"INVALID_CREDENTIALS\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_CREDENTIALS\"));"
                 ]
               }
             }
@@ -297,8 +297,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('userBId', data.id);"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('userBId', cuerpo.id);"
                 ]
               }
             }
@@ -333,8 +333,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"nombre esperado\", () => pm.expect(data.nombre).to.eql(\"Ana\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"nombre esperado\", () => pm.expect(cuerpo.nombre).to.eql(\"Ana\"));"
                 ]
               }
             }
@@ -362,8 +362,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(data.code).to.eql(\"UNAUTHENTICATED\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(cuerpo.code).to.eql(\"UNAUTHENTICATED\"));"
                 ]
               }
             }
@@ -398,8 +398,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(data.code).to.eql(\"FORBIDDEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
                 ]
               }
             }
@@ -434,8 +434,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error VALIDATION_ERROR\", () => pm.expect(data.code).to.eql(\"VALIDATION_ERROR\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error VALIDATION_ERROR\", () => pm.expect(cuerpo.code).to.eql(\"VALIDATION_ERROR\"));"
                 ]
               }
             }
@@ -483,10 +483,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"telefono esperado\", () => pm.expect(data.telefono).to.eql(null));",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"CLIENTE\"));",
-                  "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"ACTIVO\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"telefono esperado\", () => pm.expect(cuerpo.telefono).to.eql(null));",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"CLIENTE\"));",
+                  "pm.test(\"estado esperado\", () => pm.expect(cuerpo.estado).to.eql(\"ACTIVO\"));"
                 ]
               }
             }
@@ -534,8 +534,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error EMAIL_ALREADY_REGISTERED\", () => pm.expect(data.code).to.eql(\"EMAIL_ALREADY_REGISTERED\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error EMAIL_ALREADY_REGISTERED\", () => pm.expect(cuerpo.code).to.eql(\"EMAIL_ALREADY_REGISTERED\"));"
                 ]
               }
             }
@@ -570,8 +570,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test('Lista vacía', () => pm.expect(data).to.eql([]));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('Lista vacía', () => pm.expect(cuerpo).to.eql([]));"
                 ]
               }
             }
@@ -619,9 +619,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('addressId', data.id);",
-                  "pm.test(\"predeterminada esperado\", () => pm.expect(data.predeterminada).to.eql(false));"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('addressId', cuerpo.id);",
+                  "pm.test(\"predeterminada esperado\", () => pm.expect(cuerpo.predeterminada).to.eql(false));"
                 ]
               }
             }
@@ -669,9 +669,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('addressBId', data.id);",
-                  "pm.test(\"predeterminada esperado\", () => pm.expect(data.predeterminada).to.eql(true));"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('addressBId', cuerpo.id);",
+                  "pm.test(\"predeterminada esperado\", () => pm.expect(cuerpo.predeterminada).to.eql(true));"
                 ]
               }
             }
@@ -706,8 +706,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"predeterminada esperado\", () => pm.expect(data.predeterminada).to.eql(true));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"predeterminada esperado\", () => pm.expect(cuerpo.predeterminada).to.eql(true));"
                 ]
               }
             }
@@ -742,8 +742,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"predeterminada esperado\", () => pm.expect(data.predeterminada).to.eql(true));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"predeterminada esperado\", () => pm.expect(cuerpo.predeterminada).to.eql(true));"
                 ]
               }
             }
@@ -778,8 +778,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test('Una sola, D1', () => { pm.expect(data.filter(d => d.predeterminada).map(d => d.id)).to.eql([Number(pm.collectionVariables.get('addressId'))]); });"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('Una sola, D1', () => { pm.expect(cuerpo.filter(d => d.predeterminada).map(d => d.id)).to.eql([Number(pm.collectionVariables.get('addressId'))]); });"
                 ]
               }
             }
@@ -827,10 +827,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"numero esperado\", () => pm.expect(data.numero).to.eql(\"1250\"));",
-                  "pm.test(\"piso esperado\", () => pm.expect(data.piso).to.eql(null));",
-                  "pm.test(\"predeterminada esperado\", () => pm.expect(data.predeterminada).to.eql(true));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"numero esperado\", () => pm.expect(cuerpo.numero).to.eql(\"1250\"));",
+                  "pm.test(\"piso esperado\", () => pm.expect(cuerpo.piso).to.eql(null));",
+                  "pm.test(\"predeterminada esperado\", () => pm.expect(cuerpo.predeterminada).to.eql(true));"
                 ]
               }
             }
@@ -900,8 +900,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error ADDRESS_NOT_FOUND\", () => pm.expect(data.code).to.eql(\"ADDRESS_NOT_FOUND\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error ADDRESS_NOT_FOUND\", () => pm.expect(cuerpo.code).to.eql(\"ADDRESS_NOT_FOUND\"));"
                 ]
               }
             }
@@ -936,8 +936,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test('Baja y sin reemplazo automático', () => { pm.expect(data.length).to.eql(1); pm.expect(data[0].id).to.eql(Number(pm.collectionVariables.get('addressBId'))); pm.expect(data[0].predeterminada).to.eql(false); });"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('Baja y sin reemplazo automático', () => { pm.expect(cuerpo.length).to.eql(1); pm.expect(cuerpo[0].id).to.eql(Number(pm.collectionVariables.get('addressBId'))); pm.expect(cuerpo[0].predeterminada).to.eql(false); });"
                 ]
               }
             }
@@ -972,8 +972,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"CLIENTE\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"CLIENTE\"));"
                 ]
               }
             }
@@ -1008,8 +1008,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('token', cuerpo.token);"
                 ]
               }
             }
@@ -1025,8 +1025,8 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "X-Api-Key",
-                "value": "{{pedidosKey}}"
+                "key": "Authorization",
+                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1036,20 +1036,37 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test('Datos mínimos', () => pm.expect(Object.keys(data).sort()).to.eql(['estado','rol','usuarioId']));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('Datos mínimos', () => pm.expect(Object.keys(cuerpo).sort()).to.eql(['estado','rol','usuarioId']));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "26 CU-10 Sin API Key",
+          "name": "26 CU-10 Sin token de modulo",
           "request": {
             "method": "GET",
             "header": [
@@ -1070,8 +1087,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(data.code).to.eql(\"UNAUTHENTICATED\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(cuerpo.code).to.eql(\"UNAUTHENTICATED\"));"
                 ]
               }
             }
@@ -1106,8 +1123,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(data.code).to.eql(\"FORBIDDEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
                 ]
               }
             }
@@ -1123,8 +1140,8 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "X-Api-Key",
-                "value": "{{pedidosKey}}"
+                "key": "Authorization",
+                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1134,12 +1151,29 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();"
+                  "const cuerpo = pm.response.json();"
                 ]
               }
             }
@@ -1155,8 +1189,8 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "X-Api-Key",
-                "value": "{{catalogoKey}}"
+                "key": "Authorization",
+                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1166,13 +1200,30 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'catalogo', clave: pm.variables.get('catalogoKey') }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(data.code).to.eql(\"FORBIDDEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
                 ]
               }
             }
@@ -1188,8 +1239,8 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "X-Api-Key",
-                "value": "{{notificacionesKey}}"
+                "key": "Authorization",
+                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1199,12 +1250,29 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'notificaciones', clave: pm.variables.get('notificacionesKey') }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();"
+                  "const cuerpo = pm.response.json();"
                 ]
               }
             }
@@ -1220,8 +1288,8 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "X-Api-Key",
-                "value": "{{pedidosKey}}"
+                "key": "Authorization",
+                "value": "Bearer {{moduloToken}}"
               },
               {
                 "key": "Content-Type",
@@ -1244,13 +1312,30 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(data.code).to.eql(\"FORBIDDEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
                 ]
               }
             }
@@ -1291,10 +1376,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', data.token);",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('adminId', data.usuarioId);",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"ADMIN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('adminToken', cuerpo.token);",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('adminId', cuerpo.usuarioId);",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"ADMIN\"));"
                 ]
               }
             }
@@ -1342,8 +1427,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(data.code).to.eql(\"FORBIDDEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
                 ]
               }
             }
@@ -1391,8 +1476,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"COMERCIO\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"COMERCIO\"));"
                 ]
               }
             }
@@ -1427,8 +1512,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"COMERCIO\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"COMERCIO\"));"
                 ]
               }
             }
@@ -1476,8 +1561,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"INACTIVO\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"estado esperado\", () => pm.expect(cuerpo.estado).to.eql(\"INACTIVO\"));"
                 ]
               }
             }
@@ -1518,8 +1603,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error USER_INACTIVE\", () => pm.expect(data.code).to.eql(\"USER_INACTIVE\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error USER_INACTIVE\", () => pm.expect(cuerpo.code).to.eql(\"USER_INACTIVE\"));"
                 ]
               }
             }
@@ -1554,8 +1639,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error USER_INACTIVE\", () => pm.expect(data.code).to.eql(\"USER_INACTIVE\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error USER_INACTIVE\", () => pm.expect(cuerpo.code).to.eql(\"USER_INACTIVE\"));"
                 ]
               }
             }
@@ -1571,8 +1656,8 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "X-Api-Key",
-                "value": "{{pedidosKey}}"
+                "key": "Authorization",
+                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1582,13 +1667,30 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"INACTIVO\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"estado esperado\", () => pm.expect(cuerpo.estado).to.eql(\"INACTIVO\"));"
                 ]
               }
             }
@@ -1636,8 +1738,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"estado esperado\", () => pm.expect(data.estado).to.eql(\"ACTIVO\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"estado esperado\", () => pm.expect(cuerpo.estado).to.eql(\"ACTIVO\"));"
                 ]
               }
             }
@@ -1685,8 +1787,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"rol esperado\", () => pm.expect(data.rol).to.eql(\"CLIENTE\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"rol esperado\", () => pm.expect(cuerpo.rol).to.eql(\"CLIENTE\"));"
                 ]
               }
             }
@@ -1734,8 +1836,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(data.code).to.eql(\"FORBIDDEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
                 ]
               }
             }
@@ -1860,8 +1962,45 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(data.code).to.eql(\"INVALID_RESET_TOKEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_RESET_TOKEN\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "45b CU-10 Token de modulo con clave incorrecta (API-17)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modulo\": \"pedidos\",\n  \"clave\": \"clave-incorrecta-que-no-existe-000\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/module-token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('INVALID_CREDENTIALS', () => pm.expect(cuerpo.code).to.eql('INVALID_CREDENTIALS'));"
                 ]
               }
             }
@@ -1949,8 +2088,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(data.code).to.eql(\"INVALID_RESET_TOKEN\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_RESET_TOKEN\"));"
                 ]
               }
             }
@@ -1991,8 +2130,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code < 300) pm.collectionVariables.set('token', data.token);"
+                  "const cuerpo = pm.response.json();",
+                  "if (pm.response.code < 300) pm.collectionVariables.set('token', cuerpo.token);"
                 ]
               }
             }
@@ -2033,8 +2172,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-                  "const data = pm.response.json();",
-                  "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(data.code).to.eql(\"INVALID_CREDENTIALS\"));"
+                  "const cuerpo = pm.response.json();",
+                  "pm.test(\"Error INVALID_CREDENTIALS\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_CREDENTIALS\"));"
                 ]
               }
             }
