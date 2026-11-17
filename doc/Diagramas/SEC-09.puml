@@ -1,0 +1,47 @@
+@startuml SEC-09
+skinparam dpi 170
+title SEC-09 Renovar o validar sesión/token (CU-09)
+autonumber
+actor "Usuario via Portal" as U
+participant "Filtros de seguridad" as Sec
+participant "AuthController" as Ctrl
+participant "AuthService" as Srv
+participant "UsuarioRepository" as RepU
+participant "JwtService" as Jwt
+database "BD Usuarios" as BD
+U -> Sec : POST /api/v1/auth/refresh (API-14) o\nGET /api/v1/auth/session (API-15) + Bearer JWT
+Sec -> Sec : validar autenticacion [RN-09] (DM-08)
+alt sin credencial valida (JWT ausente, invalido o vencido)
+  Sec --> U : 401 UNAUTHENTICATED (DTO-08)
+else autenticacion valida
+  Sec -> Sec : verificar rol de persona (SecurityConfig) [RN-14]
+  alt API Key de modulo u otro rol no autorizado
+    Sec --> U : 403 FORBIDDEN (DTO-08)
+  else JWT de usuario
+    Sec -> Ctrl : solicitud autenticada
+    Ctrl -> Srv : renovarSesion(actual) (SRV-14) o\nvalidarSesion(actual) (SRV-15)
+    Srv -> RepU : findById(actual.id()) (REP-02)
+    RepU -> BD : consultar usuario y rol vigente
+    BD --> RepU : resultado
+    RepU --> Srv : Optional<Usuario>
+    alt usuario inexistente
+      Srv --> Ctrl : SesionInvalidaException
+      Ctrl --> U : 401 UNAUTHENTICATED (DTO-08)
+    else cuenta INACTIVA
+      Srv --> Ctrl : UsuarioInactivoException
+      Ctrl --> U : 403 USER_INACTIVE (DTO-08)
+    else cuenta ACTIVA [RN-04, RN-14]
+      alt API-14 renovar sesión
+        Srv -> Jwt : generarToken(usuarioId, rol vigente)
+        Jwt --> Srv : TokenEmitido
+        Srv --> Ctrl : LoginResponse (DTO-04)
+        Ctrl --> U : 200 LoginResponse (DTO-04)
+      else API-15 validar sesión
+        Srv --> Ctrl : SesionResponse (DTO-14)\nusuarioId, rol, estado, expiraEn del JWT presentado
+        Ctrl --> U : 200 SesionResponse (DTO-14)
+      end
+    end
+  end
+end
+note over Srv,Jwt : Sólo lectura; sin revocación del JWT anterior (DM-17).
+@enduml

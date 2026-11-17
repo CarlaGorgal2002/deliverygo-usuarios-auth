@@ -1,0 +1,71 @@
+@startuml SEC-07
+skinparam dpi 170
+title SEC-07 Asignar o modificar rol (CU-07)
+autonumber
+actor "Administrador via Portal" as Admin
+participant "Filtros de seguridad" as Sec
+participant "UsuarioController" as Ctrl
+participant "AdministracionService" as Srv
+participant "UsuarioRepository" as RepU
+participant "RolRepository" as RepR
+database "BD Usuarios" as BD
+Admin -> Sec : PUT /api/v1/users/{id}/role (API-11)\nCambiarRolRequest (DTO-11) + Bearer
+Sec -> Sec : validar JWT [RN-09] y rol ADMIN\n(SecurityConfig, DM-08)
+alt autenticacion ausente o invalida
+  Sec --> Admin : 401 UNAUTHENTICATED (DTO-08)
+else credencial valida sin rol ADMIN (incluye API Key)
+  Sec --> Admin : 403 FORBIDDEN (DTO-08)
+else JWT de ADMIN
+  Sec -> Ctrl : solicitud autenticada
+  Ctrl -> Ctrl : validar id y DTO [RN-01] (DM-09)
+  alt datos invalidos
+    Ctrl --> Admin : 400 VALIDATION_ERROR (DTO-08)
+  else datos validos
+    Ctrl -> Srv : cambiarRol(adminId, id, rol) (SRV-11)
+    note over Srv,RepU : transaccional [DM-10]
+    Srv -> RepU : findById(adminId) (REP-09)
+    RepU -> BD : SELECT administrador
+    RepU --> Srv : Optional<Usuario>
+    alt administrador inexistente
+      Srv --> Ctrl : SesionInvalidaException
+      Ctrl --> Admin : 401 UNAUTHENTICATED (DTO-08)
+    else administrador INACTIVO [RN-11]
+      Srv --> Ctrl : UsuarioInactivoException
+      Ctrl --> Admin : 403 USER_INACTIVE (DTO-08)
+    else rol vigente no ADMIN [RN-11] o cuenta propia [RN-12]
+      Srv --> Ctrl : AccesoProhibidoException
+      Ctrl --> Admin : 403 FORBIDDEN (DTO-08)
+    else administrador autorizado
+      Srv -> RepU : findById(id) (REP-09)
+      RepU -> BD : SELECT usuario objetivo
+      RepU --> Srv : Optional<Usuario>
+      alt usuario inexistente
+        Srv --> Ctrl : UsuarioNoEncontradoException
+        Ctrl --> Admin : 404 USER_NOT_FOUND (DTO-08)
+      else usuario existente
+        alt rol solicitado ya asignado
+          Srv -> RepU : save(usuario) (REP-03)
+          RepU --> Srv : Usuario
+          Srv --> Ctrl : UsuarioResponse (DTO-02)
+          Ctrl --> Admin : 200 UsuarioResponse (DTO-02)
+        else rol distinto
+          Srv -> RepR : findByNombre(rol) (REP-04)
+          RepR -> BD : SELECT rol WHERE nombre
+          RepR --> Srv : Optional<Rol>
+          alt rol no cargado en la BD
+            Srv --> Ctrl : IllegalStateException
+            Ctrl --> Admin : 500 INTERNAL_ERROR (DTO-08)
+          else rol disponible
+            Srv -> Srv : asignar rol solicitado
+            Srv -> RepU : save(usuario) (REP-03)
+            RepU -> BD : persistir cambios al commit
+            RepU --> Srv : Usuario
+            Srv --> Ctrl : UsuarioResponse (DTO-02)
+            Ctrl --> Admin : 200 UsuarioResponse (DTO-02)
+          end
+        end
+      end
+    end
+  end
+end
+@enduml

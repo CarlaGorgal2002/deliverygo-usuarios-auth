@@ -1,0 +1,78 @@
+@startuml SEC-08
+skinparam dpi 170
+title SEC-08 Recuperar o restablecer contraseña (CU-08)
+autonumber
+actor "Usuario via Portal" as U
+participant "AuthController" as Ctrl
+participant "AuthService" as Auth
+participant "RecuperacionService" as Srv
+participant "UsuarioRepository" as RepU
+participant "TokenRecuperacionRepository" as RepT
+participant "PasswordEncoder" as Enc
+database "BD Usuarios" as BD
+participant "NotificacionesClient" as N
+== Solicitud de recuperación ==
+U -> Ctrl : POST /api/v1/auth/password/forgot (API-12)\nSolicitarRecuperacionRequest (DTO-12)
+Ctrl -> Ctrl : validar email [RN-01] (DM-09)
+alt datos invalidos
+  Ctrl --> U : 400 VALIDATION_ERROR (DTO-08)
+else datos validos
+  Ctrl -> Auth : solicitarRecuperacion(request) (SRV-12)
+  Auth -> Srv : generarToken(email)
+  note over Srv,BD : transaccional [DM-10]
+  Srv -> RepU : findByEmail(email normalizado) (REP-01)
+  RepU -> BD : SELECT usuario WHERE email
+  RepU --> Srv : Optional<Usuario>
+  alt cuenta inexistente o INACTIVA
+    Srv --> Auth : Optional.empty()
+  else cuenta ACTIVA
+    Srv -> RepT : invalidarVigentes(usuarioId, ahora) (REP-12)
+    RepT -> BD : UPDATE tokens no usados
+    Srv -> Srv : generar token aleatorio (256 bits)\ny calcular hash SHA-256 [RN-13]
+    Srv -> RepT : save(TokenRecuperacion) (ENT-04)
+    RepT -> BD : persistir hash y fechas\n(30 minutos por defecto)
+    Srv --> Auth : Emision (tras commit)
+    Auth -> N : enviarRecuperacion(id, nombre, email, token) (INT-06)
+    note over Auth,N : cliente HTTP o mock configurable;\nsi falla se registra el error
+    N --> Auth : resultado o excepcion capturada
+  end
+  Auth --> Ctrl : sin cuerpo
+  Ctrl --> U : 202 Accepted [RN-13]
+end
+== Restablecimiento de contraseña ==
+U -> Ctrl : POST /api/v1/auth/password/reset (API-13)\nRestablecerPasswordRequest (DTO-13)
+Ctrl -> Ctrl : validar DTO [RN-01] (DM-09)
+alt datos invalidos
+  Ctrl --> U : 400 VALIDATION_ERROR (DTO-08)
+else datos validos
+  Ctrl -> Auth : restablecerPassword(request) (SRV-13)
+  Auth -> Srv : restablecerPassword(token, password)
+  note over Srv,BD : transaccional [DM-10]
+  alt contraseña supera 72 bytes
+    Srv --> Auth : DatoInvalidoException
+    Auth --> Ctrl : propagar excepcion
+    Ctrl --> U : 400 VALIDATION_ERROR (DTO-08)
+  else contraseña aceptada
+    Srv -> Srv : calcular huella SHA-256 del token
+    Srv -> RepT : findByTokenHash(huella) (REP-10)
+    RepT -> BD : SELECT token por hash
+    RepT --> Srv : Optional<TokenRecuperacion>
+    alt token inexistente, usado, vencido o cuenta INACTIVA
+      Srv --> Auth : TokenRecuperacionInvalidoException
+      Auth --> Ctrl : propagar excepcion
+      Ctrl --> U : 400 INVALID_RESET_TOKEN (DTO-08)
+    else token valido
+      Srv -> Srv : guardado.setUsadoEn(ahora) (REP-11)
+      Srv -> Enc : encode(password) [RN-03]
+      Enc --> Srv : passwordHash
+      Srv -> Srv : usuario.setPasswordHash(passwordHash)
+      Srv -> RepT : invalidarVigentes(usuarioId, ahora) (REP-12)
+      RepT -> BD : flush JPA e invalidacion de tokens\n(dirty checking)
+      Srv --> Auth : sin cuerpo (tras commit)
+      Auth --> Ctrl : sin cuerpo
+      Ctrl --> U : 204 No Content
+    end
+  end
+end
+note over Srv,BD : No se revocan JWT emitidos (DM-17).
+@enduml

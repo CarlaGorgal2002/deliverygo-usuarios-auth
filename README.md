@@ -144,3 +144,9 @@ SERVER_PORT=8080 mvn spring-boot:run
 ```
 
 Notificaciones debe tener activas las plantillas `USUARIO_BIENVENIDA_EMAIL` y `RECUPERACION_PASSWORD_EMAIL`. Con eso, `POST /api/v1/auth/register` dispara la bienvenida y `POST /api/v1/auth/password/forgot` la recuperación; el log de Usuarios muestra el id de la notificación creada y su estado. Si Notificaciones no está disponible, el registro y la recuperación responden igual y el error queda en el log.
+
+
+## Datos de prueba
+
+- Colección de Postman y environment local: [doc/postman/](doc/postman/README.md).
+- Verificación con Postman CLI 1.90.0 y PostgreSQL: 24 solicitudes y 61 validaciones exitosas, sin fallos.

@@ -1,0 +1,41 @@
+@startuml SEC-10
+skinparam dpi 170
+title SEC-10 Consultar estado y rol para otro módulo (CU-10)
+autonumber
+actor "Módulo consumidor" as M
+participant "Filtros de seguridad" as Sec
+participant "UsuarioController" as Ctrl
+participant "UsuarioService" as Srv
+participant "UsuarioRepository" as RepU
+database "BD Usuarios" as BD
+M -> Sec : GET /api/v1/users/{id}/access (API-16)\nX-Api-Key (RN-15)
+Sec -> Sec : autenticar JWT o API Key [RN-15] (DM-08)
+alt sin credencial válida
+  Sec --> M : 401 UNAUTHENTICATED (DTO-08)
+else autenticacion valida
+  Sec -> Sec : exigir rol MODULO (SecurityConfig) [RN-15]
+  alt JWT de usuario valido (incluso ADMIN)
+    Sec --> M : 403 FORBIDDEN (DTO-08)
+  else API Key de modulo valida
+    Sec -> Ctrl : solicitud autenticada
+    Ctrl -> Ctrl : validar id positivo
+    alt id invalido
+      Ctrl --> M : 400 VALIDATION_ERROR (DTO-08)
+    else id valido
+      Ctrl -> Srv : consultarAcceso(id) (SRV-16)
+      Srv -> RepU : findById(id) (REP-02)
+      RepU -> BD : consultar usuario y rol vigente
+      BD --> RepU : resultado
+      RepU --> Srv : Optional<Usuario>
+      alt usuario inexistente
+        Srv --> Ctrl : UsuarioNoEncontradoException
+        Ctrl --> M : 404 USER_NOT_FOUND (DTO-08)
+      else usuario existente (ACTIVO o INACTIVO)
+        Srv --> Ctrl : AccesoUsuarioResponse (DTO-15)\nusuarioId, estado, rol
+        Ctrl --> M : 200 AccesoUsuarioResponse (DTO-15)
+      end
+    end
+  end
+end
+note over M,BD : Sólo lectura; sin acceso directo a la BD.\nSi se presenta Authorization, no se utiliza la API Key.
+@enduml

@@ -24,7 +24,6 @@ postman collection run doc/postman/DeliveryGo_Usuarios.postman_collection.json -
 
 6. Para completar el restablecimiento exitoso, en Postman Desktop ejecutar el recorrido automático y conservar sus variables; copiar el token de recuperación del log del backend en `recoveryToken`, luego ejecutar la carpeta `Restablecimiento manual`. No compartir el token. El CLI no recibe el token por HTTP: es intencional. Para probar esa carpeta por CLI se necesitan las variables de la misma corrida (email, recoveryToken) en una copia local del environment. No subir valores capturados.
 
-Estado: colección preparada y comprobada estructuralmente contra el código. Ejecución real y evidencia CLI pendientes.
 
 
 ## Resultado de la verificación

@@ -37,4 +37,14 @@ entity "direccion" as direccion {
 }
 rol ||--o{ usuario : "REL-02"
 usuario ||--o{ direccion : "REL-01"
+entity "token_recuperacion" as token {
+  * id : BIGINT <<PK>>
+  --
+  * usuario_id : BIGINT <<FK>>
+  * token_hash : VARCHAR(64) <<UNIQUE>>
+  * creado_en : TIMESTAMP
+  * expira_en : TIMESTAMP
+  usado_en : TIMESTAMP
+}
+usuario ||--o{ token : "REL-03"
 @enduml
