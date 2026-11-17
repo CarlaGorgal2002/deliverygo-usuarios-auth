@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 // Contrato documentado de CU-01, CU-02, CU-08 y CU-09. Registro,
 // login y recuperación son públicos; renovar y validar la sesión exigen un JWT.
-@Tag(name = "Autenticación", description = "CU-01, CU-02, CU-08, CU-09 y CU-10. Registro, emisión y renovación de JWT (de personas y de módulos) y recuperación de contraseña.")
+@Tag(name = "Autenticación", description = "CU-01, CU-02, CU-08 y CU-09. Registro, emisión y renovación del JWT de las personas y recuperación de contraseña.")
 public interface IAuthController {
 
     @Operation(operationId = "registrarUsuario", summary = "Registrar usuario (API-01 / CU-01)",

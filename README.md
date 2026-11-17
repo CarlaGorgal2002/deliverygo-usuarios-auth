@@ -6,7 +6,7 @@ Centraliza la identidad de los usuarios de DeliveryGo: registro, inicio de sesi�
 
 ## Estado
 
-**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT para el front, lecturas sin credencial para los otros módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 90 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
+**Backend de los diez casos de uso implementado y verificado.** El servicio expone las dieciséis operaciones del contrato (los cinco CU CORE y los cinco de evolución), con JWT para el front, lecturas sin credencial para los otros módulos, validación en la frontera, formato de error común y correlación. Se comprueba con 92 pruebas automáticas (integración y unitarias); ver [VERIFICACION.md](doc/openapi/VERIFICACION.md).
 
 La entrega Swagger está en [`doc/openapi/`](doc/openapi/README.md): [YAML completo](doc/openapi/deliverygo-usuarios.yaml), el [diseño de CU-06 a CU-10](doc/openapi/DISENO_CU_EVOLUCION.md), la trazabilidad y la verificación. La integración HTTP de bienvenida y recuperación se probó con Notificaciones aplicando el parche incluido para ese módulo; Catálogo se probó con JWT emitidos por Usuarios. Los resultados y bloqueos de los demás consumidores están en [Integración](doc/integracion/README.md). La firma asimétrica y la distribución de credenciales siguen requiriendo acuerdo entre equipos. La [entrega actual](doc/ENTREGA_FINAL.md) reúne trazabilidad, evidencia y diagramas; el PDF de la primera entrega se conserva como antecedente.
 
@@ -140,7 +140,7 @@ Requisitos: JDK 25, Maven (ver el instructivo de la cátedra) y Docker para la b
 ```bash
 docker compose up -d     # levanta PostgreSQL en localhost:5432 (los datos persisten en un volumen)
 mvn spring-boot:run      # levanta el servicio en http://localhost:8089
-mvn test                 # 90 pruebas automáticas; usan H2 en memoria, no necesitan Docker
+mvn test                 # 92 pruebas automáticas; usan H2 en memoria, no necesitan Docker
 ```
 
 También se puede levantar el backend dentro de la red de Docker Compose junto con PostgreSQL (clase 13). Detener antes `mvn spring-boot:run`: ambos usan el puerto 8089.

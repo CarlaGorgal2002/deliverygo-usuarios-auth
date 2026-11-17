@@ -11,7 +11,7 @@ Cómo se comprueba que el contrato (`deliverygo-usuarios.yaml`) y el backend imp
 
 ## Pruebas automáticas del backend
 
-Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **90 pruebas, 0 fallas, 0 errores** (17/11/2026).
+Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **92 pruebas, 0 fallas, 0 errores** (17/11/2026).
 
 | Clase | Pruebas | Cobertura |
 |---|---|---|
@@ -27,6 +27,7 @@ Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot
 | `JwtServiceTest` | 6 | Emisión y lectura de `sub`=id y `role`; rechazo de otra clave, vencido, sin firma y `sub` no numérico; clave mínima de 32 bytes |
 | `IntegridadApiTest` | 1 | RN-02 / DM-11: si el control del service no ve un email repetido, la restricción única de la base lo rechaza y se informa 409 `EMAIL_ALREADY_REGISTERED` |
 | `AdministradorInicialTest` | 1 | DM-07: el administrador configurado por `ADMIN_EMAIL` y `ADMIN_PASSWORD` inicia sesión con rol ADMIN (con su propia base en memoria) |
+| `StatusApiTest` | 2 | `GET /api/v1/status`: 200 con `{"status":"ok"}` sin credencial y también con un token inválido |
 
 | `NotificacionesClientHttpTest` | 11 | Cuerpo HTTP, autenticación de servicio, correlación, plantillas, caché, errores y configuración de URL |
 
