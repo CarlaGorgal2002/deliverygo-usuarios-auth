@@ -20,14 +20,14 @@ Actualizados el **16/11/2026** contra el código de CU-01 a CU-10. Los PNG se ge
 | SEC-09 Validación y renovación | [PNG](SEC-09.png) | [PlantUML](SEC-09.puml) |
 | SEC-10 Consulta desde módulos | [PNG](SEC-10.png) | [PlantUML](SEC-10.puml) |
 
-Para regenerarlos desde la raíz del repositorio, con Java y PlantUML instalado:
+Los diagramas se generan desde los archivos PlantUML de esta carpeta. Para regenerar las imágenes desde la raíz del repositorio, con Java y el `plantuml.jar` descargado de https://plantuml.com/download:
 
 ```powershell
 java -jar C:/herramientas/plantuml.jar -charset UTF-8 -tpng "doc/Diagramas/*.puml"
 ```
 
-Se verificaron con PlantUML 1.2025.2. No se necesita enviar las fuentes a un servidor de diagramas. Revisar las imágenes después de modificar una fuente.
+Cada secuencia usa los participantes que pide la plantilla de la primera entrega (actor, filtro de seguridad cuando corresponde, Controller, Service, Repository, base de datos e integración), los mismos nombres de operaciones que el código (`registrarUsuario`, `consultarPerfil`, `crearDireccion`...) y los identificadores de trazabilidad (CU, RN, SRV, REP, API, DTO, INT, DM). Las respuestas de error vuelven siempre por el Controller con el formato normalizado `ErrorResponse` (DTO-08).
 
-Los diagramas usan los nombres actuales (`JwtService`, `JwtAuthenticationFilter`, `TokenRecuperacion`), 403 para usuario inactivo, permisos distintos entre persona y módulo, datos de perfil sin contraseña y baja lógica de direcciones. Registro notifica después del commit; recuperación también confirma el token antes de notificar. Direcciones y recuperación bloquean la fila del usuario dentro de su transacción para mantener las reglas ante solicitudes simultáneas.
+Si un PNG no coincide con su archivo `.puml` (por ejemplo, después de editar el diagrama sin regenerar las imágenes), manda el `.puml`.
 
-Las flechas de contexto muestran contratos. El estado comprobado de cada integración, incluido el parche necesario de Notificaciones, se encuentra en [la guía de integración](../integracion/README.md).
+Las flechas del diagrama de contexto muestran contratos. El estado comprobado de cada integración, incluido el parche necesario de Notificaciones, está en [la guía de integración](../integracion/README.md).

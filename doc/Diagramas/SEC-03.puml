@@ -1,31 +1,60 @@
 @startuml SEC-03
-skinparam dpi 135
+skinparam dpi 110
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 12
 skinparam sequenceMessageAlign center
-title SEC-03 Consultar perfil (CU-03 / API-03)
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-03 Consultar perfil (CU-03 / API-03 / SRV-03)
 autonumber
-actor "Portal o módulo" as A
-participant "Filtros de seguridad" as F
+actor "Usuario (Portal)\no módulo consumidor" as A
+participant "Filtros de seguridad\nJWT de persona / de módulo" as F
 participant UsuarioController as C
 participant UsuarioService as S
-participant UsuarioRepository as R
-A -> F : GET /api/v1/users/{id}\nBearer de persona o X-Api-Key de módulo
-F -> F : validar credencial [RN-09, RN-15]
-F -> C : solicitud autenticada
-C -> C : titular de la ruta o módulo autorizado [RN-05]
-alt persona titular
- C -> S : consultarPerfil(id) [SRV-03]
- S -> R : findById(id)
- S -> S : exigir ACTIVO [RN-04]
-else módulo consumidor
- C -> S : consultarPerfilParaModulo(id)
- S -> R : findById(id)
- note right of S : Incluye cuentas INACTIVAS;\nel consumidor decide con sus reglas.
+participant UsuarioRepository as UR
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : GET /api/v1/users/{id}\nBearer JWT (de persona o de módulo)
+F -> F : validar firma y vencimiento [RN-09]\ny rol: titular o MODULO [RN-15]
+alt credencial ausente, inválida o vencida
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else credencial válida
+  F -> C : solicitud autenticada
+  alt persona
+    C -> C : el id de la ruta debe ser el del token [RN-05]
+    alt no es el titular
+      C --> A : 403 FORBIDDEN
+    else es el titular
+      C -> S : consultarPerfil(id) [SRV-03]
+      S -> UR : findById(id) [REP-02]
+      UR -> DB : SELECT
+      DB --> UR : fila o vacío
+      UR --> S : Optional<Usuario>
+      alt usuario inexistente
+        S --> C : UsuarioNoEncontradoException
+        C --> A : 404 USER_NOT_FOUND
+      else titular INACTIVO [RN-04]
+        S --> C : UsuarioInactivoException
+        C --> A : 403 USER_INACTIVE
+      else titular ACTIVO
+        S --> C : UsuarioResponse (DTO-02)
+        C --> A : 200 perfil con rol y estado,\nsin contraseña [RN-03]
+      end
+    end
+  else módulo consumidor
+    C -> S : consultarPerfilParaModulo(id) [SRV-03]
+    S -> UR : findById(id) [REP-02]
+    UR -> DB : SELECT
+    UR --> S : Optional<Usuario>
+    alt usuario inexistente
+      C --> A : 404 USER_NOT_FOUND
+    else existe (también INACTIVO)
+      S --> C : UsuarioResponse (DTO-02)
+      C --> A : 200 perfil; el módulo decide\nsegún el estado
+    end
+  end
 end
-S -> S : UsuarioMapper.toResponse(usuario)
-S --> C : UsuarioResponse (DTO-02)
-C --> A : 200 perfil, estado y rol; sin hash
-note over A,R : 401 credencial inválida; 403 no titular o titular inactivo;\n400 id inválido; 404 usuario inexistente autorizado.
 @enduml

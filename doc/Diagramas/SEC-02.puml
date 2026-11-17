@@ -1,30 +1,54 @@
 @startuml SEC-02
-skinparam dpi 135
+skinparam dpi 110
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 12
 skinparam sequenceMessageAlign center
-title SEC-02 Iniciar sesión (CU-02 / API-02)
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-02 Iniciar sesión (CU-02 / API-02 / SRV-02)
 autonumber
-actor Portal
+actor "Usuario\n(Portal Web)" as A
 participant AuthController as C
 participant AuthService as S
-participant UsuarioRepository as R
+participant UsuarioRepository as UR
+participant PasswordEncoder as PE
 participant JwtService as J
-Portal -> C : POST /api/v1/auth/login\nLoginRequest (DTO-03)
-C -> S : login(request) [SRV-02]
-S -> R : findByEmail(email normalizado)
-R --> S : Optional<Usuario>
-S -> S : PasswordEncoder.matches(password, hash)
-alt inexistente o contraseña incorrecta [RN-08]
- S --> Portal : 401 INVALID_CREDENTIALS (mensaje genérico)
-else contraseña correcta y cuenta INACTIVA [RN-04]
- S --> Portal : 403 USER_INACTIVE
-else cuenta ACTIVA
- S -> J : generarToken(id, rol) [RN-09]
- J --> S : HS256: sub=id, role, iat, exp
- S --> C : LoginResponse (DTO-04)
- C --> Portal : 200 token, tipo, expiraEn, usuarioId, nombre, rol
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> C : POST /api/v1/auth/login\nLoginRequest (DTO-03)
+C -> C : validar email y contraseña presentes [RN-01]
+alt datos inválidos
+  C --> A : 400 VALIDATION_ERROR (DTO-08)
+else datos válidos
+  C -> S : login(request) [SRV-02]
+  S -> UR : findByEmail(email normalizado) [REP-01]
+  UR -> DB : SELECT
+  DB --> UR : fila o vacío
+  UR --> S : Optional<Usuario>
+  alt email inexistente
+    S --> C : CredencialesInvalidasException
+    C --> A : 401 INVALID_CREDENTIALS\nmensaje genérico [RN-08]
+  else email existente
+    S -> PE : matches(password, passwordHash) [RN-03]
+    PE --> S : coincide o no
+    alt contraseña incorrecta
+      S --> C : CredencialesInvalidasException
+      C --> A : 401 INVALID_CREDENTIALS\nel mismo mensaje [RN-08]
+    else contraseña correcta
+      alt cuenta INACTIVA [RN-04]
+        S --> C : UsuarioInactivoException
+        C --> A : 403 USER_INACTIVE
+      else cuenta ACTIVA
+        S -> J : generarToken(id, rol) [RN-09]
+        J --> S : JWT HS256: sub, role, iat, exp
+        S --> C : LoginResponse (DTO-04)
+        C --> A : 200 token, tipo, expiraEn, usuarioId, nombre, rol
+      end
+    end
+  end
 end
-note over C,S : Campos inválidos: 400 VALIDATION_ERROR.
+note over S : El estado se evalúa después de la contraseña:\nno se revela el estado de una cuenta ajena [RN-08].\nLa sesión no se guarda en la base (DM-03).
 @enduml

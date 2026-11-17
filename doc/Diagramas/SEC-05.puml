@@ -1,42 +1,91 @@
 @startuml SEC-05
-skinparam dpi 135
+skinparam dpi 110
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 12
 skinparam sequenceMessageAlign center
-title SEC-05 Administrar direcciones (CU-05 / API-05 a API-09)
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-05 Administrar direcciones (CU-05 / API-05 a API-09 / SRV-05 a SRV-09)
 autonumber
-actor Portal
-participant "Seguridad + DireccionController" as C
+actor "Cliente (Portal)\no Pedidos (sólo listado)" as A
+participant "Filtros de seguridad\nJWT de persona / de módulo" as F
+participant DireccionController as C
 participant DireccionService as S
-participant "UsuarioRepository / DireccionRepository" as R
-Portal -> C : /api/v1/users/{id}/addresses + Bearer
-C -> C : autenticar, exigir titular y validar entrada [RN-01, RN-05]
-C -> S : operación solicitada
-S -> R : leer usuario; bloquearlo si hay escritura [RN-04, RN-07]
-alt GET listado [SRV-09 / API-05]
- S -> R : findByUsuarioIdAndActivaTrueOrderByIdAsc
- S --> Portal : 200 lista de DireccionResponse
-else POST alta [SRV-05 / API-06]
- opt request.predeterminada == true
-  S -> R : buscar y desmarcar predeterminadas [RN-07]
- end
- S -> R : save(direccion)
- S --> Portal : 201 DireccionResponse + Location
-else PUT modificación [SRV-06 / API-07]
- S -> R : findByIdAndUsuarioIdAndActivaTrue
- S -> S : actualizar datos; no cambiar predeterminada
- S --> Portal : 200 DireccionResponse
-else DELETE baja [SRV-07 / API-08]
- S -> R : findByIdAndUsuarioIdAndActivaTrue
- S -> S : activa=false; predeterminada=false
- S --> Portal : 204 sin cuerpo
-else PATCH selección [SRV-08 / API-09]
- S -> R : findByIdAndUsuarioIdAndActivaTrue
- S -> R : buscar y desmarcar predeterminadas
- S -> S : seleccionada.predeterminada=true
- S --> Portal : 200 DireccionResponse
+participant UsuarioRepository as UR
+participant DireccionRepository as DR
+database "BD Usuarios\n(PostgreSQL)" as DB
+
+A -> F : /api/v1/users/{id}/addresses ...\nBearer JWT (o el de módulo de Pedidos para el listado)
+F -> F : validar credencial [RN-09, RN-15]
+alt credencial ausente o inválida
+  F --> A : 401 UNAUTHENTICATED (DTO-08)
+else credencial válida
+  F -> C : solicitud autenticada
+  C -> C : id de la ruta == id del token [RN-05]\nvalidar DTO-06 o DTO-09 si hay cuerpo [RN-01]
+  alt no es el titular (o el módulo no está autorizado)
+    C --> A : 403 FORBIDDEN
+  else datos inválidos
+    C --> A : 400 VALIDATION_ERROR
+  else autorizado y válido
+    alt GET listado [API-05]
+      C -> S : listarDirecciones(id) [SRV-09]
+      S -> UR : findById(id) [REP-02]
+      S -> DR : findByUsuarioIdAndActivaTrueOrderByIdAsc(id) [REP-05]
+      DR -> DB : SELECT direcciones activas
+      S --> C : lista de DireccionResponse (DTO-07)
+      C --> A : 200 lista (vacía si no hay)
+    else POST alta [API-06]
+      C -> S : crearDireccion(id, request) [SRV-05]
+      note right of S : @Transactional (DM-10)
+      S -> UR : findById(id) [REP-02]
+      S -> S : exigir usuario ACTIVO [RN-04]
+      opt request.predeterminada == true
+        S -> DR : findByUsuarioIdAndPredeterminadaTrue(id) [REP-08]
+        S -> S : desmarcar la anterior [RN-07]
+      end
+      S -> DR : save(direccion) [REP-07]
+      DR -> DB : INSERT direcciones (COMMIT al salir)
+      S --> C : DireccionResponse (DTO-07)
+      C --> A : 201 Created + Location
+    else PUT modificación [API-07]
+      C -> S : modificarDireccion(id, addressId, request) [SRV-06]
+      S -> DR : findByIdAndUsuarioIdAndActivaTrue(addressId, id) [REP-06]
+      alt no existe, está dada de baja o es de otro usuario
+        S --> C : DireccionNoEncontradaException
+        C --> A : 404 ADDRESS_NOT_FOUND [RN-05]
+      else dirección propia y activa
+        S -> S : actualizar los datos; predeterminada no cambia [RN-07]
+        DR -> DB : UPDATE direcciones (dirty checking)
+        S --> C : DireccionResponse
+        C --> A : 200 dirección actualizada
+      end
+    else DELETE baja [API-08]
+      C -> S : eliminarDireccion(id, addressId) [SRV-07]
+      S -> DR : findByIdAndUsuarioIdAndActivaTrue(addressId, id) [REP-06]
+      alt no existe, está dada de baja o es de otro usuario
+        C --> A : 404 ADDRESS_NOT_FOUND [RN-05]
+      else dirección propia y activa
+        S -> S : activa = false; predeterminada = false [DM-04 / RN-07]
+        DR -> DB : UPDATE direcciones
+        C --> A : 204 No Content
+      end
+    else PATCH selección [API-09]
+      C -> S : seleccionarPredeterminada(id, addressId) [SRV-08]
+      S -> DR : findByIdAndUsuarioIdAndActivaTrue(addressId, id) [REP-06]
+      alt no existe, está dada de baja o es de otro usuario
+        C --> A : 404 ADDRESS_NOT_FOUND [RN-05]
+      else dirección propia y activa
+        S -> DR : findByUsuarioIdAndPredeterminadaTrue(id) [REP-08]
+        S -> S : desmarcar la anterior y marcar la nueva\nen la misma transacción [RN-07 / DM-10]
+        DR -> DB : UPDATE direcciones
+        S --> C : DireccionResponse
+        C --> A : 200 dirección predeterminada
+      end
+    end
+  end
 end
-note over S,R : Cada escritura es transaccional (DM-10).\nEl bloqueo del usuario serializa sus escrituras.\nDirty checking persiste cambios al commit.\nLa primera no es predeterminada por omisión.\nAl borrar no se elige reemplazo automático.
-note over Portal,C : Pedidos con API Key sólo puede listar, incluso cuentas inactivas.\n401 sin credencial; 403 ajeno/inactivo; 404 dirección ajena o dada de baja; 400 inválido.
+note over S : Toda escritura exige usuario ACTIVO (403 USER_INACTIVE) [RN-04].\nUsuario inexistente: 404 USER_NOT_FOUND.
 @enduml

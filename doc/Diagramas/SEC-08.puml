@@ -1,38 +1,62 @@
 @startuml SEC-08
-skinparam dpi 135
+skinparam dpi 110
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 12
 skinparam sequenceMessageAlign center
-title SEC-08 Recuperar contraseña (CU-08 / API-12 y API-13)
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-08 Recuperar o restablecer contraseña (CU-08 / API-12 y API-13 / SRV-12 y SRV-13)
 autonumber
-actor Persona as P
+actor Persona as A
 participant AuthController as C
-participant AuthService as A
+participant AuthService as AS
 participant RecuperacionService as S
-participant "UsuarioRepository / TokenRecuperacionRepository" as R
+participant UsuarioRepository as UR
+participant TokenRecuperacionRepository as TR
+database "BD Usuarios\n(PostgreSQL)" as DB
 participant NotificacionesClient as N
-P -> C : POST /auth/password/forgot {email}
-C -> A : solicitarRecuperacion(request)
-A -> S : generarToken(email) [SRV-12]
-S -> R : buscarPorEmailParaActualizar(email)\nbloquear fila del usuario
+
+== Paso 1: solicitar la recuperación ==
+A -> C : POST /api/v1/auth/password/forgot\nSolicitarRecuperacionRequest (DTO-12)
+C -> C : validar email [RN-01]
+C -> AS : solicitarRecuperacion(request) [SRV-12]
+AS -> S : generarToken(email)
+note right of S : @Transactional (DM-10)
+S -> UR : findByEmail(email normalizado) [REP-01]
+UR -> DB : SELECT
+UR --> S : Optional<Usuario>
 alt existe y está ACTIVO
- S -> R : invalidar anteriores y guardar hash SHA-256\ntoken aleatorio, vence en 30 min [RN-13]
- S -> S : COMMIT
- S --> A : Emision(id, nombre, email, token)
- A ->> N : enviarRecuperacion(...) [INT-06]
-else no existe o INACTIVO
- S --> A : Optional.empty
+  S -> TR : invalidarVigentes(usuarioId, ahora) [REP-12]
+  S -> S : token aleatorio de 256 bits; vence a los 30 min [RN-13]
+  S -> TR : save(TokenRecuperacion con hash SHA-256) [DM-14]
+  TR -> DB : INSERT tokens_recuperacion (COMMIT al salir)
+  S --> AS : Emision(usuarioId, nombre, email, token)
+  AS -> N : enviarRecuperacion(...) [INT-06]
+  note right of N : Con timeout. Si falla se registra:\nla respuesta no cambia.
+else no existe o está INACTIVO
+  S --> AS : vacío (no se hace nada)
 end
-C --> P : 202 sin cuerpo en ambos casos
-P -> C : POST /auth/password/reset {token, password}
-C -> A : restablecerPassword(request)
-A -> S : restablecerPassword(token, password) [SRV-13]
-S -> R : buscarUsuarioIdPorTokenHash(hash)
-S -> R : buscarPorIdParaActualizar(id)\nbloquear fila del usuario
-S -> R : findByTokenHash(hash) despues del bloqueo
-S -> S : validar vigencia, uso y usuario ACTIVO
-S -> R : marcar usado, actualizar BCrypt, invalidar vigentes\nCOMMIT
-C --> P : 204 sin cuerpo
-note over P,R : Token inválido, vencido o usado: 400 INVALID_RESET_TOKEN.\nEntrada inválida: 400 VALIDATION_ERROR; no se consume el token.
+C --> A : 202 Accepted sin cuerpo, en ambos casos [RN-13]
+
+== Paso 2: restablecer la contraseña ==
+A -> C : POST /api/v1/auth/password/reset\nRestablecerPasswordRequest (DTO-13)
+C -> C : validar token y contraseña de 8 caracteres o más [RN-01]
+C -> AS : restablecerPassword(request) [SRV-13]
+AS -> S : restablecerPassword(token, password)
+note right of S : @Transactional (DM-10)
+S -> TR : findByTokenHash(SHA-256 del token) [REP-10]
+TR -> DB : SELECT
+TR --> S : Optional<TokenRecuperacion>
+alt token inexistente, vencido o usado, o cuenta INACTIVA
+  S --> C : TokenRecuperacionInvalidoException
+  C --> A : 400 INVALID_RESET_TOKEN [RN-13]
+else token vigente
+  S -> S : marcar usado [REP-11]\nBCrypt(nueva contraseña) [RN-03]
+  S -> TR : invalidarVigentes(usuarioId, ahora) [REP-12]
+  TR -> DB : UPDATE usuarios y tokens_recuperacion (COMMIT)
+  C --> A : 204 No Content
+end
 @enduml

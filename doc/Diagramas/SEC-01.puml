@@ -1,34 +1,52 @@
 @startuml SEC-01
-skinparam dpi 135
+skinparam dpi 110
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 12
 skinparam sequenceMessageAlign center
-title SEC-01 Registrar usuario (CU-01 / API-01)
+skinparam responseMessageBelowArrow true
+skinparam NoteBackgroundColor #FFF9DB
+skinparam ParticipantPadding 12
+hide footbox
+title SEC-01 Registrar usuario (CU-01 / API-01 / SRV-01)
 autonumber
-actor Portal
+actor "Cliente\n(Portal Web)" as A
 participant AuthController as C
 participant UsuarioService as S
-participant "UsuarioRepository / RolRepository" as R
-database PostgreSQL as DB
+participant UsuarioRepository as UR
+participant RolRepository as RR
+participant PasswordEncoder as PE
+database "BD Usuarios\n(PostgreSQL)" as DB
 participant NotificacionesClient as N
-Portal -> C : POST /api/v1/auth/register\nRegistrarUsuarioRequest (DTO-01)
-C -> C : validar campos [RN-01]
-C -> S : registrarUsuario(request) [SRV-01]
-S -> R : existsByEmail(email normalizado) [RN-02]
-alt email duplicado
- S --> Portal : 409 EMAIL_ALREADY_REGISTERED
-else disponible
- S -> R : findByNombre("CLIENTE") [RN-06]
- S -> S : BCrypt(password) [RN-03]\nestado ACTIVO
- S -> R : save(usuario)
- R -> DB : INSERT usuarios
- DB --> S : id asignado
- S -> DB : COMMIT
- S ->> N : afterCommit: enviarBienvenida(id, nombre, email)\nINT-01 / HTTP asíncrono
- note right of N : Notificaciones ya puede consultar al usuario.\nUna falla se registra sin revertir el alta.
- S --> C : UsuarioResponse (DTO-02)
- C --> Portal : 201 + Location\nsin contraseña ni hash
+
+A -> C : POST /api/v1/auth/register\nRegistrarUsuarioRequest (DTO-01)
+C -> C : validar obligatorios y formato [RN-01]
+alt datos inválidos
+  C --> A : 400 VALIDATION_ERROR (DTO-08)
+else datos válidos
+  C -> S : registrarUsuario(request) [SRV-01]
+  S -> UR : existsByEmail(email normalizado) [REP-01 / RN-02]
+  UR -> DB : SELECT
+  DB --> UR : resultado
+  UR --> S : boolean
+  alt email ya registrado
+    S --> C : EmailDuplicadoException
+    C --> A : 409 EMAIL_ALREADY_REGISTERED (DTO-08)
+  else email disponible
+    S -> RR : findByNombre("CLIENTE") [REP-04 / RN-06]
+    RR -> DB : SELECT
+    RR --> S : Rol CLIENTE
+    S -> PE : encode(password) [RN-03]
+    PE --> S : passwordHash (BCrypt)
+    S -> UR : save(usuario con estado ACTIVO) [REP-03]
+    UR -> DB : INSERT usuarios (confirmado)
+    DB --> UR : id generado
+    UR --> S : Usuario
+    S -> N : enviarBienvenida(id, nombre, email) [INT-01]
+    note right of N : Se pide recién con el alta confirmada.\nTiene timeout; si falla se registra\ny el alta se mantiene (no bloqueante).
+    N --> S : respuesta o falla (se ignora)
+    S --> C : UsuarioResponse (DTO-02)
+    C --> A : 201 Created + Location\nsin contraseña ni hash [RN-03]
+  end
 end
-note over C,S : Entrada inválida: 400 VALIDATION_ERROR.\nEl registro público ignora campos extra (rol, estado).
 @enduml
