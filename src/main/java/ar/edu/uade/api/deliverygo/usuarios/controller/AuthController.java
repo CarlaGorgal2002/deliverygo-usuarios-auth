@@ -6,8 +6,6 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.RegistrarUsuarioRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.RestablecerPasswordRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SesionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.SolicitarRecuperacionRequest;
-import ar.edu.uade.api.deliverygo.usuarios.dto.TokenModuloRequest;
-import ar.edu.uade.api.deliverygo.usuarios.dto.TokenModuloResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.AuthService;
@@ -46,12 +44,6 @@ public class AuthController implements IAuthController {
     }
 
     @Override
-    @PostMapping("/module-token")
-    public ResponseEntity<TokenModuloResponse> emitirTokenModulo(TokenModuloRequest request) {
-        return ResponseEntity.ok(authService.emitirTokenModulo(request));
-    }
-
-    @Override
     @PostMapping("/password/forgot")
     public ResponseEntity<Void> solicitarRecuperacion(SolicitarRecuperacionRequest request) {
         authService.solicitarRecuperacion(request);
@@ -65,7 +57,7 @@ public class AuthController implements IAuthController {
         return ResponseEntity.noContent().build();
     }
 
-    // Sólo personas (SecurityConfig): un token de módulo no renueva ni valida sesiones de usuario.
+    // Sólo personas (SecurityConfig): sin el JWT de una persona no se renueva ni se valida la sesión.
     @Override
     @PostMapping("/refresh")
     public ResponseEntity<LoginResponse> renovarSesion(UsuarioAutenticado actual) {

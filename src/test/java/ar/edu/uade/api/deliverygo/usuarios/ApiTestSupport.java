@@ -13,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -30,17 +29,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")   // H2 en memoria (src/test/resources/application-test.properties)
-// Claves de módulo sólo para las pruebas (RN-15): con cada una se pide el token de módulo. 'pagos' tiene una clave demasiado corta a propósito:
-// debe quedar sin acceso.
-@TestPropertySource(properties = {
-        "app.modules.api-keys.pedidos=" + ApiTestSupport.CLAVE_PEDIDOS,
-        "app.modules.api-keys.catalogo=" + ApiTestSupport.CLAVE_CATALOGO,
-        "app.modules.api-keys.pagos=corta"})
 abstract class ApiTestSupport {
 
     static final String PASSWORD = "ClaveDemo2026!";
-    static final String CLAVE_PEDIDOS = "clave-de-pedidos-solo-para-pruebas-0123";
-    static final String CLAVE_CATALOGO = "clave-de-catalogo-solo-para-pruebas-0123";
 
     @Autowired
     protected MockMvc mvc;
@@ -105,23 +96,6 @@ abstract class ApiTestSupport {
         JsonNode sesion = json.readTree(login(email, PASSWORD).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
         return new Sesion(sesion.get("usuarioId").asLong(), email, sesion.get("token").asText());
-    }
-
-    // Pide a Usuarios el token de un módulo (API-17) y devuelve la cabecera Authorization lista para usar.
-    protected String bearerModulo(String modulo, String clave) throws Exception {
-        JsonNode token = json.readTree(mvc.perform(conJson(post("/api/v1/auth/module-token"),
-                        cuerpo("modulo", modulo, "clave", clave)))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString());
-        return "Bearer " + token.get("token").asText();
-    }
-
-    protected String bearerPedidos() throws Exception {
-        return bearerModulo("pedidos", CLAVE_PEDIDOS);
-    }
-
-    protected String bearerCatalogo() throws Exception {
-        return bearerModulo("catalogo", CLAVE_CATALOGO);
     }
 
     protected void marcarInactivo(String email) {

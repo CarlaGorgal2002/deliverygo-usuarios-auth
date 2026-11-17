@@ -10,8 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// CU-10: token de módulo (API-17), estado y rol (API-16) y acceso de módulos consumidores a API-03 y API-05 (RN-15).
-// Las claves de prueba están en ApiTestSupport: 'pedidos' y 'catalogo' son válidas; 'pagos' es demasiado corta y no entra.
+// CU-10 y RN-15: los otros módulos consultan a Usuarios sin credencial (ni JWT ni clave). Sólo leen: perfil (API-03),
+// direcciones (API-05) y estado y rol (API-16). El JWT queda para el front: con él rigen las reglas del titular (RN-05).
 class ModulosApiTest extends ApiTestSupport {
 
     private static String acceso(long id) {
@@ -21,10 +21,10 @@ class ModulosApiTest extends ApiTestSupport {
     // ------------------------------------------------------------------ CU-10
 
     @Test
-    void unModuloConsultaEstadoYRolSinDatosPersonales() throws Exception {
+    void unModuloConsultaEstadoYRolSinCredencialNiDatosPersonales() throws Exception {
         Sesion a = registrarYLoguear();
 
-        mvc.perform(get(acceso(a.id())).header("Authorization", bearerCatalogo()))
+        mvc.perform(get(acceso(a.id())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuarioId").value(a.id()))
                 .andExpect(jsonPath("$.estado").value("ACTIVO"))
@@ -38,7 +38,7 @@ class ModulosApiTest extends ApiTestSupport {
         Sesion a = registrarYLoguear();
         marcarInactivo(a.email());
 
-        mvc.perform(get(acceso(a.id())).header("Authorization", bearerPedidos()))
+        mvc.perform(get(acceso(a.id())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("INACTIVO"));
     }
@@ -50,43 +50,26 @@ class ModulosApiTest extends ApiTestSupport {
         mvc.perform(conJson(put("/api/v1/users/" + a.id() + "/role").header("Authorization", admin.bearer()),
                 cuerpo("rol", "COMERCIO"))).andExpect(status().isOk());
 
-        mvc.perform(get(acceso(a.id())).header("Authorization", bearerPedidos()))
-                .andExpect(jsonPath("$.rol").value("COMERCIO"));
+        mvc.perform(get(acceso(a.id()))).andExpect(jsonPath("$.rol").value("COMERCIO"));
     }
 
     @Test
-    void sinTokenDeModuloValidoLaRespuestaEs401O403() throws Exception {
+    void lasCabecerasQueMandenLosModulosNoCambianLaRespuesta() throws Exception {
         Sesion a = registrarYLoguear();
-        Sesion admin = crearConRolYLoguear("ADMIN");
-        String ruta = acceso(a.id());
+        String ruta = "/api/v1/users/" + a.id();
 
-        assertError(mvc.perform(get(ruta)), 401, "UNAUTHENTICATED", ruta);
-        // un Bearer que no es un JWT de Usuarios no autentica a nadie
-        assertError(mvc.perform(get(ruta).header("Authorization", "Bearer clave-incorrecta-que-no-existe-000")), 401, "UNAUTHENTICATED", ruta);
-        assertError(mvc.perform(get(ruta).header("Authorization", "Bearer ")), 401, "UNAUTHENTICATED", ruta);
-        // el header X-Api-Key ya no autentica: el módulo tiene que pedir su token
-        assertError(mvc.perform(get(ruta).header("X-Api-Key", CLAVE_PEDIDOS)), 401, "UNAUTHENTICATED", ruta);
-
-        // un usuario, aunque sea el titular o ADMIN, no usa esta consulta
-        assertError(mvc.perform(get(ruta).header("Authorization", a.bearer())), 403, "FORBIDDEN", ruta);
-        assertError(mvc.perform(get(ruta).header("Authorization", admin.bearer())), 403, "FORBIDDEN", ruta);
-    }
-
-    @Test
-    void unTokenDePersonaNoSeHaceInstanciaDeModulo() throws Exception {
-        Sesion a = registrarYLoguear();
-
-        // el JWT de una persona, aunque sea el titular, no sirve en la consulta exclusiva de módulos
-        assertError(mvc.perform(get(acceso(a.id())).header("Authorization", a.bearer()).header("X-Api-Key", CLAVE_PEDIDOS)),
-                403, "FORBIDDEN", acceso(a.id()));
+        // Algunos módulos todavía mandan X-Api-Key o un Bearer vacío o viejo: se ignoran y la lectura sigue funcionando.
+        mvc.perform(get(ruta).header("X-Api-Key", "cualquier-clave")).andExpect(status().isOk());
+        mvc.perform(get(ruta).header("Authorization", "Bearer ")).andExpect(status().isOk());
+        mvc.perform(get(ruta).header("Authorization", "Bearer token-viejo-o-de-otro-modulo")).andExpect(status().isOk());
+        mvc.perform(get(acceso(a.id())).header("Authorization", "Bearer token-viejo")).andExpect(status().isOk());
     }
 
     @Test
     void idInexistenteEInvalido() throws Exception {
-        assertError(mvc.perform(get(acceso(987654321L)).header("Authorization", bearerPedidos())),
-                404, "USER_NOT_FOUND", acceso(987654321L));
+        assertError(mvc.perform(get(acceso(987654321L))), 404, "USER_NOT_FOUND", acceso(987654321L));
         for (String id : new String[]{"abc", "0", "-1"}) {
-            assertError(mvc.perform(get("/api/v1/users/" + id + "/access").header("Authorization", bearerPedidos())),
+            assertError(mvc.perform(get("/api/v1/users/" + id + "/access")),
                     400, "VALIDATION_ERROR", "/api/v1/users/" + id + "/access");
         }
     }
@@ -94,122 +77,79 @@ class ModulosApiTest extends ApiTestSupport {
     // ------------------------------------------------------------------ API-03 y API-05 para módulos
 
     @Test
-    void cualquierModuloConsultaElPerfilYRecibeElEstadoDeUnaCuentaInactiva() throws Exception {
+    void unModuloConsultaElPerfilSinCredencialYRecibeElEstadoDeUnaCuentaInactiva() throws Exception {
         Sesion a = registrarYLoguear();
         marcarInactivo(a.email());
 
-        for (String token : new String[]{bearerPedidos(), bearerCatalogo()}) {
-            mvc.perform(get("/api/v1/users/" + a.id()).header("Authorization", token))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(a.id()))
-                    .andExpect(jsonPath("$.estado").value("INACTIVO"))
-                    .andExpect(jsonPath("$.password").doesNotExist());
-        }
+        mvc.perform(get("/api/v1/users/" + a.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(a.id()))
+                .andExpect(jsonPath("$.email").value(a.email()))
+                .andExpect(jsonPath("$.estado").value("INACTIVO"))
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.passwordHash").doesNotExist());
         // el titular inactivo, en cambio, sigue recibiendo 403
         assertError(mvc.perform(get("/api/v1/users/" + a.id()).header("Authorization", a.bearer())),
                 403, "USER_INACTIVE", "/api/v1/users/" + a.id());
-        assertError(mvc.perform(get("/api/v1/users/987654321").header("Authorization", bearerPedidos())),
-                404, "USER_NOT_FOUND", "/api/v1/users/987654321");
+        assertError(mvc.perform(get("/api/v1/users/987654321")), 404, "USER_NOT_FOUND", "/api/v1/users/987654321");
     }
 
     @Test
-    void soloPedidosListaLasDireccionesDeUnUsuario() throws Exception {
+    void unModuloListaLasDireccionesSinCredencial() throws Exception {
         Sesion a = registrarYLoguear();
         crearDireccionComo(a, true);
         String ruta = "/api/v1/users/" + a.id() + "/addresses";
 
-        mvc.perform(get(ruta).header("Authorization", bearerPedidos()))
+        mvc.perform(get(ruta))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].predeterminada").value(true));
 
-        // otro módulo con credencial válida no ve direcciones (RN-05)
-        assertError(mvc.perform(get(ruta).header("Authorization", bearerCatalogo())), 403, "FORBIDDEN", ruta);
-
-        // Pedidos también las recibe si la cuenta está inactiva; si el usuario no existe, 404
+        // también las recibe si la cuenta está inactiva; si el usuario no existe, 404
         marcarInactivo(a.email());
-        mvc.perform(get(ruta).header("Authorization", bearerPedidos())).andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
-        assertError(mvc.perform(get("/api/v1/users/987654321/addresses").header("Authorization", bearerPedidos())),
+        mvc.perform(get(ruta)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        assertError(mvc.perform(get("/api/v1/users/987654321/addresses")),
                 404, "USER_NOT_FOUND", "/api/v1/users/987654321/addresses");
     }
 
     @Test
-    void unModuloNuncaEscribe() throws Exception {
+    void conElJwtDeOtraPersonaRigenLasReglasDelTitular() throws Exception {
+        Sesion a = registrarYLoguear();
+        Sesion b = registrarYLoguear();
+        Sesion admin = crearConRolYLoguear("ADMIN");
+
+        // el front manda el JWT del usuario: sólo el titular lee su perfil y sus direcciones (RN-05)
+        for (String ruta : new String[]{"/api/v1/users/" + a.id(), "/api/v1/users/" + a.id() + "/addresses"}) {
+            assertError(mvc.perform(get(ruta).header("Authorization", b.bearer())), 403, "FORBIDDEN", ruta);
+            assertError(mvc.perform(get(ruta).header("Authorization", admin.bearer())), 403, "FORBIDDEN", ruta);
+            mvc.perform(get(ruta).header("Authorization", a.bearer())).andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void sinCredencialNadaSeEscribe() throws Exception {
         Sesion a = registrarYLoguear();
         long id = a.id();
         String direccion = "/api/v1/users/" + id + "/addresses";
 
-        assertError(mvc.perform(conJson(put("/api/v1/users/" + id).header("Authorization", bearerPedidos()),
-                cuerpo("nombre", "X", "apellido", "Y", "email", emailUnico()))), 403, "FORBIDDEN", "/api/v1/users/" + id);
-        assertError(mvc.perform(conJson(post(direccion).header("Authorization", bearerPedidos()),
+        assertError(mvc.perform(conJson(put("/api/v1/users/" + id), cuerpo("nombre", "X", "apellido", "Y", "email", emailUnico()))),
+                401, "UNAUTHENTICATED", "/api/v1/users/" + id);
+        assertError(mvc.perform(conJson(post(direccion),
                 cuerpo("calle", "C", "numero", "1", "ciudad", "X", "provincia", "X", "codigoPostal", "1000"))),
-                403, "FORBIDDEN", direccion);
-        assertError(mvc.perform(delete(direccion + "/1").header("Authorization", bearerPedidos())), 403, "FORBIDDEN", direccion + "/1");
-        assertError(mvc.perform(patch(direccion + "/1/default").header("Authorization", bearerPedidos())), 403, "FORBIDDEN", direccion + "/1/default");
-        assertError(mvc.perform(conJson(put("/api/v1/users/" + id + "/status").header("Authorization", bearerPedidos()),
-                cuerpo("estado", "INACTIVO"))), 403, "FORBIDDEN", "/api/v1/users/" + id + "/status");
-    }
-
-    // ------------------------------------------------------------------ API-17: token de módulo
-
-    @Test
-    void unModuloPideSuTokenYRecibeUnJwtConRolModulo() throws Exception {
-        mvc.perform(conJson(post("/api/v1/auth/module-token"), cuerpo("modulo", "pedidos", "clave", CLAVE_PEDIDOS)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isNotEmpty())
-                .andExpect(jsonPath("$.tipo").value("Bearer"))
-                .andExpect(jsonPath("$.modulo").value("pedidos"))
-                .andExpect(jsonPath("$.rol").value("MODULO"))
-                .andExpect(jsonPath("$.expiraEn").isNotEmpty());
-        // el nombre del módulo no distingue mayúsculas ni espacios sobrantes
-        mvc.perform(conJson(post("/api/v1/auth/module-token"), cuerpo("modulo", " Pedidos ", "clave", CLAVE_PEDIDOS)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.modulo").value("pedidos"));
+                401, "UNAUTHENTICATED", direccion);
+        assertError(mvc.perform(delete(direccion + "/1")), 401, "UNAUTHENTICATED", direccion + "/1");
+        assertError(mvc.perform(patch(direccion + "/1/default")), 401, "UNAUTHENTICATED", direccion + "/1/default");
+        assertError(mvc.perform(conJson(put("/api/v1/users/" + id + "/status"), cuerpo("estado", "INACTIVO"))),
+                401, "UNAUTHENTICATED", "/api/v1/users/" + id + "/status");
+        assertError(mvc.perform(conJson(put("/api/v1/users/" + id + "/role"), cuerpo("rol", "ADMIN"))),
+                401, "UNAUTHENTICATED", "/api/v1/users/" + id + "/role");
+        assertError(mvc.perform(get("/api/v1/auth/session")), 401, "UNAUTHENTICATED", "/api/v1/auth/session");
     }
 
     @Test
-    void moduloDesconocidoClaveIncorrectaYClaveCortaDanElMismo401() throws Exception {
+    void yaNoExisteElTokenDeModulo() throws Exception {
         String ruta = "/api/v1/auth/module-token";
-        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "pedidos", "clave", "clave-incorrecta-que-no-existe-000"))),
-                401, "INVALID_CREDENTIALS", ruta);
-        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "inexistente", "clave", CLAVE_PEDIDOS))),
-                401, "INVALID_CREDENTIALS", ruta);
-        // la clave de un módulo no sirve para otro
-        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "catalogo", "clave", CLAVE_PEDIDOS))),
-                401, "INVALID_CREDENTIALS", ruta);
-        // 'pagos' tiene configurada una clave de menos de 16 caracteres: queda sin acceso aunque se presente
-        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "pagos", "clave", "corta"))),
-                401, "INVALID_CREDENTIALS", ruta);
-        // 'logistica' no tiene clave configurada: tampoco entra con una clave vacía ni inventada
-        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "logistica", "clave", "una-clave-inventada-de-16-o-mas"))),
-                401, "INVALID_CREDENTIALS", ruta);
-    }
-
-    @Test
-    void elPedidoDeTokenValidaElCuerpo() throws Exception {
-        String ruta = "/api/v1/auth/module-token";
-        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "", "clave", ""))), 400, "VALIDATION_ERROR", ruta);
-        assertError(mvc.perform(conJson(post(ruta), "{}")), 400, "VALIDATION_ERROR", ruta);
-    }
-
-    @Test
-    void elTokenDeModuloNoSeUsaParaIniciarSesionComoPersona() throws Exception {
-        Sesion a = registrarYLoguear();
-
-        // un token de módulo no es el titular: no modifica ni lee como persona
-        assertError(mvc.perform(get("/api/v1/auth/session").header("Authorization", bearerPedidos())),
-                403, "FORBIDDEN", "/api/v1/auth/session");
-        assertError(mvc.perform(conJson(put("/api/v1/users/" + a.id()).header("Authorization", bearerPedidos()),
-                cuerpo("nombre", "X", "apellido", "Y", "email", emailUnico()))), 403, "FORBIDDEN", "/api/v1/users/" + a.id());
-    }
-
-    @Test
-    void laRutaDeTokenDeModuloEsPublicaYUnTokenViejoNoLaRompe() throws Exception {
-        // un Bearer inválido en una ruta pública no la bloquea
-        mvc.perform(conJson(post("/api/v1/auth/module-token").header("Authorization", "Bearer token-viejo"),
-                cuerpo("modulo", "pedidos", "clave", CLAVE_PEDIDOS)))
-                .andExpect(status().isOk());
-        registrar(emailUnico()).andExpect(status().isCreated());
+        assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "pedidos", "clave", "cualquier-clave-0123456789"))),
+                401, "UNAUTHENTICATED", ruta);
     }
 }

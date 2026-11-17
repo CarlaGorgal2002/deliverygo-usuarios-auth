@@ -22,10 +22,9 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    // Roles de las personas (tabla roles). Los módulos consumidores entran con un JWT de rol MODULO que les emite Usuarios.
+    // Roles de las personas (tabla roles). Los módulos consumidores no mandan credencial: sólo leen (RN-15).
     private static final String[] PERSONAS = {"CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN"};
     private static final String ADMIN = "ADMIN";
-    private static final String MODULO = "MODULO";
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
@@ -42,9 +41,9 @@ public class SecurityConfig {
                                 request, response, HttpStatus.FORBIDDEN, "FORBIDDEN",
                                 "No tiene permiso para acceder a este recurso")))
                 .authorizeHttpRequests(auth -> auth
-                        // Públicas: registro, login, token de módulo y recuperación de contraseña (CU-01, CU-02, CU-08, CU-10)
+                        // Públicas: registro, login y recuperación de contraseña (CU-01, CU-02, CU-08)
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/auth/module-token", "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
+                                "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
                         // CU-09: renovar y validar la sesión es sólo para personas
@@ -54,12 +53,10 @@ public class SecurityConfig {
                         // CU-06 y CU-07: sólo ADMIN (el service lo vuelve a verificar contra la base, RN-11)
                         .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/status", "/api/v1/users/*/role").hasRole(ADMIN)
 
-                        // CU-10: estado y rol para otros módulos
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/access").hasRole(MODULO)
-
-                        // CU-03 y CU-05: el perfil y las direcciones los leen el titular o un módulo
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/*/addresses")
-                        .hasAnyRole("CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN", MODULO)
+                        // CU-03, CU-05 y CU-10: lecturas que usan los otros módulos, sin credencial (RN-15). Con el JWT
+                        // de una persona (el front) el controller exige además que sea el titular (RN-05).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/*/addresses",
+                                "/api/v1/users/*/access").permitAll()
 
                         // CU-04 y CU-05: modificar perfil y direcciones, sólo personas (el titular lo controla el controller)
                         .requestMatchers("/api/v1/users/**").hasAnyRole(PERSONAS)

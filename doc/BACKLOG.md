@@ -13,7 +13,7 @@ Grupo 02 · Equipo 1 del ecosistema DeliveryGo. Los diez casos de uso vienen de 
 | CU-07 | Asignar o modificar rol | Evolución | Hecho | API-11 | [SEC-07](Diagramas/SEC-07.png) | `AdministracionApiTest` |
 | CU-08 | Recuperar o restablecer contraseña | Evolución | Hecho | API-12, API-13 | [SEC-08](Diagramas/SEC-08.png) | `RecuperacionApiTest` |
 | CU-09 | Renovar o validar sesión/token | Evolución | Hecho | API-14, API-15 | [SEC-09](Diagramas/SEC-09.png) | `SesionApiTest` |
-| CU-10 | Consultar estado y rol para otro módulo | Evolución | Hecho | API-16, API-17 | [SEC-10](Diagramas/SEC-10.png) | `ModulosApiTest` |
+| CU-10 | Consultar estado y rol para otro módulo | Evolución | Hecho | API-16 | [SEC-10](Diagramas/SEC-10.png) | `ModulosApiTest` |
 
 ## Integraciones
 
@@ -22,7 +22,7 @@ Grupo 02 · Equipo 1 del ecosistema DeliveryGo. Los diez casos de uso vienen de 
 | INT-01 | Usuarios → Notificaciones (bienvenida) | Cliente HTTP real probado con el parche de Notificaciones; mock declarado por defecto | Usuarios y Notificaciones |
 | INT-06 | Usuarios → Notificaciones (recuperación de contraseña) | Igual que INT-01 | Usuarios y Notificaciones |
 | INT-02 | Portal Web → Usuarios | API disponible; falta probar con el Portal final | Portal |
-| INT-03 | Pedidos y Logística → Usuarios | JWT de módulo implementado (API-17); los consumidores publicados todavía usan mocks | Pedidos y Logística |
+| INT-03 | Pedidos y Logística → Usuarios | Lectura sin credencial disponible; los consumidores publicados todavía usan mocks o tienen diferencias de contrato (ver README) | Pedidos y Logística |
 | INT-04 | Catálogo → Usuarios | JWT de Usuarios validado en Catálogo | Catálogo |
 | INT-05 | Notificaciones, Pagos, Opiniones y Analítica → Usuarios | Notificaciones probado; el resto requiere ajustes | Cada módulo |
 

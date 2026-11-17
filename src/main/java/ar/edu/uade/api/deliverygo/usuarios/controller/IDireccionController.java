@@ -32,8 +32,8 @@ public interface IDireccionController {
     @Operation(operationId = "listarDirecciones", summary = "Listar direcciones (API-05 / CU-05)",
             description = """
                     Devuelve las direcciones activas del usuario, sin paginación. Sin direcciones devuelve 200 y []. Hay cero o una predeterminada.
-                    Con JWT de persona: sólo el titular ACTIVO. Con JWT de módulo: sólo el módulo Pedidos, que también recibe las direcciones de una cuenta
-                    INACTIVA; cualquier otro módulo recibe 403.""")
+                    Con JWT de persona (el front): sólo el titular ACTIVO. Sin credencial: es la consulta de otro módulo (Pedidos), que también recibe
+                    las direcciones de una cuenta INACTIVA.""")
     @ApiResponse(responseCode = "200", description = "Direcciones activas del usuario.")
     @ErroresDeSesion
     @ErroresComunes

@@ -172,8 +172,8 @@ class DireccionesApiTest extends ApiTestSupport {
     }
 
     @Test
-    void sinTokenLasOperacionesDeDireccionesDan401() throws Exception {
-        assertError(mvc.perform(get("/api/v1/users/1/addresses")), 401, "UNAUTHENTICATED", "/api/v1/users/1/addresses");
+    void sinTokenLasEscriturasDeDireccionesDan401() throws Exception {
+        // la lectura sin token es la de otro módulo (RN-15, ModulosApiTest); las escrituras exigen el JWT del titular
         assertError(mvc.perform(patch("/api/v1/users/1/addresses/1/default")), 401, "UNAUTHENTICATED",
                 "/api/v1/users/1/addresses/1/default");
     }

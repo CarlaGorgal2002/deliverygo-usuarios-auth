@@ -14,9 +14,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-// Autentica la solicitud a partir del Bearer token (RN-09). Sólo establece QUIÉN es el solicitante, una
-// persona o un módulo consumidor (RN-15); qué puede hacer lo decide SecurityConfig (rol) y el controller
-// (titular de la ruta, RN-05).
+// Autentica la solicitud a partir del Bearer token de una persona (RN-09). Sólo establece QUIÉN es el
+// solicitante; qué puede hacer lo decide SecurityConfig (rol) y el controller (titular de la ruta, RN-05).
+// Los módulos consumidores no mandan token (RN-15): sus lecturas llegan sin autenticar.
 // Un token ausente, inválido o vencido no corta la solicitud: sigue sin autenticar y, si la ruta es
 // protegida, SecurityConfig responde 401. Así las rutas públicas funcionan aunque el navegador mande un
 // token viejo. No es un @Component: lo crea SecurityConfig para que corra una sola vez.
@@ -42,19 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (cabecera != null && cabecera.regionMatches(true, 0, PREFIJO_BEARER, 0, PREFIJO_BEARER.length())) {
             try {
-                JwtService.Credencial credencial = jwtService.leerCredencial(cabecera.substring(PREFIJO_BEARER.length()).trim());
-                if (JwtService.ROL_MODULO.equals(credencial.rol())) {
-                    SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                            new ModuloAutenticado(credencial.sujeto()), null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + JwtService.ROL_MODULO))));
-                } else if (!JwtService.ROL_SERVICIO.equals(credencial.rol())) {
-                    // Los tokens de servicio sólo sirven para llamar a otros módulos: no autentican a nadie en
-                    // Usuarios. La solicitud sigue como no autenticada y una ruta protegida responde 401.
-                    UsuarioAutenticado usuario = new UsuarioAutenticado(
-                            Long.valueOf(credencial.sujeto()), credencial.rol(), credencial.expiraEn());
-                    SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                            usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol()))));
-                }
+                UsuarioAutenticado usuario = jwtService.leer(cabecera.substring(PREFIJO_BEARER.length()).trim());
+                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                        usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol()))));
             } catch (JwtException | IllegalArgumentException e) {
                 // Token inválido (o con un sujeto que no es un id de usuario): no se autentica a nadie.
                 SecurityContextHolder.clearContext();

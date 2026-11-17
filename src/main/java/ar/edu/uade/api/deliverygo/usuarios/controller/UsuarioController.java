@@ -6,7 +6,6 @@ import ar.edu.uade.api.deliverygo.usuarios.dto.CambiarRolRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ModificarPerfilRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.UsuarioResponse;
 import ar.edu.uade.api.deliverygo.usuarios.exception.AccesoProhibidoException;
-import ar.edu.uade.api.deliverygo.usuarios.security.ModuloAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.security.UsuarioAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.AdministracionService;
 import ar.edu.uade.api.deliverygo.usuarios.service.UsuarioService;
@@ -17,9 +16,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Los permisos por rol están en SecurityConfig: administración (CU-06, CU-07) sólo ADMIN (RN-11) y
-// CU-10 sólo módulos (RN-15). Acá se controla lo que depende del {id}: sólo el titular opera sobre su
-// cuenta (RN-05); un módulo con credencial puede leer el perfil.
+// Los permisos por rol están en SecurityConfig: administración (CU-06, CU-07) sólo ADMIN (RN-11). Acá se
+// controla lo que depende del {id}: con JWT (el front) sólo el titular opera sobre su cuenta (RN-05); una
+// lectura sin credencial es la de otro módulo (RN-15) y recibe el perfil aunque la cuenta esté INACTIVA.
 @RestController
 @RequestMapping("/api/v1/users")
 public class UsuarioController implements IUsuarioController {
@@ -37,7 +36,7 @@ public class UsuarioController implements IUsuarioController {
     @Override
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioResponse> consultarPerfil(Long id, Authentication authentication) {
-        if (authentication.getPrincipal() instanceof ModuloAutenticado) {
+        if (esModulo(authentication)) {
             return ResponseEntity.ok(usuarioService.consultarPerfilParaModulo(id));
         }
         verificarTitular(authentication, id);
@@ -68,6 +67,11 @@ public class UsuarioController implements IUsuarioController {
     @GetMapping("/{id}/access")
     public ResponseEntity<AccesoUsuarioResponse> consultarAcceso(Long id) {
         return ResponseEntity.ok(usuarioService.consultarAcceso(id));
+    }
+
+    // RN-15: los módulos llaman sin credencial. Si no hay una persona autenticada, la lectura es de un módulo.
+    static boolean esModulo(Authentication authentication) {
+        return authentication == null || !(authentication.getPrincipal() instanceof UsuarioAutenticado);
     }
 
     // RN-05: el token tiene que ser de una persona y su id tiene que coincidir con el de la ruta.

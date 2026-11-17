@@ -341,7 +341,7 @@
           ]
         },
         {
-          "name": "08 CU-03 Sin token",
+          "name": "08 CU-03 Sin token es la lectura de un modulo",
           "request": {
             "method": "GET",
             "header": [
@@ -361,9 +361,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "const cuerpo = pm.response.json();",
-                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(cuerpo.code).to.eql(\"UNAUTHENTICATED\"));"
+                  "pm.test(\"Sin contraseña\", () => { pm.expect(cuerpo).to.not.have.property(\"password\"); pm.expect(cuerpo).to.not.have.property(\"passwordHash\"); });"
                 ]
               }
             }
@@ -1016,17 +1016,13 @@
           ]
         },
         {
-          "name": "25 CU-10 Pedidos consulta acceso",
+          "name": "25 CU-10 Un modulo consulta acceso sin credencial",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "X-Correlation-Id",
                 "value": "{{correlationId}}"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1035,23 +1031,6 @@
             "url": "{{baseUrl}}/api/v1/users/{{userId}}/access"
           },
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-                  "pm.sendRequest({",
-                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-                  "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
-                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
-                  "}, (err, res) => {",
-                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-                  "});"
-                ]
-              }
-            },
             {
               "listen": "test",
               "script": {
@@ -1066,72 +1045,7 @@
           ]
         },
         {
-          "name": "26 CU-10 Sin token de modulo",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Correlation-Id",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "auth": {
-              "type": "noauth"
-            },
-            "url": "{{baseUrl}}/api/v1/users/{{userId}}/access"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-                  "const cuerpo = pm.response.json();",
-                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(cuerpo.code).to.eql(\"UNAUTHENTICATED\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "27 CU-10 Persona no es modulo",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Correlation-Id",
-                "value": "{{correlationId}}"
-              }
-            ],
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "url": "{{baseUrl}}/api/v1/users/{{userId}}/access"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const cuerpo = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "28 INT-03 Pedidos lee direcciones",
+          "name": "26 CU-10 Una X-Api-Key vieja se ignora",
           "request": {
             "method": "GET",
             "header": [
@@ -1140,8 +1054,37 @@
                 "value": "{{correlationId}}"
               },
               {
-                "key": "Authorization",
-                "value": "Bearer {{moduloToken}}"
+                "key": "X-Api-Key",
+                "value": "clave-vieja-de-otro-esquema",
+                "type": "text"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/users/{{userId}}/access"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sólo estado y rol\", () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql([\"estado\",\"rol\",\"usuarioId\"]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28 INT-03 Pedidos lee direcciones sin credencial",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}"
               }
             ],
             "auth": {
@@ -1150,23 +1093,6 @@
             "url": "{{baseUrl}}/api/v1/users/{{userId}}/addresses"
           },
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-                  "pm.sendRequest({",
-                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-                  "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
-                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
-                  "}, (err, res) => {",
-                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-                  "});"
-                ]
-              }
-            },
             {
               "listen": "test",
               "script": {
@@ -1180,67 +1106,13 @@
           ]
         },
         {
-          "name": "29 INT-04 Catalogo no lee direcciones",
+          "name": "30 INT-05 Notificaciones lee perfil sin credencial",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "X-Correlation-Id",
                 "value": "{{correlationId}}"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{moduloToken}}"
-              }
-            ],
-            "auth": {
-              "type": "noauth"
-            },
-            "url": "{{baseUrl}}/api/v1/users/{{userId}}/addresses"
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-                  "pm.sendRequest({",
-                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-                  "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
-                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'catalogo', clave: pm.variables.get('catalogoKey') }) }",
-                  "}, (err, res) => {",
-                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-                  "});"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
-                  "const cuerpo = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "30 INT-05 Notificaciones lee perfil",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Correlation-Id",
-                "value": "{{correlationId}}"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1250,23 +1122,6 @@
           },
           "event": [
             {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-                  "pm.sendRequest({",
-                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-                  "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
-                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'notificaciones', clave: pm.variables.get('notificacionesKey') }) }",
-                  "}, (err, res) => {",
-                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-                  "});"
-                ]
-              }
-            },
-            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -1279,17 +1134,13 @@
           ]
         },
         {
-          "name": "31 Modulo no modifica perfil",
+          "name": "31 Sin credencial no se modifica el perfil",
           "request": {
             "method": "PUT",
             "header": [
               {
                 "key": "X-Correlation-Id",
                 "value": "{{correlationId}}"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{moduloToken}}"
               },
               {
                 "key": "Content-Type",
@@ -1312,30 +1163,13 @@
           },
           "event": [
             {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-                  "pm.sendRequest({",
-                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-                  "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
-                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
-                  "}, (err, res) => {",
-                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-                  "});"
-                ]
-              }
-            },
-            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
                   "const cuerpo = pm.response.json();",
-                  "pm.test(\"Error FORBIDDEN\", () => pm.expect(cuerpo.code).to.eql(\"FORBIDDEN\"));"
+                  "pm.test(\"Error UNAUTHENTICATED\", () => pm.expect(cuerpo.code).to.eql(\"UNAUTHENTICATED\"));"
                 ]
               }
             }
@@ -1654,10 +1488,6 @@
               {
                 "key": "X-Correlation-Id",
                 "value": "{{correlationId}}"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{moduloToken}}"
               }
             ],
             "auth": {
@@ -1666,23 +1496,6 @@
             "url": "{{baseUrl}}/api/v1/users/{{userId}}/access"
           },
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Usuarios emite un JWT de módulo (API-17) y el módulo lo usa como Bearer.",
-                  "pm.sendRequest({",
-                  "  url: pm.variables.get('baseUrl') + '/api/v1/auth/module-token',",
-                  "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
-                  "  body: { mode: 'raw', raw: JSON.stringify({ modulo: 'pedidos', clave: pm.variables.get('pedidosKey') }) }",
-                  "}, (err, res) => {",
-                  "  if (!err && res.code === 200) { pm.variables.set('moduloToken', res.json().token); }",
-                  "});"
-                ]
-              }
-            },
             {
               "listen": "test",
               "script": {
@@ -1964,43 +1777,6 @@
                   "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
                   "const cuerpo = pm.response.json();",
                   "pm.test(\"Error INVALID_RESET_TOKEN\", () => pm.expect(cuerpo.code).to.eql(\"INVALID_RESET_TOKEN\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "45b CU-10 Token de modulo con clave incorrecta (API-17)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Correlation-Id",
-                "value": "{{correlationId}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"modulo\": \"pedidos\",\n  \"clave\": \"clave-incorrecta-que-no-existe-000\"\n}"
-            },
-            "url": "{{baseUrl}}/api/v1/auth/module-token"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
-                  "const cuerpo = pm.response.json();",
-                  "pm.test('INVALID_CREDENTIALS', () => pm.expect(cuerpo.code).to.eql('INVALID_CREDENTIALS'));"
                 ]
               }
             }

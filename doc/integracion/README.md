@@ -10,14 +10,14 @@ Base local de esta demo: `http://localhost:8080/api/v1`. El puerto habitual de U
 |---|---|
 | ID de usuario y dirección | `Long` positivo; JSON numérico, no UUID |
 | Perfil | `GET /users/{id}`; campos `id`, `nombre`, `apellido`, `email`, `telefono`, `rol`, `estado`, `fechaAlta` |
-| Direcciones | `GET /users/{id}/addresses`; lista separada del perfil, exclusiva de Pedidos entre los módulos |
+| Direcciones | `GET /users/{id}/addresses`; lista separada del perfil (la usa Pedidos) |
 | Estado y rol | `GET /users/{id}/access`; `usuarioId`, `estado`, `rol` |
-| Credencial de módulo | JWT con rol `MODULO`: el módulo lo pide una vez con `POST /auth/module-token` (`{"modulo","clave"}`) y lo envía como `Authorization: Bearer`; lo vuelve a pedir al vencer (8 horas por defecto). `X-Api-Key` ya no autentica |
+| Credencial de módulo | Ninguna: entre módulos no hay JWT ni claves. Alcanza con la request; una `X-Api-Key` o un Bearer que llegue igual se ignora |
 | Estado | Texto `ACTIVO` / `INACTIVO`; no se publica un booleano `activo` |
-| JWT de persona | HS256, `sub` = id convertido a texto, `role` sin prefijo `ROLE_`, `iat` y `exp` en segundos |
-| JWT de servicio saliente | `role=SISTEMA`, `sub` = destinatario, duración 2 minutos; Usuarios no lo acepta como sesión |
+| JWT de persona (sólo el front) | HS256, `sub` = id convertido a texto, `role` sin prefijo `ROLE_`, `iat` y `exp` en segundos |
+| Llamadas salientes | A Notificaciones sin credencial, sólo con `X-Correlation-Id` |
 
-Todos los módulos pueden leer perfil y acceso con su JWT de módulo; sólo Pedidos puede listar direcciones. Ningún módulo escribe. Una cuenta inactiva se devuelve a los módulos con 200 para que decidan según sus reglas. El perfil no incluye contraseñas, hashes ni direcciones embebidas.
+Los módulos leen perfil, direcciones y acceso sin credencial. Sin credencial no se escribe. Una cuenta inactiva se devuelve a los módulos con 200 para que decidan según sus reglas. El perfil no incluye contraseñas, hashes ni direcciones embebidas.
 
 El Swagger agregado de laboratorio incluido en el material de clase contiene sólo una parte de Usuarios. Para integrar, usar [el contrato completo](../openapi/deliverygo-usuarios.yaml) o `/v3/api-docs` del servicio actual. No convertir UUID a Long mediante hashes o recortes: las referencias externas deben conservar el identificador real del recurso.
 
@@ -50,9 +50,6 @@ $env:SERVER_PORT = '8080'
 $env:JWT_SECRET = 'deliverygo-integracion-local-2026-no-produccion'
 $env:ADMIN_EMAIL = 'admin@deliverygo.test'
 $env:ADMIN_PASSWORD = 'AdminDemo2026!'
-$env:MODULE_KEY_PEDIDOS = 'pedidos-demo-local-2026'
-$env:MODULE_KEY_CATALOGO = 'catalogo-demo-local-2026'
-$env:MODULE_KEY_NOTIFICACIONES = 'notificaciones-demo-local-2026'
 $env:NOTIFICACIONES_MODO = 'http'
 $env:NOTIFICACIONES_URL = 'http://localhost:8089'
 mvn spring-boot:run
@@ -72,7 +69,7 @@ Son credenciales públicas de ejemplo para local. El administrador se crea sólo
 
 Ejecutar la colección [DeliveryGo Integración Notificaciones](../postman/DeliveryGo-Integracion-Notificaciones.postman_collection.json) con `baseUrl=http://localhost:8080` y `notificacionesUrl=http://localhost:8089`. Ver los comandos en [Postman](../postman/README.md).
 
-La colección comprueba bienvenida, consulta de perfil con la credencial de módulo, solicitud de recuperación, obtención del mensaje simulado con la sesión del destinatario, restablecimiento, uso único, login nuevo y rechazo de la contraseña anterior. Resultado: **12 solicitudes, 40 comprobaciones, sin fallas**. La llamada de Notificaciones a Usuarios se corrió el 16/11 con el mecanismo anterior (`X-Api-Key`, ya reemplazado por el JWT de módulo): la colección se actualizó y hay que repetirla con Notificaciones levantado (la parte de Usuarios del recorrido se repitió el 17/11 con newman sin fallas). Usa el mismo `X-Correlation-Id`; no consulta la base de Usuarios.
+La colección comprueba bienvenida, consulta de perfil con la credencial de módulo, solicitud de recuperación, obtención del mensaje simulado con la sesión del destinatario, restablecimiento, uso único, login nuevo y rechazo de la contraseña anterior. Resultado: **12 solicitudes, 40 comprobaciones, sin fallas**. La llamada de Notificaciones a Usuarios se corrió el 16/11 con el mecanismo anterior (`X-Api-Key`, que hoy se ignora: la lectura no necesita credencial): la colección se actualizó y hay que repetirla con Notificaciones levantado (la parte de Usuarios del recorrido se repitió el 17/11 con newman sin fallas). Usa el mismo `X-Correlation-Id`; no consulta la base de Usuarios.
 
 El envío EMAIL sigue siendo simulado por el módulo externo, como prevé la guía funcional. El historial de ese commit no restringe la lectura al destinatario; el parche no cambia esa política del otro equipo. Por eso esta demo usa exclusivamente datos ficticios. Antes de usar recuperación con información real, Notificaciones debe restringir el historial y evitar exponer tokens a otras personas.
 
@@ -108,7 +105,7 @@ Usuarios ya permite configurar una clave distinta para cada módulo. Entregar es
 - Usuarios: pruebas automáticas con `mvn test` (ver [VERIFICACION.md](../openapi/VERIFICACION.md)); 45 solicitudes Postman sobre PostgreSQL y 155 comprobaciones.
 - Notificaciones: 103 pruebas de su proyecto con el parche; recorrido HTTP completo con 40 comprobaciones.
 - Catálogo: recorrido con JWT real y 8 comprobaciones.
-- OpenAPI: las 16 operaciones iniciales coincidían con Springdoc en ejecución; la API-17 (token de módulo) se agregó el 17/11 y su contrato está probado con `ModulosApiTest`.
+- OpenAPI: las 16 operaciones iniciales coincidían con Springdoc en ejecución; la API-17 (token de módulo) se agregó y luego se eliminó el 17/11; las lecturas de módulos sin credencial están probadas con `ModulosApiTest`.
 - [Resúmenes de Postman](../postman/evidencia/) sin JWT, contraseñas ni cuerpos de solicitudes.
 
 La consigna pide demostrar integraciones reales en el ecosistema. Los cruces efectivamente probados acá son Usuarios → Notificaciones, Notificaciones → Usuarios y validación del JWT de Usuarios en Catálogo; no equivalen a haber completado el ciclo de compra. Pedidos, Pagos, Logística, Analítica y Portal requieren los ajustes y la prueba conjunta indicados arriba. La firma asimétrica también sigue pendiente de acuerdo común: la integración actual usa HS256, igual que el laboratorio y los consumidores revisados.

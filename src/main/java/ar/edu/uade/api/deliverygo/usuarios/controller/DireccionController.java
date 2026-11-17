@@ -3,8 +3,6 @@ package ar.edu.uade.api.deliverygo.usuarios.controller;
 import ar.edu.uade.api.deliverygo.usuarios.dto.CrearDireccionRequest;
 import ar.edu.uade.api.deliverygo.usuarios.dto.DireccionResponse;
 import ar.edu.uade.api.deliverygo.usuarios.dto.ModificarDireccionRequest;
-import ar.edu.uade.api.deliverygo.usuarios.exception.AccesoProhibidoException;
-import ar.edu.uade.api.deliverygo.usuarios.security.ModuloAutenticado;
 import ar.edu.uade.api.deliverygo.usuarios.service.DireccionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,16 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 
-import static ar.edu.uade.api.deliverygo.usuarios.controller.UsuarioController.MSG_PROHIBIDO;
+import static ar.edu.uade.api.deliverygo.usuarios.controller.UsuarioController.esModulo;
 import static ar.edu.uade.api.deliverygo.usuarios.controller.UsuarioController.verificarTitular;
 
-// RN-05: sólo el titular administra sus direcciones. El único módulo que puede listarlas es Pedidos (RN-15).
+// RN-05: sólo el titular administra sus direcciones. Los módulos (Pedidos) las listan sin credencial (RN-15).
 // La titularidad se verifica antes de consultar la dirección.
 @RestController
 @RequestMapping("/api/v1/users/{id}/addresses")
 public class DireccionController implements IDireccionController {
-
-    private static final String MODULO_PEDIDOS = "pedidos";
 
     private final DireccionService direccionService;
 
@@ -39,10 +35,7 @@ public class DireccionController implements IDireccionController {
     @Override
     @GetMapping
     public ResponseEntity<List<DireccionResponse>> listarDirecciones(Long id, Authentication authentication) {
-        if (authentication.getPrincipal() instanceof ModuloAutenticado modulo) {
-            if (!MODULO_PEDIDOS.equals(modulo.nombre())) {
-                throw new AccesoProhibidoException(MSG_PROHIBIDO);
-            }
+        if (esModulo(authentication)) {
             return ResponseEntity.ok(direccionService.listarDireccionesParaModulo(id));
         }
         verificarTitular(authentication, id);

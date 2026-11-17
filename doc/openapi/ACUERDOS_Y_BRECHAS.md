@@ -8,7 +8,7 @@ La referencia funcional es `G02_Usuarios_PrimeraEntrega_v1.5.pdf`, especialmente
 
 Se mantienen los cinco endpoints obligatorios de la consigna y los cuatro que el equipo añadió para completar direcciones. Los ejemplos de Comercio enseñan patrones de implementación; sus rutas `/auth/login`, `/v1/comercios`, `username` y `expiresInSeconds` no reemplazan los contratos particulares de Usuarios.
 
-La transcripción C13 vuelve a mencionar los diez CU para el trabajo final. El contrato formaliza los diez: los cinco CORE (API-01 a API-09) y los cinco de evolución (API-10 a API-17). La guía funcional pide incorporar los CU evolutivos «priorizados»; el equipo los incorporó todos.
+La transcripción C13 vuelve a mencionar los diez CU para el trabajo final. El contrato formaliza los diez: los cinco CORE (API-01 a API-09) y los cinco de evolución (API-10 a API-16). La guía funcional pide incorporar los CU evolutivos «priorizados»; el equipo los incorporó todos.
 
 ## Decisiones que completan el contrato
 
@@ -23,7 +23,7 @@ Son precisiones de diseño de esta entrega, no nuevas exigencias atribuidas al p
 | DC-05 | En alta, contraseña mínima de 8 caracteres; en login, obligatoria y no vacía | Sigue las validaciones específicas de DTO-01 y DTO-03. No se reaplica al login una política de registro. La contraseña nunca se recorta ni normaliza. El email de login usa formato email. |
 | DC-06 | Correlación en todas las respuestas, incluida seguridad; aceptar 1–128 caracteres `A-Za-z0-9._-` | Se devuelve el ID válido recibido o se genera uno. Una cabecera inválida produce 400 con ID nuevo. Las respuestas incluyen `Cache-Control: no-store`; las altas incluyen `Location` y los 401 `WWW-Authenticate`. Estos detalles completan el contrato HTTP. |
 | DC-07 | IDs Long positivos; 400 para formato/rango inválido; 404 si el usuario autenticado/autorizado solicitado no existe | Completa casos técnicos omitidos de algunas filas del PDF, especialmente API-06. Primero se autentica y autoriza; no se usa 404 para permitir consultar la existencia de perfiles ajenos. |
-| DC-08 | Los módulos consumidores piden a Usuarios un JWT con rol `MODULO` (`POST /auth/module-token`, API-17) presentando su nombre y una clave propia, y lo usan como Bearer; el token sólo permite leer | La guía de seguridad de la cátedra (`Seguridad.jpg` y la clase 11) hace que Usuarios emita el JWT y que cada módulo valide JWT y rol; el tráfico entre APIs también viaja como Bearer. La clave sólo se usa para pedir el token (la clase 10 lo describe como pedir autorización con "un rol y una key"). Habilita API-03 (todos los módulos), API-05 (sólo Pedidos) y API-16 (todos). |
+| DC-08 | Los módulos consumidores consultan a Usuarios sin credencial: ni JWT ni clave. El JWT es sólo la sesión de la persona que llega desde el front | Decisión del equipo para integrar los módulos sin que cada uno tenga que pedir ni configurar nada: alcanza con la request. Sin credencial sólo se lee: API-03, API-05 y API-16. Modificar o administrar exige el JWT de una persona. |
 | DC-09 | La solicitud de recuperación de contraseña responde siempre 202; el token es de un solo uso, vence a los 30 minutos y sólo se guarda su hash | Una respuesta distinta según exista la cuenta revelaría qué emails están registrados (RN-13), igual que RN-08 en el login. Un token con estado y vencimiento es lo que permite el uso único. |
 | DC-10 | El JWT no se revoca; el rol y el estado vigentes se consultan con API-15 y API-16 | Mantiene DM-03 (sesión sin estado). Un token emitido conserva su rol hasta vencer, pero las operaciones sobre perfil y direcciones rechazan a las cuentas inactivas y la administración verifica al administrador en la base. |
 
@@ -62,11 +62,10 @@ Una persona con rol ADMIN o COMERCIO no se convierte en un módulo consumidor. T
 |---|---|---|---|---|---|
 | Titular autenticado y ACTIVO | Su propio perfil | Sus direcciones | 403 | Sólo sus recursos | 403 |
 | ADMIN ACTIVO | 403 (no es el titular) | 403 | 403 | 403 | Sí, salvo su propia cuenta |
-| Pedidos con JWT de módulo | Sí, también cuentas INACTIVAS | Sí, también cuentas INACTIVAS | Sí | No (403) | No (403) |
-| Logística, Catálogo, Notificaciones, Pagos, Opiniones y Analítica con JWT de módulo | Sí, también cuentas INACTIVAS | 403 | Sí | No (403) | No (403) |
-| Sin credencial, credencial inválida o de otra persona | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 | 401 / 403 |
+| Otro módulo, sin credencial (también con un Bearer inválido o una `X-Api-Key`, que se ignoran) | Sí, también cuentas INACTIVAS | Sí, también cuentas INACTIVAS | Sí | No (401) | No (401) |
+| JWT de otra persona | 403 | 403 | Sí | 403 | 403 |
 
-**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. La guía de seguridad de la cátedra (`Seguridad.jpg`, clases 10 y 11) indica que Usuarios emite el JWT y que cada módulo valida JWT y rol. Se resolvió así: cada módulo tiene una clave propia, configurada por variable de entorno (`MODULE_KEY_PEDIDOS`, `MODULE_KEY_LOGISTICA`, `MODULE_KEY_CATALOGO`, `MODULE_KEY_NOTIFICACIONES`, `MODULE_KEY_PAGOS`, `MODULE_KEY_OPINIONES_ANALITICA`); la presenta una sola vez en `POST /auth/module-token` y recibe un JWT con `role = MODULO` y `sub` = nombre del módulo, que usa como Bearer hasta que vence (8 horas por defecto, `JWT_MODULE_EXPIRATION_MINUTES`). Módulo desconocido, clave incorrecta o clave no configurada (vacía o de menos de 16 caracteres) dan el mismo 401: no hay claves por defecto. La cabecera `X-Api-Key` ya no autentica. Qué clave usa cada equipo para pedir su token sigue siendo un acuerdo entre equipos y debe entregarse por un canal seguro.
+**Credencial de los módulos (DC-08).** La primera entrega dejó pendiente cómo se identifica un módulo. Se decidió que los módulos no se identifican: entre módulos no hay JWT ni claves, y cualquier módulo integra con Usuarios sólo haciendo la request. Se eliminaron el token de módulo (API-17), las claves `MODULE_KEY_*` y el JWT de servicio `SISTEMA`. Si un módulo manda `X-Api-Key` o un `Authorization` inválido, se ignora y la lectura funciona. **Riesgo aceptado:** quien llegue a la API puede leer el perfil (con email y teléfono) y las direcciones de un usuario si conoce su id; en un ambiente real estas rutas quedarían sólo en la red interna o detrás de un gateway.
 
 Una llamada que propague el JWT del usuario conserva los permisos de ese usuario, no los de un módulo. Los módulos autorizados leen el perfil de un usuario INACTIVO con 200 y deciden con sus reglas; el titular inactivo recibe 403. Pedidos lista direcciones activas y consulta API-03 o API-16 para conocer el estado del usuario. Es la distinción especificada en CU-03 y SRV-09.
 
@@ -83,7 +82,7 @@ Cómo llama el cliente HTTP:
 
 | Aspecto | Resolución |
 |---|---|
-| Autenticación | `Authorization: Bearer <JWT>` de servicio emitido en cada llamada: HS256 con el mismo `JWT_SECRET`, `sub` = id del destinatario, `role` = `SISTEMA`, vigencia de 2 minutos. Regla: Usuarios ignora en su propia API los tokens con `role` = `SISTEMA` (`JwtService.ROL_SERVICIO`): `JwtAuthenticationFilter` no autentica a nadie con ellos, aunque el `sub` sea un usuario existente, y la solicitud sigue como no autenticada (401 en rutas protegidas, incluida `POST /api/v1/auth/refresh`). Lo verifica `SesionApiTest` |
+| Autenticación | Ninguna: entre módulos no se usa JWT ni clave. La llamada sólo lleva `X-Correlation-Id`. Lo verifica `NotificacionesClientHttpTest` |
 | Plantilla | `GET /api/v1/templates`; se busca por nombre una plantilla con `activa = true` y su id queda en caché. Si un envío recibe 4xx (por ejemplo, porque Notificaciones recreó la plantilla con otro id), la entrada se descarta y el próximo envío la vuelve a buscar. Si no existe, el envío falla con un mensaje que nombra la plantilla faltante |
 | Envío | `POST /api/v1/notifications` con `{ destinatarioId, plantillaId, parametros }`; bienvenida: `{ nombre }`; recuperación: `{ nombre, token }`. Se espera 201 con `{ id, destinatarioId, plantillaId, canal, estado, cantidadIntentos }` |
 | Nombres de plantilla | `NOTIFICACIONES_PLANTILLA_BIENVENIDA` (`USUARIO_BIENVENIDA_EMAIL`) y `NOTIFICACIONES_PLANTILLA_RECUPERACION` (`RECUPERACION_PASSWORD_EMAIL`) |
@@ -112,7 +111,7 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 | Seguridad | Permisos por rol en `SecurityConfig` (administración sólo ADMIN, CU-10 sólo módulos, sesión sólo personas); el titular de la ruta lo verifica el controller: ADMIN y COMERCIO humanos reciben 403 sobre una cuenta ajena | `PerfilApiTest` |
 | IDs de ruta | `Long` positivo; 400 para texto, cero, negativo, decimal o fuera de rango, después de autenticar | `PerfilApiTest` |
 | Ausencia o falla del token | 401 `UNAUTHENTICATED` con `WWW-Authenticate: Bearer`, en el formato común (entry point y access denied handler) | `PerfilApiTest`, `DireccionesApiTest` |
-| Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; los módulos con JWT de módulo sí reciben la cuenta inactiva con 200 | `PerfilApiTest`, `DireccionesApiTest`, `ModulosApiTest` |
+| Titular inactivo | 403 `USER_INACTIVE` en lectura y escritura; los módulos (sin credencial) sí reciben la cuenta inactiva con 200 | `PerfilApiTest`, `DireccionesApiTest`, `ModulosApiTest` |
 | Fechas | UTC, truncadas a segundos, serializadas con zona | `AuthApiTest` |
 | Validación | Starter de Validation; propiedades desconocidas ignoradas (DC-01); un JSON mal formado o un valor que no se puede convertir al tipo del campo, 400 | `AuthApiTest`, `DireccionesApiTest` |
 | Correlación | `X-Correlation-Id` validado, generado si falta, devuelto en cabecera, cuerpo y log (MDC); `Cache-Control: no-store`; `Location` en los 201 | `CorrelacionApiTest` |
@@ -124,7 +123,7 @@ Las diferencias relevadas el 30/10/2026 sobre el backend anterior quedaron resue
 | CU-07 Asignar rol | API-11 con las mismas reglas | `AdministracionApiTest` |
 | CU-08 Recuperar contraseña | API-12 (202 uniforme) y API-13 (token de un solo uso, vencimiento, sólo hash) | `RecuperacionApiTest` |
 | CU-09 Renovar y validar sesión | API-14 renueva con el rol actual; API-15 informa rol y estado vigentes; ambas rechazan cuentas inactivas, inexistentes y tokens vencidos | `SesionApiTest` |
-| CU-10 Estado y rol para módulos | API-17 emite el token de módulo; API-16 con ese token; API-03 y API-05 abiertas a módulos según RN-15; los módulos nunca escriben | `ModulosApiTest` |
+| CU-10 Estado y rol para módulos | API-16, API-03 y API-05 sin credencial para los módulos (RN-15); sin credencial nunca se escribe | `ModulosApiTest` |
 | Administrador inicial | Se crea sólo con `ADMIN_EMAIL` y `ADMIN_PASSWORD`; sin ellos no hay ninguno | `AdministradorInicialTest` |
 
 Concurrencia: no se usan bloqueos de filas ni pruebas de carga, porque exceden lo visto en la cátedra. Si dos registros con el mismo email llegaran exactamente a la vez, la restricción `UNIQUE` de la base impide el duplicado y `GlobalExceptionHandler` lo informa como 409 `EMAIL_ALREADY_REGISTERED` (`IntegridadApiTest`).
@@ -147,7 +146,7 @@ Concurrencia: no se usan bloqueos de filas ni pruebas de carga, porque exceden l
 
 ## Orden de avance
 
-1. Compartir el YAML con el Portal y los módulos: DTO de sesión, errores, administración, recuperación de contraseña y token de módulo (API-17); comunicar el cambio de `sub`.
+1. Compartir el YAML con el Portal y los módulos: DTO de sesión, errores, administración, recuperación de contraseña y lecturas de módulos sin credencial; comunicar el cambio de `sub`.
 2. Acordar firma, claves, emisor/audiencia y la forma de entregar y rotar las claves de módulo.
 3. Probar de punta a punta INT-01 e INT-06 con `NOTIFICACIONES_MODO=http` cuando Notificaciones tenga sus plantillas y el `JWT_SECRET` compartido; luego evaluar dejar `http` como modo por defecto.
 4. Ante cualquier cambio, actualizar el YAML, correr `mvn test` y contrastar la Swagger generada (`/v3/api-docs`) con el contrato.
