@@ -38,6 +38,23 @@ class SesionApiTest extends ApiTestSupport {
                 .signWith(Keys.hmacShaKeyFor(secreto.getBytes(StandardCharsets.UTF_8))).compact();
     }
 
+    // ------------------------------------------------------------------ token de servicio
+
+    // Un token con role = SISTEMA sólo sirve para llamar a otros módulos: aunque su sub sea el id de un
+    // usuario existente y la firma sea válida, no autentica a nadie en Usuarios.
+    @Test
+    void unTokenDeServicioNoAutenticaAunqueSuSubSeaUnUsuarioExistente() throws Exception {
+        Sesion a = registrarYLoguear();
+        String servicio = "Bearer " + jwtService.generarToken(a.id(), JwtService.ROL_SERVICIO).token();
+        String perfil = "/api/v1/users/" + a.id();
+
+        assertError(mvc.perform(get(perfil).header("Authorization", servicio)), 401, "UNAUTHENTICATED", perfil);
+        assertError(mvc.perform(post(REFRESH).header("Authorization", servicio)), 401, "UNAUTHENTICATED", REFRESH);
+
+        // el mismo usuario con su token propio sí accede
+        mvc.perform(get(perfil).header("Authorization", a.bearer())).andExpect(status().isOk());
+    }
+
     // ------------------------------------------------------------------ validar
 
     @Test

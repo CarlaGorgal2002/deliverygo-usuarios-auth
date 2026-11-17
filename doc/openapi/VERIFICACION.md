@@ -25,7 +25,7 @@ El validador cuenta las comprobaciones de ejemplos después de expandir referenc
 
 ## Pruebas automáticas del backend
 
-Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **77 pruebas, 0 fallas, 0 errores**.
+Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2 en memoria (perfil `test`, `src/test/resources/application-test.properties`), más pruebas unitarias del JWT. La aplicación usa PostgreSQL; las pruebas no necesitan Docker. Resultado de la última corrida: **91 pruebas, 0 fallas, 0 errores**.
 
 | Clase | Pruebas | Cobertura |
 |---|---|---|
