@@ -55,7 +55,7 @@ class ModulosApiTest extends ApiTestSupport {
     }
 
     @Test
-    void sinTokenDeModuloValidoLaRespuestaEs401O403() throws Exception {
+    void sinCredencialDeModuloValidaLaRespuestaEs401O403() throws Exception {
         Sesion a = registrarYLoguear();
         Sesion admin = crearConRolYLoguear("ADMIN");
         String ruta = acceso(a.id());
@@ -64,8 +64,10 @@ class ModulosApiTest extends ApiTestSupport {
         // un Bearer que no es un JWT de Usuarios no autentica a nadie
         assertError(mvc.perform(get(ruta).header("Authorization", "Bearer clave-incorrecta-que-no-existe-000")), 401, "UNAUTHENTICATED", ruta);
         assertError(mvc.perform(get(ruta).header("Authorization", "Bearer ")), 401, "UNAUTHENTICATED", ruta);
-        // el header X-Api-Key ya no autentica: el módulo tiene que pedir su token
-        assertError(mvc.perform(get(ruta).header("X-Api-Key", CLAVE_PEDIDOS)), 401, "UNAUTHENTICATED", ruta);
+        // una clave desconocida, demasiado corta o vacía en X-Api-Key tampoco autentica
+        assertError(mvc.perform(get(ruta).header("X-Api-Key", "clave-incorrecta-que-no-existe-000")), 401, "UNAUTHENTICATED", ruta);
+        assertError(mvc.perform(get(ruta).header("X-Api-Key", "corta")), 401, "UNAUTHENTICATED", ruta);
+        assertError(mvc.perform(get(ruta).header("X-Api-Key", "")), 401, "UNAUTHENTICATED", ruta);
 
         // un usuario, aunque sea el titular o ADMIN, no usa esta consulta
         assertError(mvc.perform(get(ruta).header("Authorization", a.bearer())), 403, "FORBIDDEN", ruta);
@@ -76,7 +78,8 @@ class ModulosApiTest extends ApiTestSupport {
     void unTokenDePersonaNoSeHaceInstanciaDeModulo() throws Exception {
         Sesion a = registrarYLoguear();
 
-        // el JWT de una persona, aunque sea el titular, no sirve en la consulta exclusiva de módulos
+        // el JWT de una persona, aunque sea el titular, no sirve en la consulta exclusiva de módulos;
+        // si llegan el JWT y una clave, manda el JWT (un usuario no se hace pasar por un módulo)
         assertError(mvc.perform(get(acceso(a.id())).header("Authorization", a.bearer()).header("X-Api-Key", CLAVE_PEDIDOS)),
                 403, "FORBIDDEN", acceso(a.id()));
     }
@@ -191,6 +194,30 @@ class ModulosApiTest extends ApiTestSupport {
         String ruta = "/api/v1/auth/module-token";
         assertError(mvc.perform(conJson(post(ruta), cuerpo("modulo", "", "clave", ""))), 400, "VALIDATION_ERROR", ruta);
         assertError(mvc.perform(conJson(post(ruta), "{}")), 400, "VALIDATION_ERROR", ruta);
+    }
+
+    @Test
+    void laApiKeyEnLaCabeceraSigueSiendoUnaAlternativaAlTokenDeModulo() throws Exception {
+        Sesion a = registrarYLoguear();
+        crearDireccionComo(a, true);
+
+        // la misma clave sirve en X-Api-Key en cada llamada, con los mismos permisos que el token de módulo
+        mvc.perform(get(acceso(a.id())).header("X-Api-Key", CLAVE_PEDIDOS))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ACTIVO"));
+        mvc.perform(get("/api/v1/users/" + a.id()).header("X-Api-Key", CLAVE_CATALOGO))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/users/" + a.id() + "/addresses").header("X-Api-Key", CLAVE_PEDIDOS))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+        // sólo Pedidos lista direcciones, también con la clave
+        assertError(mvc.perform(get("/api/v1/users/" + a.id() + "/addresses").header("X-Api-Key", CLAVE_CATALOGO)),
+                403, "FORBIDDEN", "/api/v1/users/" + a.id() + "/addresses");
+        // y nunca escribe ni renueva sesiones
+        assertError(mvc.perform(conJson(put("/api/v1/users/" + a.id()).header("X-Api-Key", CLAVE_PEDIDOS),
+                cuerpo("nombre", "X", "apellido", "Y", "email", emailUnico()))), 403, "FORBIDDEN", "/api/v1/users/" + a.id());
+        assertError(mvc.perform(post("/api/v1/auth/refresh").header("X-Api-Key", CLAVE_PEDIDOS)),
+                403, "FORBIDDEN", "/api/v1/auth/refresh");
     }
 
     @Test

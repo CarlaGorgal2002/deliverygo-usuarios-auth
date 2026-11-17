@@ -2,6 +2,40 @@
 
 Revisión y pruebas del **16/11/2026**. Usuarios expone sus 17 operaciones sobre PostgreSQL. Se probaron por HTTP la integración de JWT con Catálogo y los flujos de bienvenida y recuperación con Notificaciones. Para Notificaciones fue necesario aplicar el parche local incluido; ese resultado no implica que su repositorio remoto ya tenga la corrección.
 
+## Aviso a los equipos consumidores (17/11/2026)
+
+Este apartado es la comunicación del grupo de Usuarios (Grupo 02) a los equipos que consultan sus datos. **No hay que cambiar nada para seguir funcionando**: los contratos de registro, login, `GET`/`PUT /users/{id}` y direcciones no cambiaron.
+
+**Qué hay de nuevo.** Para identificarse como módulo (sólo lectura) Usuarios acepta ahora dos formas, a elección de cada equipo:
+
+| Forma | Cómo se usa | Cuándo conviene |
+|---|---|---|
+| `X-Api-Key` | La clave del módulo en la cabecera `X-Api-Key` en cada llamada | Si ya la mandan (Notificaciones, Opiniones y Analítica): sigue andando igual |
+| JWT de módulo (Bearer) | Una vez, `POST /api/v1/auth/module-token` con `{"modulo":"pedidos","clave":"<su clave>"}`; la respuesta trae el token, que se manda como `Authorization: Bearer <token>` hasta que vence (8 horas por defecto) y se pide de nuevo | Si su cliente ya propaga Bearer o espera un JWT emitido por Usuarios (Pagos); es la convención "Autenticación: Bearer JWT" del TPO |
+
+Si llegan las dos, manda el JWT. Con cualquiera de las dos el módulo sólo lee: `GET /users/{id}` (todos), `GET /users/{id}/access` (todos) y `GET /users/{id}/addresses` (sólo Pedidos). Escribir o renovar sesiones da 403.
+
+**Qué necesita cada equipo.**
+
+| Equipo | Qué hace hoy (según su repositorio) | Qué tiene que hacer |
+|---|---|---|
+| Notificaciones | Manda `X-Api-Key` a `GET /users/{id}` | Nada; sólo tener cargada la clave de `notificaciones` |
+| Opiniones y Analítica | Manda `X-Api-Key` a `/users/{id}` | Nada; sólo tener cargada la clave de `opiniones-analitica` |
+| Pagos | Espera un "JWT de servicio" emitido por Usuarios (`integraciones.token-servicio`, hoy vacío) | Pedir el token con `POST /auth/module-token` y usarlo como ese JWT, o mandar `X-Api-Key` |
+| Pedidos | Mock de Usuarios | Al implementar el cliente HTTP, usar cualquiera de las dos formas; es el único módulo que puede listar direcciones |
+| Logística y Catálogo | Mock (Logística) / JWT de personas (Catálogo) | Cualquiera de las dos formas para consultar perfil o estado |
+| Portal | No usa credencial de módulo | Nada; sigue con el JWT de la persona |
+
+**Claves.** Cada módulo tiene una clave propia (variables `MODULE_KEY_*` de Usuarios, mínimo 16 caracteres). Se entrega por un canal seguro, no por el repositorio ni por el chat del curso, y hay que usar HTTPS fuera del laboratorio. Para recibir la clave de un módulo o rotarla, pedirla al grupo de Usuarios.
+
+**Cómo probarlo.** Colección de Postman en [`doc/postman`](../postman/README.md) (solicitudes de módulo) y Swagger UI del servicio (`/swagger-ui.html`), donde **Authorize** tiene `bearerAuth` y `moduleApiKey`. Ejemplo con la clave:
+
+```
+curl -H "X-Api-Key: <clave del módulo>" http://localhost:8089/api/v1/users/1/access
+```
+
+Registro del cambio y su impacto: [acta de decisiones](../ACTA_DECISIONES.md) (DM-16, DC-08) y [acuerdos y brechas](../openapi/ACUERDOS_Y_BRECHAS.md).
+
 ## Contrato que deben consumir los equipos
 
 Base local de esta demo: `http://localhost:8080/api/v1`. El puerto habitual de Usuarios solo sigue siendo 8089.
@@ -12,12 +46,12 @@ Base local de esta demo: `http://localhost:8080/api/v1`. El puerto habitual de U
 | Perfil | `GET /users/{id}`; campos `id`, `nombre`, `apellido`, `email`, `telefono`, `rol`, `estado`, `fechaAlta` |
 | Direcciones | `GET /users/{id}/addresses`; lista separada del perfil, exclusiva de Pedidos entre los módulos |
 | Estado y rol | `GET /users/{id}/access`; `usuarioId`, `estado`, `rol` |
-| Credencial de módulo | JWT con rol `MODULO`: el módulo lo pide una vez con `POST /auth/module-token` (`{"modulo","clave"}`) y lo envía como `Authorization: Bearer`; lo vuelve a pedir al vencer (8 horas por defecto). `X-Api-Key` ya no autentica |
+| Credencial de módulo | JWT con rol `MODULO`: el módulo lo pide una vez con `POST /auth/module-token` (`{"modulo","clave"}`) y lo envía como `Authorization: Bearer`; lo vuelve a pedir al vencer (8 horas por defecto). Alternativa: la misma clave en `X-Api-Key` en cada llamada; si llegan las dos, manda el JWT. El Bearer sigue la convención del TPO; `X-Api-Key` se conserva porque algunos módulos ya la usan |
 | Estado | Texto `ACTIVO` / `INACTIVO`; no se publica un booleano `activo` |
 | JWT de persona | HS256, `sub` = id convertido a texto, `role` sin prefijo `ROLE_`, `iat` y `exp` en segundos |
 | JWT de servicio saliente | `role=SISTEMA`, `sub` = destinatario, duración 2 minutos; Usuarios no lo acepta como sesión |
 
-Todos los módulos pueden leer perfil y acceso con su JWT de módulo; sólo Pedidos puede listar direcciones. Ningún módulo escribe. Una cuenta inactiva se devuelve a los módulos con 200 para que decidan según sus reglas. El perfil no incluye contraseñas, hashes ni direcciones embebidas.
+Todos los módulos pueden leer perfil y acceso con su JWT de módulo o su `X-Api-Key`; sólo Pedidos puede listar direcciones. Según el código publicado (corte del 17/11), Notificaciones y Analítica mandan `X-Api-Key`, Pagos espera un JWT de servicio emitido por Usuarios y Logística sólo tiene mocks: con las dos formas aceptadas ninguno necesita cambiar para empezar. Ningún módulo escribe. Una cuenta inactiva se devuelve a los módulos con 200 para que decidan según sus reglas. El perfil no incluye contraseñas, hashes ni direcciones embebidas.
 
 El Swagger agregado de laboratorio incluido en el material de clase contiene sólo una parte de Usuarios. Para integrar, usar [el contrato completo](../openapi/deliverygo-usuarios.yaml) o `/v3/api-docs` del servicio actual. No convertir UUID a Long mediante hashes o recortes: las referencias externas deben conservar el identificador real del recurso.
 
@@ -72,7 +106,7 @@ Son credenciales públicas de ejemplo para local. El administrador se crea sólo
 
 Ejecutar la colección [DeliveryGo Integración Notificaciones](../postman/DeliveryGo-Integracion-Notificaciones.postman_collection.json) con `baseUrl=http://localhost:8080` y `notificacionesUrl=http://localhost:8089`. Ver los comandos en [Postman](../postman/README.md).
 
-La colección comprueba bienvenida, consulta de perfil con la credencial de módulo, solicitud de recuperación, obtención del mensaje simulado con la sesión del destinatario, restablecimiento, uso único, login nuevo y rechazo de la contraseña anterior. Resultado: **12 solicitudes, 40 comprobaciones, sin fallas**. La llamada de Notificaciones a Usuarios se corrió el 16/11 con el mecanismo anterior (`X-Api-Key`, ya reemplazado por el JWT de módulo): la colección se actualizó y hay que repetirla con Notificaciones levantado (la parte de Usuarios del recorrido se repitió el 17/11 con newman sin fallas). Usa el mismo `X-Correlation-Id`; no consulta la base de Usuarios.
+La colección comprueba bienvenida, consulta de perfil con la credencial de módulo, solicitud de recuperación, obtención del mensaje simulado con la sesión del destinatario, restablecimiento, uso único, login nuevo y rechazo de la contraseña anterior. Resultado: **12 solicitudes, 40 comprobaciones, sin fallas**. La llamada de Notificaciones a Usuarios se corrió el 16/11 con `X-Api-Key` (que Usuarios sigue aceptando; la colección ahora usa el JWT de módulo): hay que repetirla con Notificaciones levantado (la parte de Usuarios del recorrido se repitió el 17/11 con newman sin fallas). Usa el mismo `X-Correlation-Id`; no consulta la base de Usuarios.
 
 El envío EMAIL sigue siendo simulado por el módulo externo, como prevé la guía funcional. El historial de ese commit no restringe la lectura al destinatario; el parche no cambia esa política del otro equipo. Por eso esta demo usa exclusivamente datos ficticios. Antes de usar recuperación con información real, Notificaciones debe restringir el historial y evitar exponer tokens a otras personas.
 
@@ -96,9 +130,9 @@ Estas filas son hallazgos del código publicado, no integraciones completas apro
 | Proyecto y commit | Hallazgo | Trabajo necesario del consumidor |
 |---|---|---|
 | [Pedidos](https://github.com/santi28/uade-deliverygo-ms-orders/tree/d33c6755fc77256d1a932aed029716bddb62953f) | `UsuariosClientMock` sigue activo incluso en perfil `integracion`; no existe cliente HTTP. `UsuarioDto` y las referencias de dirección usan UUID. Su comentario afirma que Usuarios no publica perfil/direcciones, pero ya existen. | Implementar cliente HTTP con clave de Pedidos, consultar perfil y direcciones por separado y usar Long para referencias externas de Usuarios. Los IDs propios de pedidos pueden seguir siendo UUID. |
-| [Pagos](https://github.com/JulianaGomez15/Aplicaciones_Interactivas_-_E3_-_Modulo_de_Pagos/tree/dc617e84f25be8ad93cca9dd95b2307cecf50916) | `UsuariosClientRest` existe, pero recibe UUID y su DTO busca `codigoUsuario`, mientras Usuarios devuelve `id`. El cliente común propaga Bearer. | Adaptar la referencia de usuario a Long y `id`; pedir el JWT de módulo de Pagos (`POST /auth/module-token`) para la lectura entre servicios. Revisar también sus referencias provenientes de Pedidos. |
+| [Pagos](https://github.com/JulianaGomez15/Aplicaciones_Interactivas_-_E3_-_Modulo_de_Pagos/tree/dc617e84f25be8ad93cca9dd95b2307cecf50916) | `UsuariosClientRest` existe, pero recibe UUID y su DTO busca `codigoUsuario`, mientras Usuarios devuelve `id`. El cliente común propaga Bearer y su configuración espera un "JWT de servicio" que "lo emite Usuarios" (`integraciones.token-servicio`, vacío). | Adaptar la referencia de usuario a Long y `id`; completar ese token con el JWT de módulo de Pagos (`POST /auth/module-token`) para la lectura entre servicios. Revisar también sus referencias provenientes de Pedidos. |
 | [Logística](https://github.com/Nicosantillan96/tpo-deliverygo-repartidores-logistica/tree/e65ada23cbdba928017004439ea2e74b33be7237) | Referencia Long compatible, pero sólo tiene `UsuariosClientMock`. | Añadir implementación HTTP que lea `/users/{id}` o `/users/{id}/access`, traduzca `estado` y se identifique con la clave de Logística. |
-| [Opiniones y Analítica, develop](https://github.com/emigsm/tpo-deliverygo-g4-ops-analitica/tree/1c043ded5ef7d78179f13dd784314d94ca3286e7) | `UsuariosHttpClient` usa Long y `/users/{id}` con `X-Api-Key` (hay que cambiarlo por el Bearer del token de módulo), pero el mock no se desactiva con `integracion`; pasa lo mismo con Comercio. El DTO parcial de usuario no declara ignorar campos adicionales. | Separar perfiles de mocks/HTTP, configurar URLs y clave de módulo, y verificar deserialización del perfil completo. El README todavía describe ausencia de HTTP y autenticación temporal. |
+| [Opiniones y Analítica, develop](https://github.com/emigsm/tpo-deliverygo-g4-ops-analitica/tree/1c043ded5ef7d78179f13dd784314d94ca3286e7) | `UsuariosHttpClient` usa Long y `/users/{id}` con `X-Api-Key`, que Usuarios sigue aceptando (puede pasarse al Bearer del token de módulo cuando quiera), pero el mock no se desactiva con `integracion`; pasa lo mismo con Comercio. El DTO parcial de usuario no declara ignorar campos adicionales. | Separar perfiles de mocks/HTTP, configurar URLs y clave de módulo, y verificar deserialización del perfil completo. El README todavía describe ausencia de HTTP y autenticación temporal. |
 | Portal Web | No hay repositorio final del Portal entre los enlaces recibidos; el ZIP React es un laboratorio de referencia. | Probar registro/login y llamadas protegidas desde su aplicación, con el origen agregado en `CORS_ALLOWED_ORIGINS`. |
 
 Usuarios ya permite configurar una clave distinta para cada módulo. Entregar esas claves y acordar URLs es una coordinación entre equipos. Cambiar el tipo de ID de este servicio o inventar aliases para los UUID de otros equipos rompería el contrato aprobado.

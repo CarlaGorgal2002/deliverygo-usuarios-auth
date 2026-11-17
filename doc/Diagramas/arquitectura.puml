@@ -9,10 +9,10 @@ skinparam ranksep 45
 title Arquitectura por capas del módulo Usuarios y Autenticación
 
 actor "Portal Web\n(Bearer JWT)" as Portal
-actor "Módulos consumidores\n(Bearer JWT de módulo, sólo lectura)" as Mods
+actor "Módulos consumidores\n(Bearer JWT de módulo o X-Api-Key, sólo lectura)" as Mods
 
 package "Usuarios y Autenticación - Spring Boot (ar.edu.uade.api.deliverygo.usuarios)" {
-  component "security\nJwtAuthenticationFilter · ApiRequestFilter\nSecurityConfig · JwtService · ModulosApiKeys" as Sec
+  component "security\nJwtAuthenticationFilter · ApiKeyAuthenticationFilter\nApiRequestFilter · SecurityConfig · JwtService · ModulosApiKeys" as Sec
   component "controller\nAuthController · UsuarioController\nDireccionController" as Ctrl
   component "dto · mapper\nDTO-01 a DTO-17 · UsuarioMapper\nDireccionMapper" as Dto
   component "service\nUsuarioService · AuthService · DireccionService\nAdministracionService · RecuperacionService" as Srv

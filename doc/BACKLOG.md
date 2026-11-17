@@ -22,7 +22,7 @@ Grupo 02 · Equipo 1 del ecosistema DeliveryGo. Los diez casos de uso vienen de 
 | INT-01 | Usuarios → Notificaciones (bienvenida) | Cliente HTTP real probado con el parche de Notificaciones; mock declarado por defecto | Usuarios y Notificaciones |
 | INT-06 | Usuarios → Notificaciones (recuperación de contraseña) | Igual que INT-01 | Usuarios y Notificaciones |
 | INT-02 | Portal Web → Usuarios | API disponible; falta probar con el Portal final | Portal |
-| INT-03 | Pedidos y Logística → Usuarios | JWT de módulo implementado (API-17); los consumidores publicados todavía usan mocks | Pedidos y Logística |
+| INT-03 | Pedidos y Logística → Usuarios | JWT de módulo (API-17) y `X-Api-Key` implementados; los consumidores publicados todavía usan mocks | Pedidos y Logística |
 | INT-04 | Catálogo → Usuarios | JWT de Usuarios validado en Catálogo | Catálogo |
 | INT-05 | Notificaciones, Pagos, Opiniones y Analítica → Usuarios | Notificaciones probado; el resto requiere ajustes | Cada módulo |
 

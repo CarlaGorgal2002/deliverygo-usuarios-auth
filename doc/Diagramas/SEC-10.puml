@@ -14,7 +14,7 @@ actor "Módulo consumidor\n(Pedidos, Catálogo, Logística...)" as A
 participant AuthController as AC
 participant AuthService as AS
 participant "ModulosApiKeys\nJwtService" as K
-participant JwtAuthenticationFilter as F
+participant "JwtAuthenticationFilter\nApiKeyAuthenticationFilter" as F
 participant UsuarioController as C
 participant UsuarioService as S
 participant UsuarioRepository as UR
@@ -35,9 +35,9 @@ else clave correcta
 end
 
 == Paso 2: el módulo consulta estado y rol (API-16) ==
-A -> F : GET /api/v1/users/{id}/access\nAuthorization: Bearer <token del módulo>
-F -> F : validar firma y vencimiento [RN-09]\nrol MODULO [RN-15]
-alt token ausente, inválido o vencido
+A -> F : GET /api/v1/users/{id}/access\nAuthorization: Bearer <token del módulo>\n(o, como alternativa, X-Api-Key: <clave del módulo>)
+F -> F : validar firma y vencimiento [RN-09], rol MODULO [RN-15]\no identificar al módulo por su clave (ModulosApiKeys.identificar)
+alt credencial ausente, token inválido o vencido, o clave desconocida
   F --> A : 401 UNAUTHENTICATED (DTO-08)
 else JWT de persona (no es un módulo)
   F --> A : 403 FORBIDDEN

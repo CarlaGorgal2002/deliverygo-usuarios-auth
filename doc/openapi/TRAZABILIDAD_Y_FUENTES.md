@@ -70,7 +70,7 @@ No se exponen entidades JPA ni repositorios como contratos. El servicio es respo
 | RN-12 | 403 cuando el administrador se modifica a sí mismo |
 | RN-13 | API-12 con 202 uniforme; API-13 con `INVALID_RESET_TOKEN`; token de un solo uso, vencimiento y hash |
 | RN-14 | API-14 y API-15 con 401 para token vencido o cuenta inexistente y 403 para cuenta inactiva |
-| RN-15 | Token de módulo (rol MODULO) pedido en API-17; seguridad alternativa en API-03 y API-05; API-16 exclusiva de módulos |
+| RN-15 | Credencial de módulo (rol MODULO): JWT pedido en API-17 o clave en `X-Api-Key`; seguridad alternativa en API-03 y API-05; API-16 exclusiva de módulos |
 
 La definición de esquemas permite validar la estructura. Las reglas de estado, pertenencia y persistencia necesitan las pruebas de ejecución propuestas en `VERIFICACION.md`.
 

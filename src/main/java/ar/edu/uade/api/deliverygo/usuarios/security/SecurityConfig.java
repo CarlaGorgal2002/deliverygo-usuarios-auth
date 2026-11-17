@@ -22,13 +22,13 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-    // Roles de las personas (tabla roles). Los módulos consumidores entran con un JWT de rol MODULO que les emite Usuarios.
+    // Roles de las personas (tabla roles). Los módulos consumidores entran con un JWT de rol MODULO que les emite Usuarios (o, como alternativa, con su clave en X-Api-Key).
     private static final String[] PERSONAS = {"CLIENTE", "COMERCIO", "REPARTIDOR", "ADMIN"};
     private static final String ADMIN = "ADMIN";
     private static final String MODULO = "MODULO";
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService, ModulosApiKeys modulos,
                                             ErrorResponseWriter errorWriter) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -65,7 +65,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/**").hasAnyRole(PERSONAS)
 
                         .anyRequest().authenticated())
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new ApiKeyAuthenticationFilter(modulos), JwtAuthenticationFilter.class);
         return http.build();
     }
 
@@ -79,6 +80,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origenes);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // Los módulos consumidores llaman servidor a servidor: X-Api-Key no se habilita para el navegador.
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", ApiRequestFilter.CORRELATION_HEADER));
         config.setExposedHeaders(List.of(ApiRequestFilter.CORRELATION_HEADER, "Location"));
         config.setMaxAge(3600L);

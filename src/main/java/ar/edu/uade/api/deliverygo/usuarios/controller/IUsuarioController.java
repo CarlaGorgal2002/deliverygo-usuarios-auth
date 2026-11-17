@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -30,10 +32,11 @@ public interface IUsuarioController {
     @Operation(operationId = "consultarPerfil", summary = "Consultar perfil (API-03 / CU-03)",
             description = """
                     Con JWT: el titular consulta su propio perfil (el sub debe coincidir con el id) y la cuenta debe estar ACTIVA.
-                    Con el JWT de un módulo (POST /auth/module-token): cualquier módulo consumidor autorizado consulta el perfil de un usuario y recibe 200 también si la cuenta
+                    Con el JWT de un módulo (POST /auth/module-token) o con su clave en X-Api-Key: cualquier módulo consumidor autorizado consulta el perfil de un usuario y recibe 200 también si la cuenta
                     está INACTIVA, para decidir con sus propias reglas. Un JWT de otra persona, aunque sea ADMIN, recibe 403.
                     No devuelve contraseña ni hash; las direcciones se obtienen en API-05.""")
-        @ApiResponse(responseCode = "200", description = "Perfil del usuario.")
+        @SecurityRequirements({@SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "moduleApiKey")})
+    @ApiResponse(responseCode = "200", description = "Perfil del usuario.")
     @ErroresDeSesion
     @ErroresComunes
     ResponseEntity<UsuarioResponse> consultarPerfil(@PathVariable @Positive(message = ID_POSITIVO) Long id,
@@ -78,7 +81,8 @@ public interface IUsuarioController {
     @Operation(operationId = "consultarAccesoUsuario", summary = "Consultar estado y rol para otro módulo (API-16 / CU-10)",
             description = """
                     Consulta liviana para módulos consumidores: devuelve sólo el estado y el rol vigentes, sin datos personales.
-                    Se autentica con el JWT de módulo (rol MODULO); un JWT de persona recibe 403. Una cuenta INACTIVA se devuelve con 200.""")
+                    Se autentica con el JWT de módulo (rol MODULO) o con la clave del módulo en X-Api-Key; un JWT de persona recibe 403. Una cuenta INACTIVA se devuelve con 200.""")
+    @SecurityRequirements({@SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "moduleApiKey")})
     @ApiResponse(responseCode = "200", description = "Estado y rol del usuario.")
     @ErroresDeSesion
     @ErroresComunes

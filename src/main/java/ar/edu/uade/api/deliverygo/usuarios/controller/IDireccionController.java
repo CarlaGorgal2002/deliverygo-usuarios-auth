@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -32,8 +34,9 @@ public interface IDireccionController {
     @Operation(operationId = "listarDirecciones", summary = "Listar direcciones (API-05 / CU-05)",
             description = """
                     Devuelve las direcciones activas del usuario, sin paginación. Sin direcciones devuelve 200 y []. Hay cero o una predeterminada.
-                    Con JWT de persona: sólo el titular ACTIVO. Con JWT de módulo: sólo el módulo Pedidos, que también recibe las direcciones de una cuenta
+                    Con JWT de persona: sólo el titular ACTIVO. Con JWT de módulo o X-Api-Key: sólo el módulo Pedidos, que también recibe las direcciones de una cuenta
                     INACTIVA; cualquier otro módulo recibe 403.""")
+    @SecurityRequirements({@SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "moduleApiKey")})
     @ApiResponse(responseCode = "200", description = "Direcciones activas del usuario.")
     @ErroresDeSesion
     @ErroresComunes

@@ -57,7 +57,7 @@ public interface IAuthController {
     @Operation(operationId = "emitirTokenModulo", summary = "Emitir token de módulo (API-17 / CU-10)",
             description = """
                     Un módulo consumidor presenta su nombre y la clave que le entregó Usuarios (RN-15) y recibe un JWT con rol MODULO,
-                    firmado por Usuarios. Ese JWT va como Authorization: Bearer en las consultas de lectura (API-03, API-05 y API-16).
+                    firmado por Usuarios. Ese JWT va como Authorization: Bearer en las consultas de lectura (API-03, API-05 y API-16); la clave en X-Api-Key sigue aceptándose como alternativa.
                     Módulo desconocido, clave incorrecta y clave no configurada dan el mismo 401. No sirve para renovar ni validar sesiones de personas.""")
     @SecurityRequirements
     @ApiResponse(responseCode = "200", description = "Token de módulo emitido.")

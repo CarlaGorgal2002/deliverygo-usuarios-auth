@@ -9,10 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 // Credencial propia de cada módulo consumidor (RN-15): una clave por módulo, configurada por variable de
-// entorno (app.modules.api-keys.<modulo>). El módulo la presenta una sola vez en POST /api/v1/auth/module-token
-// ("un rol y una key", clase 10) y recibe un JWT con rol MODULO, que es lo que usa en cada llamada.
+// entorno (app.modules.api-keys.<modulo>). Hay dos formas de usarla: presentarla una sola vez en
+// POST /api/v1/auth/module-token ("un rol y una key", clase 10) y recibir un JWT con rol MODULO para usar como
+// Bearer (la convención del TPO), o mandarla en X-Api-Key en cada llamada (compatibilidad con los módulos que
+// ya la usan).
 // Una clave vacía o de menos de 16 caracteres deja al módulo sin acceso: nunca hay una credencial por defecto.
 @Component
 @ConfigurationProperties(prefix = "app.modules")
@@ -35,6 +38,23 @@ public class ModulosApiKeys {
                 log.warn("La clave del módulo '{}' tiene menos de {} caracteres y se ignora", modulo, LARGO_MINIMO);
             }
         });
+    }
+
+    // Devuelve el módulo dueño de la clave presentada, o vacío si ninguna coincide. Es la forma alternativa
+    // de identificarse: la clave en X-Api-Key en cada llamada (ver ApiKeyAuthenticationFilter).
+    public Optional<String> identificar(String presentada) {
+        if (presentada == null || presentada.isBlank()) {
+            return Optional.empty();
+        }
+        byte[] buscada = presentada.getBytes(StandardCharsets.UTF_8);
+        for (Map.Entry<String, String> entrada : apiKeys.entrySet()) {
+            String clave = entrada.getValue();
+            if (clave != null && clave.length() >= LARGO_MINIMO
+                    && MessageDigest.isEqual(clave.getBytes(StandardCharsets.UTF_8), buscada)) {
+                return Optional.of(entrada.getKey());
+            }
+        }
+        return Optional.empty();
     }
 
     // Verdadero si el módulo existe, tiene una clave válida configurada y coincide con la presentada.
