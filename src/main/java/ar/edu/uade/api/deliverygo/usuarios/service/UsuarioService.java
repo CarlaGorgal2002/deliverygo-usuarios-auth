@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 
@@ -52,7 +54,7 @@ public class UsuarioService {
         this.notificacionesClient = notificacionesClient;
     }
 
-    // SRV-01 (CU-01). Da de alta al usuario y pide la bienvenida (INT-01).
+    // SRV-01 (CU-01). Da de alta al usuario y, una vez confirmado, pide la bienvenida (INT-01).
     @Transactional
     public UsuarioResponse registrarUsuario(RegistrarUsuarioRequest request) {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > MAX_BYTES_PASSWORD) {
@@ -78,13 +80,24 @@ public class UsuarioService {
                 rol);
         UsuarioResponse creado = usuarioMapper.toResponse(usuarioRepository.save(usuario));
 
-        // INT-01 no bloqueante: si falla, el registro se mantiene y el cliente igual recibe el 201.
+        // INT-01 recién después del commit: Notificaciones verifica al destinatario con GET /users/{id} y, si la
+        // pedimos antes, todavía no lo vería. Si el alta se revierte, no se pide ninguna bienvenida.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                pedirBienvenida(creado);
+            }
+        });
+        return creado;
+    }
+
+    // INT-01 no bloqueante: si falla, el registro se mantiene y el cliente igual recibe el 201.
+    private void pedirBienvenida(UsuarioResponse creado) {
         try {
             notificacionesClient.enviarBienvenida(creado.id(), creado.nombre(), creado.email());
         } catch (RuntimeException e) {
             log.warn("INT-01: no se pudo solicitar la bienvenida del usuario {}", creado.id(), e);
         }
-        return creado;
     }
 
     // SRV-03 (CU-03)

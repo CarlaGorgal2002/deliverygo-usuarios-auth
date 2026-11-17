@@ -25,7 +25,7 @@ El validador cuenta las comprobaciones de ejemplos después de expandir referenc
 
 ## Pruebas automáticas del backend
 
-Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2, más pruebas unitarias del JWT. Resultado de la última corrida: **77 pruebas, 0 fallas, 0 errores**.
+Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot y MockMvc sobre la cadena real de filtros, seguridad, validación, servicios y base H2, más pruebas unitarias del JWT. Resultado de la última corrida: **78 pruebas, 0 fallas, 0 errores**.
 
 | Clase | Pruebas | Cobertura |
 |---|---|---|
@@ -37,7 +37,7 @@ Se ejecutan con `mvn test` (JDK 25). Son pruebas de integración con Spring Boot
 | `SesionApiTest` | 7 | CU-09 (RN-14): validar devuelve rol y estado vigentes aunque el token diga otro, renovar emite un token que sirve y trae el rol actual, cuenta inactiva (403) o inexistente (401), sin token, vencido o alterado (401), y una API Key de módulo no renueva ni valida (403) |
 | `ModulosApiTest` | 10 | CU-10 y RN-15: estado y rol sin datos personales, cuenta inactiva con 200, rol vigente, 401 sin clave, con clave incorrecta, vacía o demasiado corta, 403 para un JWT de usuario o ADMIN, el JWT manda sobre la clave, ids inexistentes e inválidos, API-03 con cualquier módulo (también inactivas), API-05 sólo para Pedidos, los módulos nunca escriben (PUT, POST, DELETE, PATCH y administración dan 403) y las rutas públicas no se rompen por una clave inválida |
 | `CorrelacionApiTest` | 5 | Reutilización, generación e invalidez de `X-Correlation-Id`; preflight CORS con PATCH; origen no autorizado |
-| `BienvenidaApiTest` | 3 | INT-01: se solicita después del alta, no se solicita si el alta falla, una falla del cliente no cambia el 201 |
+| `BienvenidaApiTest` | 4 | INT-01: se solicita después del commit del alta (otra transacción ya ve al usuario, como la consulta de Notificaciones), no se solicita si el alta falla, una falla del cliente no cambia el 201 |
 | `JwtServiceTest` | 6 | Emisión y lectura de `sub`=id y `role`; rechazo de otra clave, vencido, sin firma y `sub` no numérico; clave mínima de 32 bytes |
 | `AdministradorInicialTest` | 1 | DM-07: el administrador configurado por `ADMIN_EMAIL` y `ADMIN_PASSWORD` inicia sesión con rol ADMIN (con su propia base en memoria) |
 
