@@ -146,7 +146,7 @@ Fuera de alcance: pedidos simultáneos sobre el mismo recurso (concurrencia). No
 | Recuperación sin límite de pedidos | No hay limitación por cuenta ni por origen; conviene sumarla (por ejemplo, en un gateway) antes de exponer el servicio | Este equipo |
 | Primer administrador | Se aprovisiona con `ADMIN_EMAIL` y `ADMIN_PASSWORD`; usar una contraseña propia, no la de los ejemplos | Este equipo |
 | Secreto de desarrollo | El valor por defecto es sólo local. Un secreto anterior estuvo en el historial de Git: rotar el secreto de cualquier ambiente que lo haya usado | Este equipo |
-| Consola H2 y base en memoria | Habilitadas sólo para desarrollo; deshabilitar y usar base persistente en ambientes compartidos | Este equipo |
+| Base de datos | PostgreSQL persistente con `docker-compose.yml` y credenciales de desarrollo por defecto; en ambientes compartidos definir `DB_*` con credenciales propias. Las tablas las crea Hibernate (`ddl-auto=update`), sin migraciones versionadas | Este equipo |
 | Códigos técnicos fuera del enum del YAML | `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `NOT_ACCEPTABLE`, `UNSUPPORTED_MEDIA_TYPE` | Acordar el catálogo común |
 | Diagramas | Los `.puml` e imágenes de `doc/Diagramas` no se regeneraron; el diagrama de clases sigue mostrando `LocalDateTime` y no incluye ENT-04. Las secuencias SEC-06 a SEC-10 están en Mermaid en DISENO_CU_EVOLUCION.md | Este equipo |
 

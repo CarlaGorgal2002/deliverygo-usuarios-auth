@@ -32,7 +32,6 @@ public class SecurityConfig {
                                             ErrorResponseWriter errorWriter) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
-                .headers(h -> h.frameOptions(f -> f.sameOrigin()))   // la consola H2 usa frames
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 401 y 403 con el mismo DTO-08 que el resto de la API (por defecto Spring respondería vacío)
                 .exceptionHandling(e -> e
@@ -46,7 +45,7 @@ public class SecurityConfig {
                         // Públicas: registro, login y recuperación de contraseña (CU-01, CU-02, CU-08)
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
                         // CU-09: renovar y validar la sesión es sólo para personas
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").hasAnyRole(PERSONAS)
