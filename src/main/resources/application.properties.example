@@ -1,13 +1,13 @@
 spring.application.name=deliverygo-usuarios
 server.port=8089
 
-# Base propia del módulo: PostgreSQL (docker compose up -d). Los valores por defecto coinciden con
-# docker-compose.yml; en otro ambiente se definen con DB_HOST, DB_PORT, DB_NAME, DB_USERNAME y DB_PASSWORD.
-spring.datasource.url=jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:deliverygo_usuarios}
-spring.datasource.username=${DB_USERNAME:deliverygo}
-spring.datasource.password=${DB_PASSWORD:deliverygo}
-# Hibernate crea las tablas que falten y conserva los datos entre reinicios.
-spring.jpa.hibernate.ddl-auto=update
+# Base propia del módulo: H2 en memoria. Arranca vacía en cada inicio: Hibernate crea las tablas y la
+# aplicación carga los roles y el administrador inicial. Los datos se pierden al detener el servicio.
+spring.datasource.url=jdbc:h2:mem:deliverygo_usuarios;DB_CLOSE_DELAY=-1
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=create-drop
 spring.jpa.show-sql=false
 spring.jpa.properties.hibernate.format_sql=true
 spring.jpa.open-in-view=false

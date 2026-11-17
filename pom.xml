@@ -44,17 +44,11 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Sólo para las pruebas automáticas (perfil test): base en memoria, no hace falta Docker. -->
+        <!-- Base propia del módulo: H2 en memoria (la aplicación y las pruebas). No hace falta Docker. -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
