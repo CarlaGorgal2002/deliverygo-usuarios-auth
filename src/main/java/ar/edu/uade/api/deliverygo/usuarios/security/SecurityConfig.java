@@ -2,6 +2,7 @@ package ar.edu.uade.api.deliverygo.usuarios.security;
 
 import ar.edu.uade.api.deliverygo.usuarios.exception.ErrorResponseWriter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,6 +33,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // La consola de H2 se arma con frames: se permiten sólo desde el mismo origen
+                .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 // 401 y 403 con el mismo DTO-08 que el resto de la API (por defecto Spring respondería vacío)
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, ex) -> errorWriter.escribir(
@@ -45,6 +48,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        // Estado del servicio, público
+                        .requestMatchers(HttpMethod.GET, "/api/v1/status").permitAll()
+                        // Consola de H2 (sólo desarrollo): tiene su propio login con el usuario de la base
+                        .requestMatchers(PathRequest.toH2Console()).permitAll()
 
                         // CU-09: renovar y validar la sesión es sólo para personas
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").hasAnyRole(PERSONAS)

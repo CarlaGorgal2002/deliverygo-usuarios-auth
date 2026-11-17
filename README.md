@@ -172,11 +172,13 @@ Configuración por variables de entorno (todas opcionales en desarrollo):
 `src/main/resources/application.properties.example` documenta el resto de la configuración. No se deben subir secretos reales al repositorio.
 
 - Swagger UI: `http://localhost:8089/swagger-ui.html` (JSON en `/v3/api-docs`).
-- Base de datos: `docker compose exec postgres psql -U deliverygo -d deliverygo_usuarios` abre una consola SQL. Al arrancar se crean los roles CLIENTE, COMERCIO, REPARTIDOR y ADMIN si no existen.
+- Base de datos: H2 en memoria. La consola web está en `http://localhost:8089/h2-console` (JDBC URL `jdbc:h2:mem:deliverygo_usuarios`, usuario `sa`, sin contraseña); se desactiva con `H2_CONSOLE_ENABLED=false`. Al arrancar se crean los roles CLIENTE, COMERCIO, REPARTIDOR y ADMIN.
 - INT-01 (bienvenida) e INT-06 (recuperación de contraseña) con Notificaciones usan por defecto un mock declarado que sólo escribe en el log; con `NOTIFICACIONES_MODO=http` llaman a la API real. Su falla nunca revierte el registro ni cambia la respuesta.
 - Para probar la administración en local, definir antes de arrancar `ADMIN_EMAIL=admin@deliverygo.test` y `ADMIN_PASSWORD=<una contraseña propia>`. En Swagger UI, **Authorize** acepta el JWT (`bearerAuth`) de una persona; las consultas de módulos se prueban sin autorizar. Las contraseñas no se suben al repositorio.
 
 ## Datos de prueba
+
+Al arrancar se crea un usuario de prueba común, con rol `CLIENTE`, sin direcciones: `cliente@deliverygo.test` / `ClienteDemo2026!` (nombre Cliente Demo). Es sólo para demos locales y se desactiva con `DEMO_USER_ENABLED=false`. Las pruebas automáticas no lo cargan.
 
 Importar [la colección de Postman y el environment local](doc/postman/README.md). Los siguientes valores son públicos y exclusivos de desarrollo local; coinciden con `Local.postman_environment.json`.
 

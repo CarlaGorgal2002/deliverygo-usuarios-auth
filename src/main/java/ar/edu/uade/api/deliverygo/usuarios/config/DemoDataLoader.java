@@ -65,4 +65,25 @@ public class DemoDataLoader {
             log.info("Administrador inicial creado");
         };
     }
+
+    // Usuario de prueba para demos locales: un CLIENTE común, igual al que crea el registro (CU-01), ACTIVO y sin
+    // direcciones. Se desactiva con DEMO_USER_ENABLED=false; las pruebas automáticas no lo cargan.
+    static final String EMAIL_USUARIO_DEMO = "cliente@deliverygo.test";
+    static final String PASSWORD_USUARIO_DEMO = "ClienteDemo2026!";
+
+    @Bean
+    @Order(3)
+    CommandLineRunner cargarUsuarioDemo(RolRepository rolRepository, UsuarioRepository usuarioRepository,
+                                        PasswordEncoder passwordEncoder,
+                                        @Value("${app.demo-user.enabled:false}") boolean habilitado) {
+        return args -> {
+            if (!habilitado || usuarioRepository.existsByEmail(EMAIL_USUARIO_DEMO)) {
+                return;
+            }
+            Rol cliente = rolRepository.findByNombre("CLIENTE").orElseThrow();
+            usuarioRepository.save(new Usuario("Cliente", "Demo", EMAIL_USUARIO_DEMO,
+                    passwordEncoder.encode(PASSWORD_USUARIO_DEMO), "1122334455", cliente));
+            log.info("Usuario de prueba creado: {} (rol CLIENTE)", EMAIL_USUARIO_DEMO);
+        };
+    }
 }
