@@ -1,0 +1,10 @@
+# Reduce el contexto que se envía al motor de Docker y evita empaquetar secretos (clase 13).
+.git/
+.github/
+.idea/
+.vscode/
+target/
+doc/
+entregables/
+.env
+*.log
